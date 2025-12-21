@@ -10,7 +10,7 @@ const keywordDict = {
     breakfast: "早餐 早午餐",
     lunch: "餐廳 小吃 午餐",
     afternoon_tea: "飲料 甜點 咖啡",
-    dinner: "餐廳 晚餐 火鍋",
+    dinner: "餐廳 晚餐 小吃 火鍋",
     late_night: "宵夜 鹽酥雞 清粥 滷味 炸物",
     noodles_rice: "麵 飯 水餃 壽司 快炒 合菜", 
     western_steak: "牛排 義大利麵 漢堡 披薩",
@@ -20,74 +20,62 @@ const keywordDict = {
 
 // ================== 1. 系統初始化與 Key 管理 ==================
 
-// 網頁載入時，檢查是否有存過的 Key
 window.onload = () => {
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if (savedKey) {
-        // 有 Key，直接嘗試載入
         loadGoogleMapsScript(savedKey);
     } else {
-        // 沒 Key，顯示設定頁
         document.getElementById('setup-screen').style.display = 'block';
         document.getElementById('app-screen').style.display = 'none';
     }
-    
-    // 初始化選單
     autoSelectMealType();
 };
 
-// 使用者輸入 Key 並按下確認
 function saveAndStart() {
     const inputKey = document.getElementById('userApiKey').value.trim();
     if (inputKey.length < 20) {
         alert("API Key 格式看起來不正確，請確認。");
         return;
     }
-    // 儲存到本地
     localStorage.setItem('food_wheel_api_key', inputKey);
     loadGoogleMapsScript(inputKey);
 }
 
-// 清除 Key (登出)
 function clearKey() {
     if(confirm("確定要清除 API Key 並回到設定頁嗎？")) {
         localStorage.removeItem('food_wheel_api_key');
-        location.reload(); // 重新整理網頁
+        location.reload(); 
     }
 }
 
-// 動態載入 Google Maps API
 function loadGoogleMapsScript(apiKey) {
-    // 顯示載入中 (可以用簡單的 alert 或 UI 變化，這裡簡單處理)
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`;
     script.async = true;
     script.defer = true;
     
     script.onload = () => {
-        // 載入成功，切換畫面
         document.getElementById('setup-screen').style.display = 'none';
         document.getElementById('app-screen').style.display = 'block';
-        initLocation(); // 開始抓定位
+        initLocation(); 
     };
     
     script.onerror = () => {
         alert("Google Maps API 載入失敗！\n可能是 Key 無效或網路問題，請檢查後重試。");
-        localStorage.removeItem('food_wheel_api_key'); // 移除錯誤的 Key
+        localStorage.removeItem('food_wheel_api_key'); 
         location.reload();
     };
 
     document.head.appendChild(script);
 }
 
-// 全域錯誤處理 (針對 API 權限錯誤，如沒開 Places API)
 window.gm_authFailure = function() {
     alert("Google Maps API 驗證失敗！\n請檢查：\n1. 是否已啟用 Places API 和 Maps JavaScript API\n2. 是否已綁定信用卡(結算帳戶)\n3. 網址限制是否正確");
     clearKey();
 };
 
 
-// ================== 2. 主程式邏輯 (與先前相同) ==================
+// ================== 2. 主程式邏輯 ==================
 
 function autoSelectMealType() {
     const hour = new Date().getHours();
@@ -178,6 +166,9 @@ function startSearch(location, keywordsRaw) {
     const transportMode = document.getElementById('transportMode').value;
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
     
+    // 取得價格設定
+    const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
+    
     const keywordList = keywordsRaw.split(/\s+/).filter(k => k.length > 0);
 
     const btn = document.querySelector('.search-btn');
@@ -190,6 +181,12 @@ function startSearch(location, keywordsRaw) {
                 rankBy: google.maps.places.RankBy.DISTANCE, 
                 keyword: keyword
             };
+
+            // 如果有設定預算上限 (不是 -1)，就加入 maxPrice 條件
+            if (priceLevel !== -1) {
+                request.maxPrice = priceLevel;
+                // 注意：minPrice 我們暫不設定，預設為 0，這樣可以涵蓋 "比這個價位便宜的所有餐廳"
+            }
             
             service.nearbySearch(request, (results, status) => {
                 if (status === google.maps.places.PlacesServiceStatus.OK && results) {
@@ -208,7 +205,12 @@ function startSearch(location, keywordsRaw) {
         });
 
         if (combinedResults.length === 0) {
-            alert("附近找不到符合任何關鍵字的店家。");
+            // 如果是因為價格篩選導致沒結果，給予特定提示
+            if (priceLevel !== -1) {
+                alert("附近找不到符合預算與關鍵字的店家。\n提示：部分小吃店未在 Google Maps 標註價格，建議將預算設為「不限」再試試。");
+            } else {
+                alert("附近找不到符合任何關鍵字的店家。");
+            }
             resetButtons();
             return;
         }
