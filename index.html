@@ -75,6 +75,8 @@
                 <input type="text" id="currentAddress" placeholder="等待定位中..." value="">
                 <button id="geoBtn" onclick="handleSearch()">🔍 搜尋</button>
             </div>
+            <p id="detailedAddressDisplay" style="font-size: 0.85rem; color: #27ae60; margin: 5px 0 0 0; text-align: left; display: none;"></p>
+
             <div style="text-align: right; margin-top:5px;">
                 <button onclick="initLocation()" class="small-btn">🎯 重抓定位</button>
             </div>
@@ -98,13 +100,13 @@
             </div>
 
             <div class="setting-row">
-                <label for="priceLevel">預算：</label>
+                <label for="priceLevel">預算上限：</label>
                 <select id="priceLevel">
                     <option value="-1" selected>不限 (顯示所有)</option>
-                    <option value="1">💲 便宜 (約 $200 以下)</option>
-                    <option value="2">💲💲 中價位 (約 $200-$800)</option>
-                    <option value="3">💲💲💲 高價位 (約 $800-$2000)</option>
-                    <option value="4">💲💲💲💲 奢華 (約 $2000 以上)</option>
+                    <option value="1">💲 $200 以下 (便宜)</option>
+                    <option value="2">💲 $800 以下 (中價位)</option>
+                    <option value="3">💲 $2000 以下 (高價位)</option>
+                    <option value="4">💲 奢華無上限</option>
                 </select>
             </div>
 
