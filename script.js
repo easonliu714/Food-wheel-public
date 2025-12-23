@@ -107,7 +107,7 @@ function initLocation() {
     const detailDisplay = document.getElementById('detailedAddressDisplay');
     
     addrInput.value = "定位中...";
-    // 清空詳細地址顯示 (因為是自動定位)
+    // 如果是重抓定位，先隱藏詳細地址，避免混淆
     if(detailDisplay) {
         detailDisplay.style.display = 'none';
         detailDisplay.innerText = '';
@@ -162,7 +162,7 @@ function handleSearch() {
         if (status === "OK" && results[0]) {
             userCoordinates = results[0].geometry.location;
             
-            // 【新增功能 1】顯示詳細地址供確認
+            // 【關鍵修改】顯示詳細地址供確認
             if (detailDisplay) {
                 detailDisplay.style.display = 'block';
                 detailDisplay.innerText = `🎯 已定位至：${results[0].formatted_address}`;
@@ -198,7 +198,6 @@ function startSearch(location, keywordsRaw) {
             };
 
             // 如果有設定預算上限 (不是 -1)，就加入 maxPrice 條件
-            // 根據需求：不管選哪個，minPrice 預設為 0
             if (priceLevel !== -1) {
                 request.maxPrice = priceLevel;
             }
@@ -419,7 +418,7 @@ document.getElementById('spinBtn').onclick = () => {
         const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
         const winner = places[winningIndex];
 
-        // 呼叫更新狀態函數 (包含查詢即將營業邏輯)
+        // 【關鍵修改】呼叫更新狀態函數 (包含查詢即將營業邏輯)
         updateWinnerStatus(winner);
         
         spinBtn.disabled = false;
@@ -443,7 +442,7 @@ function updateWinnerStatus(winner) {
     const storeAddressEl = document.getElementById('storeAddress');
     
     // 預設顯示載入中
-    storeAddressEl.innerText = `⏳ 正在查詢營業狀態...\n📍 ${address}`;
+    storeAddressEl.innerText = `⏳ 正在查詢詳細營業狀態...\n📍 ${address}`;
 
     // 使用 Places Service getDetails 取得詳細營業時間
     const service = new google.maps.places.PlacesService(document.createElement('div'));
@@ -460,19 +459,9 @@ function updateWinnerStatus(winner) {
             if (isOpen) {
                 openStatus = "🟢 營業中";
             } else {
-                // 如果沒開，檢查是否即將營業
                 openStatus = "🔴 已打烊/休息中"; // 預設狀態
                 
                 // 檢查是否在 60 分鐘內開門
-                // 需要完整的 periods 資訊，但 API 有時只有 open_now
-                // 這裡嘗試從 opening_hours.periods 判斷 (如果有的話)
-                // 備註：isOpen() 是較新的方法，getDetails 通常會回傳 periods
-                
-                // 由於計算邏輯較複雜，若 API 沒回傳詳細 periods 則維持已打烊
-                // 這裡是一個簡易的檢查：若有 periods 屬性
-                // 此處為了程式碼簡潔，且避免時區運算過於複雜，我們依賴 Google 是否有提供 next opening 
-                // 若要精確做到「即將營業」，需要遍歷 periods。
-                // 這裡實作一個精簡檢查：
                 if (checkIfOpeningSoon(place.opening_hours)) {
                     openStatus = "🟡 即將營業 (1小時內)";
                 }
@@ -502,11 +491,6 @@ function checkIfOpeningSoon(openingHours) {
     const day = now.getDay();
     const time = now.getHours() * 100 + now.getMinutes(); // 轉成 HHMM 格式數字
     
-    // 尋找下一個開門時間
-    // periods 格式: [{open: {day: 0, time: "1000"}, close: {...}}, ...]
-    // 需處理跨日與當日稍晚
-    
-    let nextOpen = null;
     let minDiff = Infinity;
 
     openingHours.periods.forEach(p => {
@@ -514,8 +498,6 @@ function checkIfOpeningSoon(openingHours) {
         
         const openDay = p.open.day;
         const openTime = parseInt(p.open.time);
-        
-        // 計算時間差 (分鐘)
         let diffInMinutes = 0;
         
         if (openDay === day) {
@@ -527,19 +509,15 @@ function checkIfOpeningSoon(openingHours) {
                 const nowM = time % 100;
                 diffInMinutes = (openH * 60 + openM) - (nowH * 60 + nowM);
             } else {
-                // 時間已過，或者是下週 (不考慮，只找最近的)
                 return; 
             }
         } else if (openDay === (day + 1) % 7) {
             // 明天 (或跨週的隔天)
-            // 計算：(2400 - now) + openTime
-            // 這種情況通常大於 60分，除非現在是 23:30 且店家 00:00 開門
             const openH = Math.floor(openTime / 100);
             const openM = openTime % 100;
             const nowH = Math.floor(time / 100);
             const nowM = time % 100;
             
-            // 距離午夜的分鐘數 + 午夜到開門的分鐘數
             const minsToMidnight = (24 * 60) - (nowH * 60 + nowM);
             const minsAfterMidnight = openH * 60 + openM;
             diffInMinutes = minsToMidnight + minsAfterMidnight;
