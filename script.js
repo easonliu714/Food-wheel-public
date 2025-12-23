@@ -104,7 +104,14 @@ function updateKeywords() {
 function initLocation() {
     if (typeof google === 'undefined') return;
     const addrInput = document.getElementById('currentAddress');
+    const detailDisplay = document.getElementById('detailedAddressDisplay');
+    
     addrInput.value = "定位中...";
+    // 清空詳細地址顯示 (因為是自動定位)
+    if(detailDisplay) {
+        detailDisplay.style.display = 'none';
+        detailDisplay.innerText = '';
+    }
 
     if (!navigator.geolocation) {
         alert("瀏覽器不支援定位");
@@ -120,6 +127,7 @@ function initLocation() {
             const geocoder = new google.maps.Geocoder();
             geocoder.geocode({ location: userCoordinates }, (results, status) => {
                 if (status === "OK" && results[0]) {
+                    // 簡化地址：去除郵遞區號與台灣
                     let formatted = results[0].formatted_address;
                     formatted = formatted.replace(/^\d+\s*/, '').replace(/^台灣/, ''); 
                     addrInput.value = formatted;
@@ -140,7 +148,8 @@ function initLocation() {
 function handleSearch() {
     const addrInput = document.getElementById('currentAddress').value;
     const keywordsRaw = document.getElementById('keywordInput').value;
-    
+    const detailDisplay = document.getElementById('detailedAddressDisplay');
+
     if (!addrInput) return alert("請輸入地址或按下「重抓定位」");
     if (!keywordsRaw.trim()) return alert("請輸入至少一個關鍵字");
 
@@ -152,6 +161,13 @@ function handleSearch() {
     geocoder.geocode({ address: addrInput }, (results, status) => {
         if (status === "OK" && results[0]) {
             userCoordinates = results[0].geometry.location;
+            
+            // 【新增功能 1】顯示詳細地址供確認
+            if (detailDisplay) {
+                detailDisplay.style.display = 'block';
+                detailDisplay.innerText = `🎯 已定位至：${results[0].formatted_address}`;
+            }
+
             startSearch(userCoordinates, keywordsRaw);
         } else {
             alert("找不到此地址，請檢查輸入內容");
@@ -163,7 +179,6 @@ function handleSearch() {
 
 function startSearch(location, keywordsRaw) {
     const service = new google.maps.places.PlacesService(document.createElement('div'));
-    const transportMode = document.getElementById('transportMode').value;
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
     
     // 取得價格設定
@@ -183,9 +198,9 @@ function startSearch(location, keywordsRaw) {
             };
 
             // 如果有設定預算上限 (不是 -1)，就加入 maxPrice 條件
+            // 根據需求：不管選哪個，minPrice 預設為 0
             if (priceLevel !== -1) {
                 request.maxPrice = priceLevel;
-                // 注意：minPrice 我們暫不設定，預設為 0，這樣可以涵蓋 "比這個價位便宜的所有餐廳"
             }
             
             service.nearbySearch(request, (results, status) => {
@@ -215,7 +230,7 @@ function startSearch(location, keywordsRaw) {
             return;
         }
 
-        processResults(location, combinedResults, transportMode, maxTime);
+        processResults(location, combinedResults, maxTime);
     }).catch(err => {
         console.error(err);
         alert("搜尋過程發生錯誤");
@@ -223,9 +238,10 @@ function startSearch(location, keywordsRaw) {
     });
 }
 
-function processResults(origin, results, mode, maxTime) {
+function processResults(origin, results, maxTime) {
     const btn = document.querySelector('.search-btn');
     const userMaxCount = parseInt(document.getElementById('resultCount').value, 10);
+    const transportMode = document.getElementById('transportMode').value;
 
     const uniqueIds = new Set();
     let filtered = [];
@@ -253,7 +269,7 @@ function processResults(origin, results, mode, maxTime) {
         batches.push(filtered.slice(i, i + batchSize));
     }
 
-    Promise.all(batches.map(batch => getDistances(origin, batch, mode)))
+    Promise.all(batches.map(batch => getDistances(origin, batch, transportMode)))
         .then(resultsArray => {
             let validPlaces = [].concat(...resultsArray);
 
@@ -403,34 +419,138 @@ document.getElementById('spinBtn').onclick = () => {
         const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
         const winner = places[winningIndex];
 
-        document.getElementById('storeName').innerText = "就決定吃：" + winner.name;
+        // 呼叫更新狀態函數 (包含查詢即將營業邏輯)
+        updateWinnerStatus(winner);
         
-        if (document.getElementById('storeRating')) {
-            if (winner.rating) {
-                document.getElementById('storeRating').innerText = `⭐ ${winner.rating} (${winner.user_ratings_total || 0} 則評價)`;
-            } else {
-                document.getElementById('storeRating').innerText = "暫無評價資料";
-            }
-        }
-        
-        const address = winner.formatted_address || winner.vicinity || "地址不詳";
-        
-        let openStatus = "⚪ 營業時間未知";
-        if (winner.opening_hours && typeof winner.opening_hours.open_now !== 'undefined') {
-            openStatus = winner.opening_hours.open_now ? "🟢 營業中" : "🔴 已打烊/休息中";
-        }
-        
-        document.getElementById('storeAddress').innerText = `${openStatus}\n📍 ${address}`;
-
-        if (winner.realDurationText) {
-             document.getElementById('storeDistance').innerText = 
-                `⏱️ 預估耗時：${winner.realDurationText} (${winner.realDistanceText})`;
-        }
-        
-        const link = document.getElementById('menuLink');
-        link.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}&query_place_id=${winner.place_id}`;
-        link.style.display = 'inline-block';
-        link.innerText = "📍 導航去這家";
         spinBtn.disabled = false;
     }, 4000);
 };
+
+// 【新增功能 2】更新贏家狀態與營業時間判斷
+function updateWinnerStatus(winner) {
+    // 基本 UI 更新
+    document.getElementById('storeName').innerText = "就決定吃：" + winner.name;
+    
+    if (document.getElementById('storeRating')) {
+        if (winner.rating) {
+            document.getElementById('storeRating').innerText = `⭐ ${winner.rating} (${winner.user_ratings_total || 0} 則評價)`;
+        } else {
+            document.getElementById('storeRating').innerText = "暫無評價資料";
+        }
+    }
+    
+    const address = winner.formatted_address || winner.vicinity || "地址不詳";
+    const storeAddressEl = document.getElementById('storeAddress');
+    
+    // 預設顯示載入中
+    storeAddressEl.innerText = `⏳ 正在查詢營業狀態...\n📍 ${address}`;
+
+    // 使用 Places Service getDetails 取得詳細營業時間
+    const service = new google.maps.places.PlacesService(document.createElement('div'));
+    
+    service.getDetails({
+        placeId: winner.place_id,
+        fields: ['opening_hours'] // 只需取得營業時間欄位
+    }, (place, status) => {
+        let openStatus = "⚪ 營業時間不明，請確認";
+
+        if (status === google.maps.places.PlacesServiceStatus.OK && place && place.opening_hours) {
+            const isOpen = place.opening_hours.isOpen();
+            
+            if (isOpen) {
+                openStatus = "🟢 營業中";
+            } else {
+                // 如果沒開，檢查是否即將營業
+                openStatus = "🔴 已打烊/休息中"; // 預設狀態
+                
+                // 檢查是否在 60 分鐘內開門
+                // 需要完整的 periods 資訊，但 API 有時只有 open_now
+                // 這裡嘗試從 opening_hours.periods 判斷 (如果有的話)
+                // 備註：isOpen() 是較新的方法，getDetails 通常會回傳 periods
+                
+                // 由於計算邏輯較複雜，若 API 沒回傳詳細 periods 則維持已打烊
+                // 這裡是一個簡易的檢查：若有 periods 屬性
+                // 此處為了程式碼簡潔，且避免時區運算過於複雜，我們依賴 Google 是否有提供 next opening 
+                // 若要精確做到「即將營業」，需要遍歷 periods。
+                // 這裡實作一個精簡檢查：
+                if (checkIfOpeningSoon(place.opening_hours)) {
+                    openStatus = "🟡 即將營業 (1小時內)";
+                }
+            }
+        }
+        
+        // 更新最終顯示
+        storeAddressEl.innerText = `${openStatus}\n📍 ${address}`;
+    });
+
+    if (winner.realDurationText) {
+         document.getElementById('storeDistance').innerText = 
+            `⏱️ 預估耗時：${winner.realDurationText} (${winner.realDistanceText})`;
+    }
+    
+    const link = document.getElementById('menuLink');
+    link.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}&query_place_id=${winner.place_id}`;
+    link.style.display = 'inline-block';
+    link.innerText = "📍 導航去這家";
+}
+
+// 輔助函數：檢查是否即將營業 (1小時內)
+function checkIfOpeningSoon(openingHours) {
+    if (!openingHours || !openingHours.periods) return false;
+    
+    const now = new Date();
+    const day = now.getDay();
+    const time = now.getHours() * 100 + now.getMinutes(); // 轉成 HHMM 格式數字
+    
+    // 尋找下一個開門時間
+    // periods 格式: [{open: {day: 0, time: "1000"}, close: {...}}, ...]
+    // 需處理跨日與當日稍晚
+    
+    let nextOpen = null;
+    let minDiff = Infinity;
+
+    openingHours.periods.forEach(p => {
+        if (!p.open) return;
+        
+        const openDay = p.open.day;
+        const openTime = parseInt(p.open.time);
+        
+        // 計算時間差 (分鐘)
+        let diffInMinutes = 0;
+        
+        if (openDay === day) {
+            if (openTime > time) {
+                // 同一天稍晚
+                const openH = Math.floor(openTime / 100);
+                const openM = openTime % 100;
+                const nowH = Math.floor(time / 100);
+                const nowM = time % 100;
+                diffInMinutes = (openH * 60 + openM) - (nowH * 60 + nowM);
+            } else {
+                // 時間已過，或者是下週 (不考慮，只找最近的)
+                return; 
+            }
+        } else if (openDay === (day + 1) % 7) {
+            // 明天 (或跨週的隔天)
+            // 計算：(2400 - now) + openTime
+            // 這種情況通常大於 60分，除非現在是 23:30 且店家 00:00 開門
+            const openH = Math.floor(openTime / 100);
+            const openM = openTime % 100;
+            const nowH = Math.floor(time / 100);
+            const nowM = time % 100;
+            
+            // 距離午夜的分鐘數 + 午夜到開門的分鐘數
+            const minsToMidnight = (24 * 60) - (nowH * 60 + nowM);
+            const minsAfterMidnight = openH * 60 + openM;
+            diffInMinutes = minsToMidnight + minsAfterMidnight;
+        } else {
+            return; // 太遠了
+        }
+
+        if (diffInMinutes > 0 && diffInMinutes < minDiff) {
+            minDiff = diffInMinutes;
+        }
+    });
+
+    return minDiff <= 60;
+}
