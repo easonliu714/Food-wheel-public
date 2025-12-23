@@ -18,18 +18,167 @@ const keywordDict = {
     all: "美食 餐廳 小吃" 
 };
 
+// ================== 0. 教學內容資料庫 ==================
+// 若您有實際截圖，請將 'img' 屬性改為圖片路徑 (例如 'images/step1_android.jpg')
+// 目前設定為 null，會顯示漂亮的文字框佔位符
+const commonApiList = `
+    <ul class="api-list">
+        <li>✅ Maps JavaScript API</li>
+        <li>✅ Places API (搜尋)</li>
+        <li>✅ Geocoding API (地址)</li>
+        <li>✅ Distance Matrix API (距離)</li>
+    </ul>
+`;
+
+const guideData = {
+    desktop: {
+        title: "💻 電腦版申請步驟 (推薦使用)",
+        steps: [
+            {
+                title: "1. 登入 Google Cloud",
+                desc: "使用 Chrome 瀏覽器前往 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud Console</a> 並登入您的 Google 帳號。",
+                img: null // 預留：'images/desktop_step1.jpg'
+            },
+            {
+                title: "2. 建立新專案",
+                desc: "點擊左上角的專案選單，選擇「建立新專案」。輸入專案名稱 (如 FoodWheel) 並建立。",
+                img: null
+            },
+            {
+                title: "3. 綁定結算帳戶 (免費額度)",
+                desc: "前往左側選單的「結算 (Billing)」。綁定信用卡以驗證身分 (Google 每月贈送 $200 美金額度，個人使用通常完全免費)。",
+                img: null
+            },
+            {
+                title: "4. 啟用 4 項必要 API",
+                desc: "前往「API 和服務」>「啟用 API」，搜尋並啟用以下 4 個服務：" + commonApiList,
+                img: null
+            },
+            {
+                title: "5. 取得 API Key",
+                desc: "前往「憑證 (Credentials)」，點擊「建立憑證」>「API 金鑰」。複製該金鑰並貼到下方的輸入框。",
+                img: null
+            }
+        ]
+    },
+    android: {
+        title: "🤖 Android 手機申請步驟",
+        steps: [
+            {
+                title: "1. 開啟電腦版網頁 (關鍵步驟)",
+                desc: "開啟 Chrome 瀏覽器，前往 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud Console</a>。<br><strong>點擊右上角「⋮」選單，勾選「電腦版網站」</strong> (因為 Google 後台不支援手機介面)。",
+                img: null // 預留：'images/android_step1.jpg'
+            },
+            {
+                title: "2. 建立新專案",
+                desc: "放大畫面，點擊左上角專案選單 >「New Project」。建立一個新專案。",
+                img: null
+            },
+            {
+                title: "3. 綁定帳單",
+                desc: "點擊左上角漢堡選單 (☰) > Billing。依指示綁定信用卡 (享每月 $200 免費額度)。",
+                img: null
+            },
+            {
+                title: "4. 啟用 4 項 API",
+                desc: "搜尋並啟用以下服務：" + commonApiList,
+                img: null
+            },
+            {
+                title: "5. 複製金鑰",
+                desc: "選單 > APIs & Services > Credentials > Create Credentials > API Key。複製顯示的亂碼字串。",
+                img: null
+            }
+        ]
+    },
+    ios: {
+        title: "🍎 iOS (iPhone/iPad) 申請步驟",
+        steps: [
+            {
+                title: "1. 切換電腦版網站 (關鍵步驟)",
+                desc: "開啟 Safari，前往 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud Console</a>。<br><strong>點擊網址列左側的「大小 (Aa)」圖示，選擇「切換為電腦版網站」</strong>。",
+                img: null // 預留：'images/ios_step1.jpg'
+            },
+            {
+                title: "2. 建立專案",
+                desc: "將手機橫放操作較方便。點擊上方專案選單 > New Project。",
+                img: null
+            },
+            {
+                title: "3. 設定 Billing",
+                desc: "左側選單 (☰) > Billing。綁定卡片以開通免費額度權限。",
+                img: null
+            },
+            {
+                title: "4. 啟用 API",
+                desc: "搜尋並啟用：" + commonApiList,
+                img: null
+            },
+            {
+                title: "5. 取得 Key",
+                desc: "選單 > APIs & Services > Credentials > Create Credentials > API Key。",
+                img: null
+            }
+        ]
+    }
+};
+
 // ================== 1. 系統初始化與 Key 管理 ==================
 
 window.onload = () => {
+    // 檢查是否有儲存的 Key
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if (savedKey) {
         loadGoogleMapsScript(savedKey);
     } else {
         document.getElementById('setup-screen').style.display = 'block';
         document.getElementById('app-screen').style.display = 'none';
+        showGuide('desktop'); // 預設顯示電腦版教學
     }
     autoSelectMealType();
 };
+
+// 切換教學內容
+function showGuide(platform) {
+    const data = guideData[platform];
+    const container = document.getElementById('guide-content');
+    
+    // 更新按鈕狀態
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    // 簡單判斷：根據點擊的 onclick 內容來加 active (或是傳入 this 也可以)
+    // 這裡我們重新抓取對應的按鈕
+    const btns = document.querySelectorAll('.tab-btn');
+    if(platform === 'desktop') btns[0].classList.add('active');
+    if(platform === 'android') btns[1].classList.add('active');
+    if(platform === 'ios') btns[2].classList.add('active');
+
+    // 產生 HTML
+    let html = `<h3>${data.title}</h3>`;
+    data.steps.forEach(step => {
+        // 圖片處理：如果有路徑就顯示圖片，沒有就顯示佔位符
+        let imgHtml = '';
+        if (step.img) {
+            imgHtml = `<div class="step-image-container"><img src="${step.img}" alt="${step.title}"></div>`;
+        } else {
+            // 您可以使用 Nano Banana pro 製作圖片後，替換上面的 null，這裡顯示提示框
+            imgHtml = `<div class="step-image-container"><div class="img-placeholder">（此處可插入 ${platform} 操作截圖：${step.title}）</div></div>`;
+        }
+
+        html += `
+            <div class="step-card">
+                <div class="step-header">
+                    <div class="step-title">${step.title}</div>
+                </div>
+                ${imgHtml}
+                <div class="step-content">
+                    <p>${step.desc}</p>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
 
 function saveAndStart() {
     const inputKey = document.getElementById('userApiKey').value.trim();
@@ -70,7 +219,7 @@ function loadGoogleMapsScript(apiKey) {
 }
 
 window.gm_authFailure = function() {
-    alert("Google Maps API 驗證失敗！\n請檢查：\n1. 是否已啟用 Places API 和 Maps JavaScript API\n2. 是否已綁定信用卡(結算帳戶)\n3. 網址限制是否正確");
+    alert("Google Maps API 驗證失敗！\n請檢查：\n1. 是否已啟用 Places, Maps JS, Geocoding, Distance Matrix API\n2. 是否已綁定信用卡(結算帳戶)\n3. 網址限制是否正確");
     clearKey();
 };
 
@@ -416,7 +565,6 @@ document.getElementById('spinBtn').onclick = () => {
     }, 4000);
 };
 
-// 【核心修正】查詢並計算準確的營業時間
 function updateWinnerStatus(winner) {
     document.getElementById('storeName').innerText = "就決定吃：" + winner.name;
     
@@ -435,7 +583,6 @@ function updateWinnerStatus(winner) {
 
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     
-    // 請求詳細資料 (包含 periods 和 utc_offset_minutes)
     service.getDetails({
         placeId: winner.place_id,
         fields: ['opening_hours', 'utc_offset_minutes']
@@ -443,11 +590,9 @@ function updateWinnerStatus(winner) {
         let openStatus = "⚪ 營業時間不明，請聯繫商家確認";
 
         if (status === google.maps.places.PlacesServiceStatus.OK && place && place.opening_hours) {
-            // 呼叫新的判斷邏輯
             openStatus = getDetailedOpeningStatus(place);
         }
         
-        // 組合最終顯示 HTML，加入免責聲明
         storeAddressEl.innerHTML = `
             <strong>${openStatus}</strong><br>
             <span style="font-size: 0.85em; color: #999;">(營業時間僅供參考，以商家資訊為準)</span><br>
@@ -466,26 +611,22 @@ function updateWinnerStatus(winner) {
     link.innerText = "📍 導航去這家";
 }
 
-// 【新增】計算詳細營業狀態的邏輯函式
 function getDetailedOpeningStatus(place) {
     const isOpen = place.opening_hours.isOpen();
     const periods = place.opening_hours.periods;
     
-    // 如果沒有詳細時間表，只能回傳基本狀態
     if (!periods || periods.length === 0) {
         return isOpen ? "🟢 營業中" : "🔴 已打烊";
     }
 
-    // 1. 計算店家當地的目前時間 (解決時區問題)
     let now = new Date();
     if (typeof place.utc_offset_minutes !== 'undefined') {
-        // 先轉成 UTC Timestamp，再加上店家的 offset (毫秒)
         const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
         now = new Date(utcTime + (place.utc_offset_minutes * 60000));
     }
 
     const currentDay = now.getDay();
-    const currentTime = now.getHours() * 100 + now.getMinutes(); // 轉成 HHMM 數字格式 (例如 1430)
+    const currentTime = now.getHours() * 100 + now.getMinutes(); 
 
     const days = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
     const formatTime = (t) => {
@@ -493,29 +634,21 @@ function getDetailedOpeningStatus(place) {
         return `${s.substring(0, 2)}:${s.substring(2)}`;
     };
 
-    // 2. 建立所有事件的列表 (方便排序與搜尋)
-    // 格式: { type: 'open'/'close', day, time }
     let events = [];
     periods.forEach(p => {
         if (p.open) events.push({ type: 'open', day: p.open.day, time: parseInt(p.open.time) });
         if (p.close) events.push({ type: 'close', day: p.close.day, time: parseInt(p.close.time) });
     });
     
-    // 依照 (星期 -> 時間) 排序
     events.sort((a, b) => {
         if (a.day !== b.day) return a.day - b.day;
         return a.time - b.time;
     });
 
-    // 3. 尋找「下一個事件」
     let targetEvent = null;
     
-    // 先找本週剩餘時間是否有符合的事件
     for (let e of events) {
         if (e.day > currentDay || (e.day === currentDay && e.time > currentTime)) {
-            // 找到了未來的事件，檢查是否為我們要找的類型
-            // 如果現在營業中(isOpen=true)，我們要找下一個 'close'
-            // 如果現在打烊中(isOpen=false)，我們要找下一個 'open'
             if (isOpen && e.type === 'close') {
                 targetEvent = e;
                 break;
@@ -527,7 +660,6 @@ function getDetailedOpeningStatus(place) {
         }
     }
 
-    // 如果本週都沒找到，找下週的第一個符合事件 (跨週)
     if (!targetEvent) {
         for (let e of events) {
              if (isOpen && e.type === 'close') {
@@ -541,8 +673,7 @@ function getDetailedOpeningStatus(place) {
         }
     }
 
-    // 4. 回傳格式化文字
-    if (!targetEvent) return isOpen ? "🟢 營業中" : "🔴 已打烊"; // 防呆
+    if (!targetEvent) return isOpen ? "🟢 營業中" : "🔴 已打烊";
 
     const dayStr = days[targetEvent.day];
     const timeStr = formatTime(targetEvent.time);
