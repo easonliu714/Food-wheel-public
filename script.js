@@ -18,9 +18,7 @@ const keywordDict = {
     all: "美食 餐廳 小吃" 
 };
 
-// ================== 0. 教學內容資料庫 ==================
-// 若您有實際截圖，請將 'img' 屬性改為圖片路徑 (例如 'images/step1_android.jpg')
-// 目前設定為 null，會顯示漂亮的文字框佔位符
+// ================== 0. 教學內容資料庫 (修復：加入教學資料) ==================
 const commonApiList = `
     <ul class="api-list">
         <li>✅ Maps JavaScript API</li>
@@ -37,7 +35,7 @@ const guideData = {
             {
                 title: "1. 登入 Google Cloud",
                 desc: "使用 Chrome 瀏覽器前往 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud Console</a> 並登入您的 Google 帳號。",
-                img: null // 預留：'images/desktop_step1.jpg'
+                img: null 
             },
             {
                 title: "2. 建立新專案",
@@ -67,7 +65,7 @@ const guideData = {
             {
                 title: "1. 開啟電腦版網頁 (關鍵步驟)",
                 desc: "開啟 Chrome 瀏覽器，前往 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud Console</a>。<br><strong>點擊右上角「⋮」選單，勾選「電腦版網站」</strong> (因為 Google 後台不支援手機介面)。",
-                img: null // 預留：'images/android_step1.jpg'
+                img: null 
             },
             {
                 title: "2. 建立新專案",
@@ -97,7 +95,7 @@ const guideData = {
             {
                 title: "1. 切換電腦版網站 (關鍵步驟)",
                 desc: "開啟 Safari，前往 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud Console</a>。<br><strong>點擊網址列左側的「大小 (Aa)」圖示，選擇「切換為電腦版網站」</strong>。",
-                img: null // 預留：'images/ios_step1.jpg'
+                img: null 
             },
             {
                 title: "2. 建立專案",
@@ -123,30 +121,14 @@ const guideData = {
     }
 };
 
-// ================== 1. 系統初始化與 Key 管理 ==================
-
-window.onload = () => {
-    // 檢查是否有儲存的 Key
-    const savedKey = localStorage.getItem('food_wheel_api_key');
-    if (savedKey) {
-        loadGoogleMapsScript(savedKey);
-    } else {
-        document.getElementById('setup-screen').style.display = 'block';
-        document.getElementById('app-screen').style.display = 'none';
-        showGuide('desktop'); // 預設顯示電腦版教學
-    }
-    autoSelectMealType();
-};
-
-// 切換教學內容
+// 切換教學內容函式
 function showGuide(platform) {
     const data = guideData[platform];
     const container = document.getElementById('guide-content');
     
     // 更新按鈕狀態
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    // 簡單判斷：根據點擊的 onclick 內容來加 active (或是傳入 this 也可以)
-    // 這裡我們重新抓取對應的按鈕
+    // 簡單判斷：根據 index 來加 active (desktop=0, android=1, ios=2)
     const btns = document.querySelectorAll('.tab-btn');
     if(platform === 'desktop') btns[0].classList.add('active');
     if(platform === 'android') btns[1].classList.add('active');
@@ -155,14 +137,12 @@ function showGuide(platform) {
     // 產生 HTML
     let html = `<h3>${data.title}</h3>`;
     data.steps.forEach(step => {
-        // 圖片處理：如果有路徑就顯示圖片，沒有就顯示佔位符
         let imgHtml = '';
-        if (step.img) {
-            imgHtml = `<div class="step-image-container"><img src="${step.img}" alt="${step.title}"></div>`;
-        } else {
-            // 您可以使用 Nano Banana pro 製作圖片後，替換上面的 null，這裡顯示提示框
-            imgHtml = `<div class="step-image-container"><div class="img-placeholder">（此處可插入 ${platform} 操作截圖：${step.title}）</div></div>`;
-        }
+        // 佔位符
+        imgHtml = `<div class="step-image-container"><div class="img-placeholder">（此處可插入 ${platform} 操作截圖：${step.title}）</div></div>`;
+        
+        // 如果您之後有圖片，可將上面的 imgHtml 替換為:
+        // if (step.img) imgHtml = `<div class="step-image-container"><img src="${step.img}" alt="${step.title}"></div>`;
 
         html += `
             <div class="step-card">
@@ -179,6 +159,20 @@ function showGuide(platform) {
 
     container.innerHTML = html;
 }
+
+// ================== 1. 系統初始化與 Key 管理 ==================
+
+window.onload = () => {
+    const savedKey = localStorage.getItem('food_wheel_api_key');
+    if (savedKey) {
+        loadGoogleMapsScript(savedKey);
+    } else {
+        document.getElementById('setup-screen').style.display = 'block';
+        document.getElementById('app-screen').style.display = 'none';
+        showGuide('desktop'); // 預設顯示電腦版教學
+    }
+    autoSelectMealType();
+};
 
 function saveAndStart() {
     const inputKey = document.getElementById('userApiKey').value.trim();
@@ -309,6 +303,7 @@ function handleSearch() {
         if (status === "OK" && results[0]) {
             userCoordinates = results[0].geometry.location;
             
+            // 【修復：詳細地址確認顯示】
             if (detailDisplay) {
                 detailDisplay.style.display = 'block';
                 detailDisplay.innerText = `🎯 已定位至：${results[0].formatted_address}`;
@@ -559,12 +554,14 @@ document.getElementById('spinBtn').onclick = () => {
         const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
         const winner = places[winningIndex];
 
+        // 【修復：呼叫詳細狀態更新】
         updateWinnerStatus(winner);
         
         spinBtn.disabled = false;
     }, 4000);
 };
 
+// 【修復：整合查詢並計算準確營業時間的功能】
 function updateWinnerStatus(winner) {
     document.getElementById('storeName').innerText = "就決定吃：" + winner.name;
     
