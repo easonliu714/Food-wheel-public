@@ -107,7 +107,6 @@ function initLocation() {
     const detailDisplay = document.getElementById('detailedAddressDisplay');
     
     addrInput.value = "定位中...";
-    // 如果是重抓定位，先隱藏詳細地址，避免混淆
     if(detailDisplay) {
         detailDisplay.style.display = 'none';
         detailDisplay.innerText = '';
@@ -127,7 +126,6 @@ function initLocation() {
             const geocoder = new google.maps.Geocoder();
             geocoder.geocode({ location: userCoordinates }, (results, status) => {
                 if (status === "OK" && results[0]) {
-                    // 簡化地址：去除郵遞區號與台灣
                     let formatted = results[0].formatted_address;
                     formatted = formatted.replace(/^\d+\s*/, '').replace(/^台灣/, ''); 
                     addrInput.value = formatted;
@@ -162,7 +160,6 @@ function handleSearch() {
         if (status === "OK" && results[0]) {
             userCoordinates = results[0].geometry.location;
             
-            // 【關鍵修改】顯示詳細地址供確認
             if (detailDisplay) {
                 detailDisplay.style.display = 'block';
                 detailDisplay.innerText = `🎯 已定位至：${results[0].formatted_address}`;
@@ -180,10 +177,7 @@ function handleSearch() {
 function startSearch(location, keywordsRaw) {
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
-    
-    // 取得價格設定
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
-    
     const keywordList = keywordsRaw.split(/\s+/).filter(k => k.length > 0);
 
     const btn = document.querySelector('.search-btn');
@@ -197,7 +191,6 @@ function startSearch(location, keywordsRaw) {
                 keyword: keyword
             };
 
-            // 如果有設定預算上限 (不是 -1)，就加入 maxPrice 條件
             if (priceLevel !== -1) {
                 request.maxPrice = priceLevel;
             }
@@ -219,7 +212,6 @@ function startSearch(location, keywordsRaw) {
         });
 
         if (combinedResults.length === 0) {
-            // 如果是因為價格篩選導致沒結果，給予特定提示
             if (priceLevel !== -1) {
                 alert("附近找不到符合預算與關鍵字的店家。\n提示：部分小吃店未在 Google Maps 標註價格，建議將預算設為「不限」再試試。");
             } else {
@@ -418,16 +410,14 @@ document.getElementById('spinBtn').onclick = () => {
         const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
         const winner = places[winningIndex];
 
-        // 【關鍵修改】呼叫更新狀態函數 (包含查詢即將營業邏輯)
         updateWinnerStatus(winner);
         
         spinBtn.disabled = false;
     }, 4000);
 };
 
-// 【新增功能 2】更新贏家狀態與營業時間判斷
+// 【核心修正】查詢並計算準確的營業時間
 function updateWinnerStatus(winner) {
-    // 基本 UI 更新
     document.getElementById('storeName').innerText = "就決定吃：" + winner.name;
     
     if (document.getElementById('storeRating')) {
@@ -441,35 +431,28 @@ function updateWinnerStatus(winner) {
     const address = winner.formatted_address || winner.vicinity || "地址不詳";
     const storeAddressEl = document.getElementById('storeAddress');
     
-    // 預設顯示載入中
     storeAddressEl.innerText = `⏳ 正在查詢詳細營業狀態...\n📍 ${address}`;
 
-    // 使用 Places Service getDetails 取得詳細營業時間
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     
+    // 請求詳細資料 (包含 periods 和 utc_offset_minutes)
     service.getDetails({
         placeId: winner.place_id,
-        fields: ['opening_hours'] // 只需取得營業時間欄位
+        fields: ['opening_hours', 'utc_offset_minutes']
     }, (place, status) => {
-        let openStatus = "⚪ 營業時間不明，請確認";
+        let openStatus = "⚪ 營業時間不明，請聯繫商家確認";
 
         if (status === google.maps.places.PlacesServiceStatus.OK && place && place.opening_hours) {
-            const isOpen = place.opening_hours.isOpen();
-            
-            if (isOpen) {
-                openStatus = "🟢 營業中";
-            } else {
-                openStatus = "🔴 已打烊/休息中"; // 預設狀態
-                
-                // 檢查是否在 60 分鐘內開門
-                if (checkIfOpeningSoon(place.opening_hours)) {
-                    openStatus = "🟡 即將營業 (1小時內)";
-                }
-            }
+            // 呼叫新的判斷邏輯
+            openStatus = getDetailedOpeningStatus(place);
         }
         
-        // 更新最終顯示
-        storeAddressEl.innerText = `${openStatus}\n📍 ${address}`;
+        // 組合最終顯示 HTML，加入免責聲明
+        storeAddressEl.innerHTML = `
+            <strong>${openStatus}</strong><br>
+            <span style="font-size: 0.85em; color: #999;">(營業時間僅供參考，以商家資訊為準)</span><br>
+            📍 ${address}
+        `;
     });
 
     if (winner.realDurationText) {
@@ -483,52 +466,90 @@ function updateWinnerStatus(winner) {
     link.innerText = "📍 導航去這家";
 }
 
-// 輔助函數：檢查是否即將營業 (1小時內)
-function checkIfOpeningSoon(openingHours) {
-    if (!openingHours || !openingHours.periods) return false;
+// 【新增】計算詳細營業狀態的邏輯函式
+function getDetailedOpeningStatus(place) {
+    const isOpen = place.opening_hours.isOpen();
+    const periods = place.opening_hours.periods;
     
-    const now = new Date();
-    const day = now.getDay();
-    const time = now.getHours() * 100 + now.getMinutes(); // 轉成 HHMM 格式數字
+    // 如果沒有詳細時間表，只能回傳基本狀態
+    if (!periods || periods.length === 0) {
+        return isOpen ? "🟢 營業中" : "🔴 已打烊";
+    }
+
+    // 1. 計算店家當地的目前時間 (解決時區問題)
+    let now = new Date();
+    if (typeof place.utc_offset_minutes !== 'undefined') {
+        // 先轉成 UTC Timestamp，再加上店家的 offset (毫秒)
+        const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+        now = new Date(utcTime + (place.utc_offset_minutes * 60000));
+    }
+
+    const currentDay = now.getDay();
+    const currentTime = now.getHours() * 100 + now.getMinutes(); // 轉成 HHMM 數字格式 (例如 1430)
+
+    const days = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+    const formatTime = (t) => {
+        const s = t.toString().padStart(4, '0');
+        return `${s.substring(0, 2)}:${s.substring(2)}`;
+    };
+
+    // 2. 建立所有事件的列表 (方便排序與搜尋)
+    // 格式: { type: 'open'/'close', day, time }
+    let events = [];
+    periods.forEach(p => {
+        if (p.open) events.push({ type: 'open', day: p.open.day, time: parseInt(p.open.time) });
+        if (p.close) events.push({ type: 'close', day: p.close.day, time: parseInt(p.close.time) });
+    });
     
-    let minDiff = Infinity;
-
-    openingHours.periods.forEach(p => {
-        if (!p.open) return;
-        
-        const openDay = p.open.day;
-        const openTime = parseInt(p.open.time);
-        let diffInMinutes = 0;
-        
-        if (openDay === day) {
-            if (openTime > time) {
-                // 同一天稍晚
-                const openH = Math.floor(openTime / 100);
-                const openM = openTime % 100;
-                const nowH = Math.floor(time / 100);
-                const nowM = time % 100;
-                diffInMinutes = (openH * 60 + openM) - (nowH * 60 + nowM);
-            } else {
-                return; 
-            }
-        } else if (openDay === (day + 1) % 7) {
-            // 明天 (或跨週的隔天)
-            const openH = Math.floor(openTime / 100);
-            const openM = openTime % 100;
-            const nowH = Math.floor(time / 100);
-            const nowM = time % 100;
-            
-            const minsToMidnight = (24 * 60) - (nowH * 60 + nowM);
-            const minsAfterMidnight = openH * 60 + openM;
-            diffInMinutes = minsToMidnight + minsAfterMidnight;
-        } else {
-            return; // 太遠了
-        }
-
-        if (diffInMinutes > 0 && diffInMinutes < minDiff) {
-            minDiff = diffInMinutes;
-        }
+    // 依照 (星期 -> 時間) 排序
+    events.sort((a, b) => {
+        if (a.day !== b.day) return a.day - b.day;
+        return a.time - b.time;
     });
 
-    return minDiff <= 60;
+    // 3. 尋找「下一個事件」
+    let targetEvent = null;
+    
+    // 先找本週剩餘時間是否有符合的事件
+    for (let e of events) {
+        if (e.day > currentDay || (e.day === currentDay && e.time > currentTime)) {
+            // 找到了未來的事件，檢查是否為我們要找的類型
+            // 如果現在營業中(isOpen=true)，我們要找下一個 'close'
+            // 如果現在打烊中(isOpen=false)，我們要找下一個 'open'
+            if (isOpen && e.type === 'close') {
+                targetEvent = e;
+                break;
+            }
+            if (!isOpen && e.type === 'open') {
+                targetEvent = e;
+                break;
+            }
+        }
+    }
+
+    // 如果本週都沒找到，找下週的第一個符合事件 (跨週)
+    if (!targetEvent) {
+        for (let e of events) {
+             if (isOpen && e.type === 'close') {
+                targetEvent = e;
+                break;
+            }
+            if (!isOpen && e.type === 'open') {
+                targetEvent = e;
+                break;
+            }
+        }
+    }
+
+    // 4. 回傳格式化文字
+    if (!targetEvent) return isOpen ? "🟢 營業中" : "🔴 已打烊"; // 防呆
+
+    const dayStr = days[targetEvent.day];
+    const timeStr = formatTime(targetEvent.time);
+
+    if (isOpen) {
+        return `🟢 營業中，預計 (${dayStr} ${timeStr}) 結束營業`;
+    } else {
+        return `🔴 已打烊，預計 (${dayStr} ${timeStr}) 開始營業`;
+    }
 }
