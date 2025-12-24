@@ -19,6 +19,14 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .tutorial-box { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; transition: height 0.3s; }
 .tutorial-box h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 
+/* 新增：偏好設定盒 */
+.preferences-box { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; border-left: 5px solid #f39c12; }
+.preferences-box h3 { margin-top: 0; color: #d35400; margin-bottom: 5px; }
+.pref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.pref-item { display: flex; flex-direction: column; }
+.pref-item label { font-size: 0.85rem; font-weight: bold; color: #555; margin-bottom: 5px; }
+.pref-item select { padding: 8px; border-radius: 5px; border: 1px solid #ddd; width: 100%; box-sizing: border-box; }
+
 /* 步驟卡片 */
 .step-card { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #f0f0f0; }
 .step-card:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
@@ -26,7 +34,7 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .step-icon { font-size: 1.5rem; width: 30px; text-align: center; }
 .step-title { margin: 0; color: #2980b9; font-size: 1.1rem; }
 
-/* 圖片容器與佔位符 */
+/* 圖片容器 */
 .step-image-container { width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid #eee; margin-top: 5px; }
 .step-image-container img { width: 100%; display: block; height: auto; }
 .img-placeholder { background: #f9f9f9; color: #aaa; padding: 30px; text-align: center; font-size: 0.9rem; border: 2px dashed #ddd; }
@@ -52,7 +60,6 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .logout-btn { background: none; border: 1px solid #999; padding: 5px 10px; border-radius: 20px; color: #666; cursor: pointer; font-size: 0.8rem; }
 .logout-btn:hover { background: #eee; }
 
-/* 地址與關鍵字輸入區塊 */
 .location-box { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 15px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 .location-box label { font-size: 0.9rem; font-weight: bold; color: #555; display: block; margin-bottom: 8px; }
 .input-group { display: flex; gap: 5px; }
@@ -60,7 +67,6 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 #geoBtn { padding: 0 15px; background: #e67e22; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
 .small-btn { font-size: 0.8rem; padding: 5px 10px; background: #ecf0f1; border: none; border-radius: 4px; color: #555; cursor: pointer; }
 
-/* 設定面板 */
 .controls { background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
 .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.95rem; }
 .setting-row label { color: #666; font-weight: bold; flex-shrink: 0; }
