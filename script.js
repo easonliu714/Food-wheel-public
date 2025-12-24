@@ -122,24 +122,19 @@ const guideData = {
 };
 
 
-// 切換教學內容函式 (已修正圖片顯示邏輯)
 function showGuide(platform) {
     const data = guideData[platform];
     const container = document.getElementById('guide-content');
     
-    // 更新按鈕狀態
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     const btns = document.querySelectorAll('.tab-btn');
     if(platform === 'desktop') btns[0].classList.add('active');
     if(platform === 'android') btns[1].classList.add('active');
     if(platform === 'ios') btns[2].classList.add('active');
 
-    // 產生 HTML
     let html = `<h3>${data.title}</h3>`;
     data.steps.forEach(step => {
         let imgHtml = '';
-        
-        // 【修正重點】判斷是否有設定 img，如果有就顯示圖片，否則顯示佔位符
         if (step.img) {
             imgHtml = `<div class="step-image-container"><img src="${step.img}" alt="${step.title}"></div>`;
         } else {
@@ -171,7 +166,7 @@ window.onload = () => {
     } else {
         document.getElementById('setup-screen').style.display = 'block';
         document.getElementById('app-screen').style.display = 'none';
-        showGuide('desktop'); // 預設顯示電腦版教學
+        showGuide('desktop');
     }
     autoSelectMealType();
 };
@@ -182,13 +177,26 @@ function saveAndStart() {
         alert("API Key 格式看起來不正確，請確認。");
         return;
     }
+    
+    // 【修改】讀取使用者設定的預設值並儲存
+    const userPrefs = {
+        minRating: document.getElementById('setupMinRating').value,
+        transport: document.getElementById('setupTransport').value,
+        maxTime: document.getElementById('setupMaxTime').value,
+        priceLevel: document.getElementById('setupPriceLevel').value,
+        resultCount: document.getElementById('setupResultCount').value
+    };
+    
     localStorage.setItem('food_wheel_api_key', inputKey);
+    localStorage.setItem('food_wheel_prefs', JSON.stringify(userPrefs));
+    
     loadGoogleMapsScript(inputKey);
 }
 
 function clearKey() {
-    if(confirm("確定要清除 API Key 並回到設定頁嗎？")) {
+    if(confirm("確定要清除 API Key 和設定，回到設定頁嗎？")) {
         localStorage.removeItem('food_wheel_api_key');
+        localStorage.removeItem('food_wheel_prefs'); // 一併清除偏好
         location.reload(); 
     }
 }
@@ -202,6 +210,7 @@ function loadGoogleMapsScript(apiKey) {
     script.onload = () => {
         document.getElementById('setup-screen').style.display = 'none';
         document.getElementById('app-screen').style.display = 'block';
+        applyPreferences(); // 【新增】套用儲存的偏好設定
         initLocation(); 
     };
     
@@ -212,6 +221,24 @@ function loadGoogleMapsScript(apiKey) {
     };
 
     document.head.appendChild(script);
+}
+
+// 【新增】套用使用者偏好設定
+function applyPreferences() {
+    const prefsJson = localStorage.getItem('food_wheel_prefs');
+    if (prefsJson) {
+        try {
+            const prefs = JSON.parse(prefsJson);
+            if(prefs.minRating) document.getElementById('minRating').value = prefs.minRating;
+            if(prefs.transport) document.getElementById('transportMode').value = prefs.transport;
+            if(prefs.maxTime) document.getElementById('maxTime').value = prefs.maxTime;
+            if(prefs.priceLevel) document.getElementById('priceLevel').value = prefs.priceLevel;
+            if(prefs.resultCount) document.getElementById('resultCount').value = prefs.resultCount;
+        } catch (e) {
+            console.error("讀取偏好設定失敗", e);
+        }
+    }
+    // 如果沒有存檔，則保持 HTML 中的預設值 (Min Rating 3.0, etc.)
 }
 
 window.gm_authFailure = function() {
@@ -378,12 +405,16 @@ function processResults(origin, results, maxTime) {
     const btn = document.querySelector('.search-btn');
     const userMaxCount = parseInt(document.getElementById('resultCount').value, 10);
     const transportMode = document.getElementById('transportMode').value;
+    
+    // 【修改】從下拉選單讀取使用者選擇的星評限制，而非寫死 3.5
+    const minRating = parseFloat(document.getElementById('minRating').value);
 
     const uniqueIds = new Set();
     let filtered = [];
     
     results.forEach(p => {
-        if (p.rating && p.rating >= 3.5 && p.user_ratings_total > 0) {
+        // 使用動態星評變數
+        if (p.rating && p.rating >= minRating && p.user_ratings_total > 0) {
             if (!uniqueIds.has(p.place_id)) {
                 uniqueIds.add(p.place_id);
                 filtered.push(p);
@@ -392,7 +423,7 @@ function processResults(origin, results, maxTime) {
     });
 
     if (filtered.length === 0) {
-        alert("搜尋結果經評分篩選後無符合店家 (需 3.5 星以上)。");
+        alert(`搜尋結果經評分篩選後無符合店家 (需 ${minRating} 星以上)。`);
         resetButtons();
         return;
     }
