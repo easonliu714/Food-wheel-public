@@ -1,5 +1,7 @@
 // 全域變數
-let places = [];
+let places = []; // 輪盤上目前可用的店家 (會隨淘汰減少)
+let allSearchResults = []; // 搜尋到的所有原始店家 (列表用，永遠保留)
+let hitCounts = {}; // 記錄每個 place_id 被轉到的次數
 let currentRotation = 0;
 let userCoordinates = null; 
 const canvas = document.getElementById('wheel');
@@ -8,7 +10,7 @@ const ctx = canvas.getContext('2d');
 // 定義預設關鍵字字典
 const keywordDict = {
     breakfast: "早餐 早午餐",
-    lunch: "餐廳 小吃 午餐",
+    lunch: "餐廳 小吃 午餐 異國料理",
     afternoon_tea: "飲料 甜點 咖啡",
     dinner: "餐廳 晚餐 小吃 火鍋",
     late_night: "宵夜 鹽酥雞 清粥 滷味 炸物",
@@ -69,7 +71,7 @@ const guideData = {
             },
             {
                 title: "2. 建立新專案",
-                desc: "放大畫面，點擊左上角專案選單 >「新增專案 (New Project)」。建立一個新專案。",
+                desc: "放大畫面，點擊左上角專案選單 >「New Project」。建立一個新專案。",
                 img: './images/android_2.jpg'
             },
             {
@@ -79,12 +81,12 @@ const guideData = {
             },
             {
                 title: "4. 啟用 4 項 API",
-                desc: "左側選單(☰) 前往「API 和服務 (APIs & Services)」>「啟用 API 和服務」。搜尋並啟用以下服務：" + commonApiList,
+                desc: "左側選單(☰) 前往「API 和服務」>「啟用 API 和服務」。搜尋並啟用以下服務：" + commonApiList,
                 img: './images/android_4.jpg'
             },
             {
                 title: "5. 複製金鑰",
-                desc: "選單(☰) > 「API 和服務 (APIs & Services)」> 「金鑰和憑證 (Credentials)」 > 「+建立憑證 (Create Credentials)」 > API Key。複製顯示的亂碼字串貼到下方輸入框。",
+                desc: "選單(☰) > APIs & Services > Credentials > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
                 img: './images/android_5.jpg'
             }
         ]
@@ -178,13 +180,13 @@ function saveAndStart() {
         return;
     }
     
-    // 【修改】讀取使用者設定的預設值並儲存
     const userPrefs = {
         minRating: document.getElementById('setupMinRating').value,
         transport: document.getElementById('setupTransport').value,
         maxTime: document.getElementById('setupMaxTime').value,
         priceLevel: document.getElementById('setupPriceLevel').value,
-        resultCount: document.getElementById('setupResultCount').value
+        resultCount: document.getElementById('setupResultCount').value,
+        spinMode: document.getElementById('setupSpinMode').value // 新增：轉盤模式
     };
     
     localStorage.setItem('food_wheel_api_key', inputKey);
@@ -196,7 +198,7 @@ function saveAndStart() {
 function clearKey() {
     if(confirm("確定要清除 API Key 和設定，回到設定頁嗎？")) {
         localStorage.removeItem('food_wheel_api_key');
-        localStorage.removeItem('food_wheel_prefs'); // 一併清除偏好
+        localStorage.removeItem('food_wheel_prefs'); 
         location.reload(); 
     }
 }
@@ -210,7 +212,7 @@ function loadGoogleMapsScript(apiKey) {
     script.onload = () => {
         document.getElementById('setup-screen').style.display = 'none';
         document.getElementById('app-screen').style.display = 'block';
-        applyPreferences(); // 【新增】套用儲存的偏好設定
+        applyPreferences(); 
         initLocation(); 
     };
     
@@ -223,7 +225,6 @@ function loadGoogleMapsScript(apiKey) {
     document.head.appendChild(script);
 }
 
-// 【新增】套用使用者偏好設定
 function applyPreferences() {
     const prefsJson = localStorage.getItem('food_wheel_prefs');
     if (prefsJson) {
@@ -234,11 +235,11 @@ function applyPreferences() {
             if(prefs.maxTime) document.getElementById('maxTime').value = prefs.maxTime;
             if(prefs.priceLevel) document.getElementById('priceLevel').value = prefs.priceLevel;
             if(prefs.resultCount) document.getElementById('resultCount').value = prefs.resultCount;
+            if(prefs.spinMode) document.getElementById('spinMode').value = prefs.spinMode; // 套用轉盤模式
         } catch (e) {
             console.error("讀取偏好設定失敗", e);
         }
     }
-    // 如果沒有存檔，則保持 HTML 中的預設值 (Min Rating 3.0, etc.)
 }
 
 window.gm_authFailure = function() {
@@ -405,15 +406,12 @@ function processResults(origin, results, maxTime) {
     const btn = document.querySelector('.search-btn');
     const userMaxCount = parseInt(document.getElementById('resultCount').value, 10);
     const transportMode = document.getElementById('transportMode').value;
-    
-    // 【修改】從下拉選單讀取使用者選擇的星評限制，而非寫死 3.5
     const minRating = parseFloat(document.getElementById('minRating').value);
 
     const uniqueIds = new Set();
     let filtered = [];
     
     results.forEach(p => {
-        // 使用動態星評變數
         if (p.rating && p.rating >= minRating && p.user_ratings_total > 0) {
             if (!uniqueIds.has(p.place_id)) {
                 uniqueIds.add(p.place_id);
@@ -450,13 +448,24 @@ function processResults(origin, results, maxTime) {
 
             validPlaces.sort((a, b) => b.rating - a.rating);
 
-            places = validPlaces.slice(0, userMaxCount);
+            // 更新全域變數
+            places = validPlaces.slice(0, userMaxCount); // 輪盤用的 (可能會減少)
+            allSearchResults = [...places]; // 列表用的 (永遠完整)
+            
+            // 初始化點擊次數
+            hitCounts = {};
+            places.forEach(p => hitCounts[p.place_id] = 0);
+
+            // 繪製列表與輪盤
+            initResultList(allSearchResults);
             drawWheel();
             enableSpinButton(places.length);
         })
         .catch(err => {
             console.error(err);
             places = filtered.slice(0, userMaxCount);
+            allSearchResults = [...places];
+            initResultList(allSearchResults);
             drawWheel();
             enableSpinButton(places.length);
             alert("路程計算失敗，改為顯示直線距離結果。");
@@ -493,6 +502,53 @@ function getDistances(origin, destinations, mode) {
             }
         });
     });
+}
+
+// 初始化左側結果列表
+function initResultList(list) {
+    const tbody = document.querySelector('#resultsTable tbody');
+    tbody.innerHTML = ''; // 清空
+
+    if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">無資料</td></tr>';
+        return;
+    }
+
+    list.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.id = `row-${p.place_id}`; // 給予 ID 方便後續查找
+        tr.innerHTML = `
+            <td>${p.name}</td>
+            <td>⭐${p.rating}</td>
+            <td class="hit-count">0</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// 更新列表中該店家的次數
+function updateHitCountUI(placeId) {
+    if (!hitCounts[placeId]) hitCounts[placeId] = 0;
+    hitCounts[placeId]++;
+    
+    // 更新表格文字
+    const row = document.getElementById(`row-${placeId}`);
+    if (row) {
+        const countCell = row.querySelector('.hit-count');
+        if (countCell) countCell.innerText = hitCounts[placeId];
+        
+        // 增加高亮效果
+        row.classList.add('active-winner');
+        setTimeout(() => row.classList.remove('active-winner'), 2000); // 2秒後移除
+    }
+}
+
+// 標記列表項目為已淘汰
+function markAsEliminated(placeId) {
+    const row = document.getElementById(`row-${placeId}`);
+    if (row) {
+        row.classList.add('eliminated');
+    }
 }
 
 function resetButtons() {
@@ -537,7 +593,12 @@ function enableSpinButton(count) {
 
 function drawWheel() {
     const numOptions = places.length;
-    if (numOptions === 0) return;
+    if (numOptions === 0) {
+        // 如果輪盤空了 (淘汰制)，清空 Canvas
+        ctx.clearRect(0, 0, 400, 400);
+        return;
+    }
+    
     const arcSize = (2 * Math.PI) / numOptions;
     const startAngleOffset = -Math.PI / 2;
 
@@ -570,10 +631,15 @@ function drawWheel() {
 }
 
 document.getElementById('spinBtn').onclick = () => {
-    if (places.length === 0) return;
+    if (places.length === 0) {
+        alert("輪盤上的店家已全部抽完！請重新搜尋。");
+        return;
+    }
+    
     const spinBtn = document.getElementById('spinBtn');
     spinBtn.disabled = true;
 
+    // 隨機角度
     const spinAngle = Math.floor(Math.random() * 1800) + 1800; 
     currentRotation += spinAngle;
     canvas.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
@@ -583,12 +649,47 @@ document.getElementById('spinBtn').onclick = () => {
         const numOptions = places.length;
         const arcSize = 360 / numOptions;
         const actualRotation = currentRotation % 360;
+        // 計算贏家索引
         const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
         const winner = places[winningIndex];
 
+        // 1. 更新贏家狀態顯示
         updateWinnerStatus(winner);
         
-        spinBtn.disabled = false;
+        // 2. 更新左側列表次數
+        updateHitCountUI(winner.place_id);
+
+        // 3. 處理淘汰制邏輯
+        const spinMode = document.getElementById('spinMode').value;
+        if (spinMode === 'eliminate') {
+            // 從輪盤陣列移除
+            places.splice(winningIndex, 1);
+            
+            // 標記列表為淘汰
+            markAsEliminated(winner.place_id);
+
+            // 重繪輪盤 (但要先等動畫結束後的視覺停留一下，這裡直接重繪會導致突然跳變)
+            // 為了體驗好，我們重設 rotation，並立即重繪
+            // 注意：重繪後角度會變，需要重置 currentRotation 視覺
+            setTimeout(() => {
+                // 重置轉盤角度，不然下次轉會怪怪的
+                canvas.style.transition = 'none';
+                currentRotation = 0;
+                canvas.style.transform = `rotate(0deg)`;
+                
+                drawWheel();
+                
+                if (places.length === 0) {
+                    spinBtn.innerText = "已全數抽完";
+                    spinBtn.disabled = true;
+                } else {
+                    spinBtn.disabled = false;
+                }
+            }, 2000); // 2秒後移除該片並重置
+        } else {
+            spinBtn.disabled = false;
+        }
+
     }, 4000);
 };
 
