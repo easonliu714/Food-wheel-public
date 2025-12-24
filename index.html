@@ -21,11 +21,65 @@
         <div id="guide-content" class="tutorial-box">
             </div>
 
+        <div class="preferences-box">
+            <h3>⚙️ 設定您的預設偏好</h3>
+            <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">設定後，每次開啟網頁都會自動套用這些條件。</p>
+            
+            <div class="pref-grid">
+                <div class="pref-item">
+                    <label>⭐ 最低星評</label>
+                    <select id="setupMinRating">
+                        <option value="0">不限</option>
+                        <option value="3.0" selected>3.0 顆星以上</option>
+                        <option value="3.5">3.5 顆星以上</option>
+                        <option value="4.0">4.0 顆星以上</option>
+                        <option value="4.5">4.5 顆星以上</option>
+                    </select>
+                </div>
+                <div class="pref-item">
+                    <label>🚶 交通方式</label>
+                    <select id="setupTransport">
+                        <option value="WALKING" selected>走路</option>
+                        <option value="DRIVING">機車/開車</option>
+                    </select>
+                </div>
+                <div class="pref-item">
+                    <label>⏱️ 路程時間</label>
+                    <select id="setupMaxTime">
+                        <option value="5">5 分鐘內</option>
+                        <option value="10" selected>10 分鐘內</option>
+                        <option value="15">15 分鐘內</option>
+                        <option value="20">20 分鐘內</option>
+                        <option value="30">30 分鐘內</option>
+                    </select>
+                </div>
+                <div class="pref-item">
+                    <label>💲 預算上限</label>
+                    <select id="setupPriceLevel">
+                        <option value="-1" selected>不限</option>
+                        <option value="1">$200 以下</option>
+                        <option value="2">$800 以下</option>
+                        <option value="3">$2000 以下</option>
+                    </select>
+                </div>
+                <div class="pref-item">
+                    <label>🔢 店家數量</label>
+                    <select id="setupResultCount">
+                        <option value="10">10 家</option>
+                        <option value="20" selected>20 家</option>
+                        <option value="30">30 家</option>
+                        <option value="40">40 家</option>
+                        <option value="50">50 家</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
         <div class="key-input-area">
             <label for="userApiKey">申請完成後，請在此貼上 API Key：</label>
             <input type="text" id="userApiKey" placeholder="AIzaSy..." autocomplete="off">
-            <button onclick="saveAndStart()" class="start-btn">🚀 確認並開始</button>
-            <p class="privacy-note">🔒 您的 Key 僅儲存於您瀏覽器的暫存區 (LocalStorage)，不會傳送給開發者。</p>
+            <button onclick="saveAndStart()" class="start-btn">🚀 儲存設定並開始</button>
+            <p class="privacy-note">🔒 您的 Key 與偏好設定僅儲存於瀏覽器 (LocalStorage)。</p>
         </div>
     </div>
 
@@ -33,7 +87,7 @@
     <div id="app-screen" class="container" style="display: none;">
         <div class="header-bar">
             <h1>🍴 今天吃什麼？</h1>
-            <button onclick="clearKey()" class="logout-btn">🔑更換 Key</button>
+            <button onclick="clearKey()" class="logout-btn">⚙️ 設定/更換Key</button>
         </div>
         
         <div class="location-box">
@@ -71,15 +125,26 @@
                 <select id="priceLevel">
                     <option value="-1" selected>不限 (顯示所有)</option>
                     <option value="1">💲 $200 以下 (便宜)</option>
-                    <option value="2">💲 $800 以下 (中價位)</option>
-                    <option value="3">💲 $2000 以下 (高價位)</option>
-                    <option value="4">💲 奢華無上限</option>
+                    <option value="2">💲💲💲 $800 以下 (中價位)</option>
+                    <option value="3">💲💲💲 $2000 以下 (高價位)</option>
+                    <option value="4">💲💲💲💲 奢華無上限</option>
                 </select>
             </div>
 
             <div class="setting-row" style="flex-direction: column; align-items: flex-start;">
                 <label for="keywordInput" style="margin-bottom: 5px;">🔎 搜尋關鍵字 (空格分隔，可修改)：</label>
                 <input type="text" id="keywordInput" class="full-width-input" value="">
+            </div>
+
+            <div class="setting-row">
+                <label for="minRating">⭐ 最低星評：</label>
+                <select id="minRating">
+                    <option value="0">不限</option>
+                    <option value="3.0" selected>⭐⭐⭐3.0 顆星以上</option>
+                    <option value="3.5">⭐⭐⭐3.5 顆星以上</option>
+                    <option value="4.0">⭐⭐⭐⭐4.0 顆星以上</option>
+                    <option value="4.5">⭐⭐⭐⭐4.5 顆星以上</option>
+                </select>
             </div>
 
             <div class="setting-row">
@@ -93,11 +158,11 @@
             <div class="setting-row">
                 <label for="maxTime">時間：</label>
                 <select id="maxTime">
-                    <option value="5">5 分鐘內</option>
-                    <option value="10" selected>10 分鐘內</option>
-                    <option value="15">15 分鐘內</option>
-                    <option value="20">20 分鐘內</option>
-                    <option value="30">30 分鐘內</option>
+                    <option value="5">🕐5 分鐘內</option>
+                    <option value="10" selected>🕑10 分鐘內</option>
+                    <option value="15">🕒15 分鐘內</option>
+                    <option value="20">🕓20 分鐘內</option>
+                    <option value="30">🕕30 分鐘內</option>
                 </select>
             </div>
 
