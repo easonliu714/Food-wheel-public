@@ -69,7 +69,7 @@ const guideData = {
             },
             {
                 title: "2. 建立新專案",
-                desc: "放大畫面，點擊左上角專案選單 >「New Project」。建立一個新專案。",
+                desc: "放大畫面，點擊左上角專案選單 >「新增專案 (New Project)」。建立一個新專案。",
                 img: './images/android_2.jpg'
             },
             {
@@ -79,12 +79,12 @@ const guideData = {
             },
             {
                 title: "4. 啟用 4 項 API",
-                desc: "左側選單(☰) 前往「API 和服務」>「啟用 API 和服務」。搜尋並啟用以下服務：" + commonApiList,
+                desc: "左側選單(☰) 前往「API 和服務 (APIs & Services)」>「啟用 API 和服務」。搜尋並啟用以下服務：" + commonApiList,
                 img: './images/android_4.jpg'
             },
             {
                 title: "5. 複製金鑰",
-                desc: "選單(☰) > APIs & Services > Credentials > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
+                desc: "選單(☰) > 「API 和服務 (APIs & Services)」> 「金鑰和憑證 (Credentials)」 > 「+建立憑證 (Create Credentials)」 > API Key。複製顯示的亂碼字串貼到下方輸入框。",
                 img: './images/android_5.jpg'
             }
         ]
