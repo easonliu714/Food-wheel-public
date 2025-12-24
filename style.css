@@ -1,12 +1,13 @@
+
 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; background: #f4f7f6; margin: 0; min-height: 100vh; }
-.container { text-align: center; max-width: 500px; width: 100%; padding: 20px; box-sizing: border-box; background: #f4f7f6; }
+.container { text-align: center; max-width: 900px; /* 放寬寬度以容納左右配置 */ width: 100%; padding: 20px; box-sizing: border-box; background: #f4f7f6; }
 
 /* 標題與標籤 */
 h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; }
 .badge { background: #3498db; color: white; font-size: 0.8rem; padding: 2px 8px; border-radius: 12px; vertical-align: middle; }
 
 /* ============ 設定頁面樣式 ============ */
-.setup-container { max-width: 600px; text-align: left; }
+.setup-container { max-width: 600px; text-align: left; margin: 0 auto; }
 .intro-text { color: #666; line-height: 1.6; margin-bottom: 15px; text-align: center; }
 
 /* 平台切換按鈕 */
@@ -19,7 +20,7 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .tutorial-box { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; transition: height 0.3s; }
 .tutorial-box h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 
-/* 新增：偏好設定盒 */
+/* 偏好設定盒 */
 .preferences-box { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; border-left: 5px solid #f39c12; }
 .preferences-box h3 { margin-top: 0; color: #d35400; margin-bottom: 5px; }
 .pref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
@@ -34,7 +35,6 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .step-icon { font-size: 1.5rem; width: 30px; text-align: center; }
 .step-title { margin: 0; color: #2980b9; font-size: 1.1rem; }
 
-/* 圖片容器 */
 .step-image-container { width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid #eee; margin-top: 5px; }
 .step-image-container img { width: 100%; display: block; height: auto; }
 .img-placeholder { background: #f9f9f9; color: #aaa; padding: 30px; text-align: center; font-size: 0.9rem; border: 2px dashed #ddd; }
@@ -60,6 +60,9 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .logout-btn { background: none; border: 1px solid #999; padding: 5px 10px; border-radius: 20px; color: #666; cursor: pointer; font-size: 0.8rem; }
 .logout-btn:hover { background: #eee; }
 
+/* 地點與控制區：保持最大寬度 */
+.location-box, .controls { max-width: 600px; margin-left: auto; margin-right: auto; }
+
 .location-box { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 15px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 .location-box label { font-size: 0.9rem; font-weight: bold; color: #555; display: block; margin-bottom: 8px; }
 .input-group { display: flex; gap: 5px; }
@@ -76,16 +79,65 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .search-btn { width: 100%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 5px; font-size: 1rem; cursor: pointer; margin-top: 5px; transition: background 0.3s; }
 .search-btn:hover { background: #2980b9; }
 
-.wheel-container { position: relative; margin: 20px auto 10px auto; width: 300px; height: 300px; }
+/* ============ 新增：遊戲區域佈局 ============ */
+.game-layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+/* 左側：列表面板 */
+.list-panel {
+    flex: 1;
+    min-width: 300px;
+    max-width: 400px;
+    background: #fff;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    order: 1; /* 手機上顯示順序 */
+}
+
+.list-panel h3 { margin-top: 0; font-size: 1.1rem; color: #333; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; }
+
+.table-wrapper {
+    max-height: 450px;
+    overflow-y: auto;
+}
+
+#resultsTable { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+#resultsTable th { background: #f9f9f9; padding: 8px; text-align: left; color: #666; font-weight: bold; border-bottom: 2px solid #eee; position: sticky; top: 0; }
+#resultsTable td { padding: 8px; border-bottom: 1px solid #eee; color: #333; }
+#resultsTable tr:last-child td { border-bottom: none; }
+#resultsTable tr.active-winner { background-color: #d5f5e3; font-weight: bold; } /* 選中時高亮 */
+#resultsTable tr.eliminated { color: #aaa; text-decoration: line-through; background-color: #fcfcfc; } /* 淘汰樣式 */
+
+/* 右側：輪盤與結果區 */
+.wheel-section {
+    flex: 1;
+    min-width: 300px;
+    max-width: 400px;
+    order: 0; /* 手機上輪盤優先顯示 */
+}
+
+/* 手機版：列表排在輪盤下面 */
+@media (min-width: 768px) {
+    .list-panel { order: 0; } /* 電腦版列表在左 */
+    .wheel-section { order: 1; } /* 電腦版輪盤在右 */
+}
+
+.wheel-container { position: relative; margin: 0 auto 20px auto; width: 300px; height: 300px; }
 @media (min-width: 400px) {
-    .wheel-container { width: 400px; height: 400px; }
+    .wheel-container { width: 350px; height: 350px; }
 }
 
 #wheel { width: 100%; height: 100%; border-radius: 50%; border: 5px solid #333; box-sizing: border-box; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
 #pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); font-size: 40px; color: #e74c3c; z-index: 10; text-shadow: 0 2px 5px rgba(0,0,0,0.3); }
 
 .action-area { margin: 20px 0 30px 0; }
-#spinBtn { padding: 12px 40px; font-size: 1.3rem; background: #27ae60; color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 0 #219150; transition: transform 0.1s; }
+#spinBtn { padding: 12px 40px; font-size: 1.3rem; background: #27ae60; color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 0 #219150; transition: transform 0.1s; width: 100%; }
 #spinBtn:active { transform: translateY(4px); box-shadow: none; }
 
 #result { padding: 20px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); min-height: 100px; }
