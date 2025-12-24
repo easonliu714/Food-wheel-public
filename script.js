@@ -44,17 +44,17 @@ const guideData = {
             },
             {
                 title: "3. 綁定結算帳戶 (免費額度)",
-                desc: "前往左側選單的「結算 (Billing)」。綁定信用卡以驗證身分 (Google 每月贈送 $200 美金額度，個人使用通常完全免費)。",
+                desc: "前往左側選單 (☰) 的「帳單 (Billing)」>「付款方式」。綁定信用卡以驗證身分 (Google 每月贈送 $200 美金額度，個人使用通常完全免費)。",
                 img: 'images/desktop_3.jpg'
             },
             {
                 title: "4. 啟用 4 項必要 API",
-                desc: "前往「API 和服務」>「啟用 API」，搜尋並啟用以下 4 個服務：" + commonApiList,
+                desc: "左側選單(☰) 前往「API 和服務」>「啟用 API 和服務」，搜尋並啟用以下 4 個服務：" + commonApiList,
                 img: 'images/desktop_4.jpg'
             },
             {
                 title: "5. 取得 API Key",
-                desc: "前往「憑證 (Credentials)」，點擊「建立憑證」>「API 金鑰」。複製該金鑰並貼到下方的輸入框。",
+                desc: "左側選單前往「憑證 (Credentials)」，點擊「建立憑證」>「API 金鑰」。複製該金鑰並貼到下方的輸入框。",
                 img: 'images/desktop_5.jpg'
             }
         ]
@@ -74,17 +74,17 @@ const guideData = {
             },
             {
                 title: "3. 綁定帳單",
-                desc: "點擊左上角漢堡選單 (☰) > Billing。依指示綁定信用卡 (享每月 $200 免費額度)。",
+                desc: "點擊左上角漢堡選單 (☰) > 「帳單 (Billing)」>「付款方式」。依指示綁定信用卡 (享每月 $200 免費額度)。",
                 img: 'images/android_3.jpg'
             },
             {
                 title: "4. 啟用 4 項 API",
-                desc: "搜尋並啟用以下服務：" + commonApiList,
+                desc: "左側選單(☰) 前往「API 和服務」>「啟用 API 和服務」。搜尋並啟用以下服務：" + commonApiList,
                 img: 'images/android_4.jpg'
             },
             {
                 title: "5. 複製金鑰",
-                desc: "選單 > APIs & Services > Credentials > Create Credentials > API Key。複製顯示的亂碼字串。",
+                desc: "選單(☰) > APIs & Services > Credentials > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
                 img: 'images/android_5.jpg'
             }
         ]
@@ -104,17 +104,17 @@ const guideData = {
             },
             {
                 title: "3. 設定 Billing",
-                desc: "左側選單 (☰) > Billing。綁定卡片以開通免費額度權限。",
+                desc: "左側選單 (☰) > 「帳單 (Billing)」>「付款方式」。依指示綁定信用卡 (享每月 $200 免費額度)。",
                 img: 'images/ios_3.jpg'
             },
             {
                 title: "4. 啟用 API",
-                desc: "搜尋並啟用：" + commonApiList,
+                desc: "左側選單(☰) 前往「API 和服務」>「啟用 API 和服務」。搜尋並啟用：" + commonApiList,
                 img: 'images/ios_4.jpg'
             },
             {
                 title: "5. 取得 Key",
-                desc: "選單 > APIs & Services > Credentials > Create Credentials > API Key。",
+                desc: "選單 > APIs & Services > Credentials > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
                 img: 'images/ios_5.jpg'
             }
         ]
