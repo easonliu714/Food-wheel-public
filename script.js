@@ -18,7 +18,7 @@ const keywordDict = {
     all: "美食 餐廳 小吃" 
 };
 
-// ================== 0. 教學內容資料庫 (圖片路徑已更新) ==================
+// ================== 0. 教學內容資料庫 ==================
 const commonApiList = `
     <ul class="api-list">
         <li>✅ Maps JavaScript API</li>
@@ -122,14 +122,13 @@ const guideData = {
 };
 
 
-// 切換教學內容函式
+// 切換教學內容函式 (已修正圖片顯示邏輯)
 function showGuide(platform) {
     const data = guideData[platform];
     const container = document.getElementById('guide-content');
     
     // 更新按鈕狀態
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    // 簡單判斷：根據 index 來加 active (desktop=0, android=1, ios=2)
     const btns = document.querySelectorAll('.tab-btn');
     if(platform === 'desktop') btns[0].classList.add('active');
     if(platform === 'android') btns[1].classList.add('active');
@@ -139,11 +138,13 @@ function showGuide(platform) {
     let html = `<h3>${data.title}</h3>`;
     data.steps.forEach(step => {
         let imgHtml = '';
-        // 佔位符
-        imgHtml = `<div class="step-image-container"><div class="img-placeholder">（此處可插入 ${platform} 操作截圖：${step.title}）</div></div>`;
         
-        // 如果您之後有圖片，可將上面的 imgHtml 替換為:
-        // if (step.img) imgHtml = `<div class="step-image-container"><img src="${step.img}" alt="${step.title}"></div>`;
+        // 【修正重點】判斷是否有設定 img，如果有就顯示圖片，否則顯示佔位符
+        if (step.img) {
+            imgHtml = `<div class="step-image-container"><img src="${step.img}" alt="${step.title}"></div>`;
+        } else {
+            imgHtml = `<div class="step-image-container"><div class="img-placeholder">（此處可插入 ${platform} 操作截圖：${step.title}）</div></div>`;
+        }
 
         html += `
             <div class="step-card">
@@ -304,7 +305,6 @@ function handleSearch() {
         if (status === "OK" && results[0]) {
             userCoordinates = results[0].geometry.location;
             
-            // 【修復：詳細地址確認顯示】
             if (detailDisplay) {
                 detailDisplay.style.display = 'block';
                 detailDisplay.innerText = `🎯 已定位至：${results[0].formatted_address}`;
@@ -555,14 +555,12 @@ document.getElementById('spinBtn').onclick = () => {
         const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
         const winner = places[winningIndex];
 
-        // 【修復：呼叫詳細狀態更新】
         updateWinnerStatus(winner);
         
         spinBtn.disabled = false;
     }, 4000);
 };
 
-// 【修復：整合查詢並計算準確營業時間的功能】
 function updateWinnerStatus(winner) {
     document.getElementById('storeName').innerText = "就決定吃：" + winner.name;
     
