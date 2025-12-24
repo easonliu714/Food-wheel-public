@@ -29,37 +29,44 @@
                 <div class="pref-item">
                     <label>⭐ 最低星評</label>
                     <select id="setupMinRating">
-                        <option value="0">不限</option>
-                        <option value="3.0" selected>3.0 顆星以上</option>
-                        <option value="3.5">3.5 顆星以上</option>
-                        <option value="4.0">4.0 顆星以上</option>
-                        <option value="4.5">4.5 顆星以上</option>
+                        <option value="0">⚪ 不限</option>
+                        <option value="3.0" selected>⭐⭐⭐ 3.0 以上</option>
+                        <option value="3.5">⭐⭐⭐✦ 3.5 以上</option>
+                        <option value="4.0">⭐⭐⭐⭐ 4.0 以上</option>
+                        <option value="4.5">⭐⭐⭐⭐✦ 4.5 以上</option>
                     </select>
                 </div>
                 <div class="pref-item">
-                    <label>🚶 交通方式</label>
+                    <label>🎡 轉盤模式</label>
+                    <select id="setupSpinMode">
+                        <option value="repeat" selected>🔁 重複抽取 (不移除)</option>
+                        <option value="eliminate">❌ 淘汰制 (抽出後移除)</option>
+                    </select>
+                </div>
+                <div class="pref-item">
+                    <label>🏃‍♂️ 交通方式</label>
                     <select id="setupTransport">
-                        <option value="WALKING" selected>走路</option>
-                        <option value="DRIVING">機車/開車</option>
+                        <option value="WALKING" selected>走路 🚶</option>
+                        <option value="DRIVING">機車/開車 🛵</option>
                     </select>
                 </div>
                 <div class="pref-item">
                     <label>⏱️ 路程時間</label>
                     <select id="setupMaxTime">
-                        <option value="5">5 分鐘內</option>
-                        <option value="10" selected>10 分鐘內</option>
-                        <option value="15">15 分鐘內</option>
-                        <option value="20">20 分鐘內</option>
-                        <option value="30">30 分鐘內</option>
+                        <option value="5">⚡ 5 分鐘內</option>
+                        <option value="10" selected>🕐 10 分鐘內</option>
+                        <option value="15">◔ 15 分鐘內</option>
+                        <option value="20">🕓 20 分鐘內</option>
+                        <option value="30">◑ 30 分鐘內</option>
                     </select>
                 </div>
                 <div class="pref-item">
                     <label>💲 預算上限</label>
                     <select id="setupPriceLevel">
                         <option value="-1" selected>不限</option>
-                        <option value="1">$200 以下</option>
-                        <option value="2">$800 以下</option>
-                        <option value="3">$2000 以下</option>
+                        <option value="1">💲 $200 以下</option>
+                        <option value="2">💲💲 $800 以下</option>
+                        <option value="3">💲💲💲 $2000 以下</option>
                     </select>
                 </div>
                 <div class="pref-item">
@@ -139,18 +146,18 @@
             <div class="setting-row">
                 <label for="minRating">⭐ 最低星評：</label>
                 <select id="minRating">
-                    <option value="0">不限</option>
-                    <option value="3.0" selected>⭐⭐⭐3.0 顆星以上</option>
-                    <option value="3.5">⭐⭐⭐☆3.5 顆星以上</option>
-                    <option value="4.0">⭐⭐⭐⭐4.0 顆星以上</option>
-                    <option value="4.5">⭐⭐⭐⭐☆4.5 顆星以上</option>
+                    <option value="0">⚪ 不限</option>
+                    <option value="3.0" selected>⭐⭐⭐ 3.0 以上</option>
+                    <option value="3.5">⭐⭐⭐✦ 3.5 以上</option>
+                    <option value="4.0">⭐⭐⭐⭐ 4.0 以上</option>
+                    <option value="4.5">⭐⭐⭐⭐✦ 4.5 以上</option>
                 </select>
             </div>
 
             <div class="setting-row">
                 <label for="transportMode">交通：</label>
                 <select id="transportMode">
-                    <option value="WALKING" selected>走路 🚶</option>
+                    <option value="WALKING" selected>走路 🚶🚴‍♂️</option>
                     <option value="DRIVING">機車/開車 🛵🚗</option>
                 </select>
             </div>
@@ -158,43 +165,73 @@
             <div class="setting-row">
                 <label for="maxTime">時間：</label>
                 <select id="maxTime">
-                    <option value="5">🕐5 分鐘內</option>
-                    <option value="10" selected>🕑10 分鐘內</option>
-                    <option value="15">🕒15 分鐘內</option>
-                    <option value="20">🕓20 分鐘內</option>
-                    <option value="30">🕕30 分鐘內</option>
+                    <option value="5">🕐 5 分鐘內</option>
+                    <option value="10" selected>🕑 10 分鐘內</option>
+                    <option value="15">🕒 15 分鐘內</option>
+                    <option value="20">🕓 20 分鐘內</option>
+                    <option value="30">🕕 30 分鐘內</option>
                 </select>
             </div>
 
             <div class="setting-row">
                 <label for="resultCount">數量：</label>
                 <select id="resultCount">
-                    <option value="10">10 家</option>
-                    <option value="20" selected>20 家</option>
-                    <option value="30">30 家</option>
-                    <option value="40">40 家</option>
-                    <option value="50">50 家 (最多)</option>
+                    <option value="10">🏕️ 10 家</option>
+                    <option value="20" selected>🏡 20 家 (預設)</option>
+                    <option value="30">🏘️ 30 家</option>
+                    <option value="40">🏢 40 家</option>
+                    <option value="50">🌇 50 家 (最多)</option>
+                </select>
+            </div>
+
+            <div class="setting-row">
+                <label for="spinMode">🎡 轉盤模式：</label>
+                <select id="spinMode">
+                    <option value="repeat" selected>🔁 重複抽取 (不移除)</option>
+                    <option value="eliminate">❌ 淘汰制 (抽出後移除)</option>
                 </select>
             </div>
 
             <button onclick="handleSearch()" class="search-btn">🔄 開始搜尋店家</button>
         </div>
 
-        <div class="wheel-container">
-            <canvas id="wheel" width="400" height="400"></canvas>
-            <div id="pointer">▼</div>
-        </div>
-        
-        <div class="action-area">
-            <button id="spinBtn" disabled style="opacity: 0.5; cursor: not-allowed;">請先搜尋店家</button>
-        </div>
+        <div class="game-layout">
+            <div class="list-panel">
+                <h3>📋 搜尋結果清單</h3>
+                <div class="table-wrapper">
+                    <table id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>店名</th>
+                                <th>星評</th>
+                                <th title="被轉盤選中的次數">次數</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="3" style="text-align:center; color:#999;">尚未搜尋...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-        <div id="result">
-            <h2 id="storeName">準備好就搜尋店家吧！</h2>
-            <p id="storeRating" style="font-weight: bold; color: #f39c12;"></p>
-            <p id="storeAddress"></p>
-            <p id="storeDistance" style="color: #666; font-size: 0.9em;"></p>
-            <a id="menuLink" href="#" target="_blank" style="display:none;">📍 查看地圖與評價</a>
+            <div class="wheel-section">
+                <div class="wheel-container">
+                    <canvas id="wheel" width="400" height="400"></canvas>
+                    <div id="pointer">▼</div>
+                </div>
+                
+                <div class="action-area">
+                    <button id="spinBtn" disabled style="opacity: 0.5; cursor: not-allowed;">請先搜尋店家</button>
+                </div>
+
+                <div id="result">
+                    <h2 id="storeName">準備好就搜尋店家吧！</h2>
+                    <p id="storeRating" style="font-weight: bold; color: #f39c12;"></p>
+                    <p id="storeAddress"></p>
+                    <p id="storeDistance" style="color: #666; font-size: 0.9em;"></p>
+                    <a id="menuLink" href="#" target="_blank" style="display:none;">📍 查看地圖與評價</a>
+                </div>
+            </div>
         </div>
     </div>
 
