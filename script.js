@@ -17,7 +17,7 @@ const keywordDict = {
     noodles_rice: "麵 飯 水餃 壽司 快炒 合菜", 
     western_steak: "牛排 義大利麵 漢堡 披薩",
     dessert: "冰品 豆花 甜點 蛋糕",
-    all: "美食 餐廳 小吃" 
+    all: "美食 餐廳 小吃 料理" 
 };
 
 // ================== 0. 教學內容資料庫 ==================
@@ -186,7 +186,7 @@ function saveAndStart() {
         maxTime: document.getElementById('setupMaxTime').value,
         priceLevel: document.getElementById('setupPriceLevel').value,
         resultCount: document.getElementById('setupResultCount').value,
-        spinMode: document.getElementById('setupSpinMode').value // 新增：轉盤模式
+        spinMode: document.getElementById('setupSpinMode').value 
     };
     
     localStorage.setItem('food_wheel_api_key', inputKey);
@@ -235,7 +235,7 @@ function applyPreferences() {
             if(prefs.maxTime) document.getElementById('maxTime').value = prefs.maxTime;
             if(prefs.priceLevel) document.getElementById('priceLevel').value = prefs.priceLevel;
             if(prefs.resultCount) document.getElementById('resultCount').value = prefs.resultCount;
-            if(prefs.spinMode) document.getElementById('spinMode').value = prefs.spinMode; // 套用轉盤模式
+            if(prefs.spinMode) document.getElementById('spinMode').value = prefs.spinMode; 
         } catch (e) {
             console.error("讀取偏好設定失敗", e);
         }
@@ -504,7 +504,7 @@ function getDistances(origin, destinations, mode) {
     });
 }
 
-// 初始化左側結果列表
+// 初始化左側結果列表 (修改：加入超連結)
 function initResultList(list) {
     const tbody = document.querySelector('#resultsTable tbody');
     tbody.innerHTML = ''; // 清空
@@ -516,9 +516,13 @@ function initResultList(list) {
 
     list.forEach(p => {
         const tr = document.createElement('tr');
-        tr.id = `row-${p.place_id}`; // 給予 ID 方便後續查找
+        tr.id = `row-${p.place_id}`; 
+        
+        // 建立 Google Maps 超連結
+        const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}&query_place_id=${p.place_id}`;
+        
         tr.innerHTML = `
-            <td>${p.name}</td>
+            <td><a href="${mapUrl}" target="_blank" class="store-link" title="在 Google 地圖上查看">${p.name}</a></td>
             <td>⭐${p.rating}</td>
             <td class="hit-count">0</td>
         `;
@@ -539,7 +543,7 @@ function updateHitCountUI(placeId) {
         
         // 增加高亮效果
         row.classList.add('active-winner');
-        setTimeout(() => row.classList.remove('active-winner'), 2000); // 2秒後移除
+        setTimeout(() => row.classList.remove('active-winner'), 2000); 
     }
 }
 
@@ -594,7 +598,6 @@ function enableSpinButton(count) {
 function drawWheel() {
     const numOptions = places.length;
     if (numOptions === 0) {
-        // 如果輪盤空了 (淘汰制)，清空 Canvas
         ctx.clearRect(0, 0, 400, 400);
         return;
     }
@@ -639,7 +642,6 @@ document.getElementById('spinBtn').onclick = () => {
     const spinBtn = document.getElementById('spinBtn');
     spinBtn.disabled = true;
 
-    // 隨機角度
     const spinAngle = Math.floor(Math.random() * 1800) + 1800; 
     currentRotation += spinAngle;
     canvas.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
@@ -649,34 +651,21 @@ document.getElementById('spinBtn').onclick = () => {
         const numOptions = places.length;
         const arcSize = 360 / numOptions;
         const actualRotation = currentRotation % 360;
-        // 計算贏家索引
         const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
         const winner = places[winningIndex];
 
-        // 1. 更新贏家狀態顯示
         updateWinnerStatus(winner);
-        
-        // 2. 更新左側列表次數
         updateHitCountUI(winner.place_id);
 
-        // 3. 處理淘汰制邏輯
         const spinMode = document.getElementById('spinMode').value;
         if (spinMode === 'eliminate') {
-            // 從輪盤陣列移除
             places.splice(winningIndex, 1);
-            
-            // 標記列表為淘汰
             markAsEliminated(winner.place_id);
 
-            // 重繪輪盤 (但要先等動畫結束後的視覺停留一下，這裡直接重繪會導致突然跳變)
-            // 為了體驗好，我們重設 rotation，並立即重繪
-            // 注意：重繪後角度會變，需要重置 currentRotation 視覺
             setTimeout(() => {
-                // 重置轉盤角度，不然下次轉會怪怪的
                 canvas.style.transition = 'none';
                 currentRotation = 0;
                 canvas.style.transform = `rotate(0deg)`;
-                
                 drawWheel();
                 
                 if (places.length === 0) {
@@ -685,7 +674,7 @@ document.getElementById('spinBtn').onclick = () => {
                 } else {
                     spinBtn.disabled = false;
                 }
-            }, 2000); // 2秒後移除該片並重置
+            }, 2000); 
         } else {
             spinBtn.disabled = false;
         }
@@ -734,6 +723,7 @@ function updateWinnerStatus(winner) {
     }
     
     const link = document.getElementById('menuLink');
+    // 使用標準 Google Maps Search URL
     link.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}&query_place_id=${winner.place_id}`;
     link.style.display = 'inline-block';
     link.innerText = "📍 導航去這家";
