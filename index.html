@@ -53,21 +53,21 @@
                 <div class="pref-item">
                     <label>⏱️ 路程時間</label>
                     <select id="setupMaxTime">
-                        <option value="5">⚡ 5 分鐘內</option>
-                        <option value="10" selected>🕐 10 分鐘內</option>
+                        <option value="5">🕐 5 分鐘內</option>
+                        <option value="10" selected>🕑 10 分鐘內</option>
                         <option value="15">🕒 15 分鐘內</option>
                         <option value="20">🕓 20 分鐘內</option>
                         <option value="30">🕕 30 分鐘內</option>
                     </select>
                 </div>
                 <div class="pref-item">
-                    <label>💲 預算上限</label>
+                    <label>💸 預算上限</label>
                     <select id="setupPriceLevel">
                         <option value="-1" selected>不限</option>
-                        <option value="1">💲 $200 以下</option>
-                        <option value="2">💲💲 $800 以下</option>
-                        <option value="3">💲💲💲 $2000 以下</option>
-                        <option value="4">💲💲💲💲 奢華無上限</option>
+                        <option value="1">💲 $200 以下 (便宜)</option>
+                        <option value="2">💲💲 $800 以下 (中價位)</option>
+                        <option value="3">💲💲💲 $2000 以下 (高價位)</option>
+                        <option value="4">💲💲💲💲 奢華上限</option>
                     </select>
                 </div>
                 <div class="pref-item">
@@ -113,13 +113,13 @@
 
         <div class="controls">
             <div class="setting-row">
-                <label for="mealType">類別：</label>
+                <label for="mealType">⚪ 類別：</label>
                 <select id="mealType" onchange="updateKeywords()">
-                    <option value="breakfast">早餐</option>
-                    <option value="lunch">中午正餐</option>
-                    <option value="afternoon_tea">下午茶飲</option>
-                    <option value="dinner">晚餐</option>
-                    <option value="late_night">宵夜</option>
+                    <option value="breakfast">☕ 早餐</option>
+                    <option value="lunch">🍱 午餐</option>
+                    <option value="afternoon_tea">🧋 下午茶飲</option>
+                    <option value="dinner">🥗 晚餐</option>
+                    <option value="late_night">🍩 宵夜</option>
                     
                     <option value="noodles_rice">🍜🍛 麵飯/小吃 (不限國別)</option>
                     <option value="western_steak">🍽️🍔 排餐/西式 (牛排/漢堡)</option>
@@ -129,13 +129,13 @@
             </div>
 
             <div class="setting-row">
-                <label for="priceLevel">💸 預算上限：</label>
+                <label for="priceLevel">💸預算上限：</label>
                 <select id="priceLevel">
                     <option value="-1" selected>不限 (顯示所有)</option>
                     <option value="1">💲 $200 以下 (便宜)</option>
                     <option value="2">💲💲 $800 以下 (中價位)</option>
                     <option value="3">💲💲💲 $2000 以下 (高價位)</option>
-                    <option value="4">💲💲💲💲 奢華無上限</option>
+                    <option value="4">💲💲💲💲 奢華上限</option>
                 </select>
             </div>
 
@@ -158,13 +158,13 @@
             <div class="setting-row">
                 <label for="transportMode">🏃‍♂️ 交通：</label>
                 <select id="transportMode">
-                    <option value="WALKING" selected>走路 🚶🚴‍♂️</option>
-                    <option value="DRIVING">機車/開車 🛵🚗</option>
+                    <option value="WALKING" selected>走路 🚶🚴‍♂️ </option>
+                    <option value="DRIVING">機車/開車 🛵🚗 </option>
                 </select>
             </div>
 
             <div class="setting-row">
-                <label for="maxTime">⏱️ 時間：</label>
+                <label for="maxTime">⏱️時間：</label>
                 <select id="maxTime">
                     <option value="5">🕐 5 分鐘內</option>
                     <option value="10" selected>🕑 10 分鐘內</option>
@@ -178,7 +178,7 @@
                 <label for="resultCount">🔢 數量：</label>
                 <select id="resultCount">
                     <option value="10">🏕️ 10 家</option>
-                    <option value="20" selected>🏡 20 家 (預設)</option>
+                    <option value="20" selected>🏡 20 家</option>
                     <option value="30">🏘️ 30 家</option>
                     <option value="40">🏢 40 家</option>
                     <option value="50">🌇 50 家 (最多)</option>
@@ -204,12 +204,11 @@
                         <thead>
                             <tr>
                                 <th>店名</th>
-                                <th>星評</th>
-                                <th title="被轉盤選中的次數">次數</th>
+                                <th>星評(評論數)</th> <th>距離/時間</th> <th title="被轉盤選中的次數">次數</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td colspan="3" style="text-align:center; color:#999;">尚未搜尋...</td></tr>
+                            <tr><td colspan="4" style="text-align:center; color:#999;">尚未搜尋...</td></tr>
                         </tbody>
                     </table>
                 </div>
