@@ -35,34 +35,95 @@ const commonApiList = `
 `;
 
 const guideData = {
+const guideData = {
     desktop: {
         title: "💻 電腦版申請步驟 (推薦使用)",
         steps: [
-            { title: "1. 登入 Google Cloud", desc: "使用 Chrome 瀏覽器前往 Google Cloud Console 並登入。", img: './images/desktop_1.jpg' },
-            { title: "2. 建立新專案", desc: "點擊左上角專案選單，建立新專案。", img: './images/desktop_2.jpg' },
-            { title: "3. 綁定結算帳戶", desc: "前往「帳單 (Billing)」綁定信用卡 (享每月 $200 免費額度)。", img: './images/desktop_3.jpg' },
-            { title: "4. 啟用 4 項 API", desc: "前往「API 和服務」啟用：" + commonApiList, img: './images/desktop_4.jpg' },
-            { title: "5. 取得 API Key", desc: "前往「憑證 (Credentials)」建立 API Key 並複製。", img: './images/desktop_5.jpg' }
+            {
+                title: "1. 登入 Google Cloud",
+                desc: "使用 Chrome 瀏覽器前往 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud Console</a> 並登入您的 Google 帳號。",
+                img: './images/desktop_1.jpg' 
+            },
+            {
+                title: "2. 建立新專案",
+                desc: "點擊左上角的專案選單，選擇「建立新專案」。輸入專案名稱 (如 FoodWheel) 並建立。",
+                img: './images/desktop_2.jpg'
+            },
+            {
+                title: "3. 綁定結算帳戶 (免費額度)",
+                desc: "前往左側選單 (☰) 的「帳單 (Billing)」>「付款方式」。綁定信用卡以驗證身分 (Google 每月贈送 $200 美金額度，個人使用通常完全免費)。",
+                img: './images/desktop_3.jpg'
+            },
+            {
+                title: "4. 啟用 4 項必要 API",
+                desc: "左側選單(☰) 前往「API 和服務（APIs & Services）」>「啟用 API 和服務」，搜尋並啟用以下 4 個服務：" + commonApiList,
+                img: './images/desktop_4.jpg'
+            },
+            {
+                title: "5. 取得 API Key",
+                desc: "左側選單前往「憑證 (Credentials)」，點擊「建立憑證」>「API 金鑰」。複製該金鑰並貼到下方的輸入框。",
+                img: './images/desktop_5.jpg'
+            }
         ]
     },
     android: {
         title: "🤖 Android 手機申請步驟",
         steps: [
-            { title: "1. 開啟電腦版網頁", desc: "Chrome 右上角選單 > 勾選「電腦版網站」。", img: './images/android_1.jpg' },
-            { title: "2. 建立新專案", desc: "建立一個新專案。", img: './images/android_2.jpg' },
-            { title: "3. 綁定帳單", desc: "選單 > Billing > 綁定信用卡。", img: './images/android_3.jpg' },
-            { title: "4. 啟用 API", desc: "搜尋並啟用必要 API。", img: './images/android_4.jpg' },
-            { title: "5. 複製金鑰", desc: "建立 Credentials > API Key。", img: './images/android_5.jpg' }
+            {
+                title: "1. 開啟電腦版網頁 (關鍵步驟)",
+                desc: "開啟 Chrome 瀏覽器，前往 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud Console</a>。<br><strong>點擊右上角「⋮」選單，勾選「電腦版網站」</strong> (因為 Google 後台不支援手機介面)。",
+                img: './images/android_1.jpg'
+            },
+            {
+                title: "2. 建立新專案",
+                desc: "放大畫面，點擊左上角專案選單 >「New Project」。建立一個新專案。",
+                img: './images/android_2.jpg'
+            },
+            {
+                title: "3. 綁定帳單",
+                desc: "點擊左上角漢堡選單 (☰) > 「帳單 (Billing)」>「付款方式」。依指示綁定信用卡 (享每月 $200 免費額度)。",
+                img: './images/android_3.jpg'
+            },
+            {
+                title: "4. 啟用 4 項 API",
+                desc: "左側選單(☰) 前往「API 和服務（APIs & Services）」>「啟用 API 和服務」。搜尋並啟用以下服務：" + commonApiList,
+                img: './images/android_4.jpg'
+            },
+            {
+                title: "5. 複製金鑰",
+                desc: "選單(☰) > 「API 和服務（APIs & Services）」 > 「憑證 (Credentials)」 > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
+                img: './images/android_5.jpg'
+            }
         ]
     },
     ios: {
-        title: "🍎 iOS (iPhone) 申請步驟",
+        title: "🍎 iOS (iPhone/iPad) 申請步驟",
         steps: [
-            { title: "1. 切換電腦版網站", desc: "Safari 網址列左側「大小 (Aa)」>「切換為電腦版網站」。", img: './images/ios_1.jpg' },
-            { title: "2. 建立專案", desc: "建立新專案。", img: './images/ios_2.jpg' },
-            { title: "3. 設定 Billing", desc: "綁定信用卡。", img: './images/ios_3.jpg' },
-            { title: "4. 啟用 API", desc: "啟用必要 API。", img: './images/ios_4.jpg' },
-            { title: "5. 取得 Key", desc: "建立並複製 API Key。", img: './images/ios_5.jpg' }
+            {
+                title: "1. 切換電腦版網站 (關鍵步驟)",
+                desc: "開啟 Safari，前往 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud Console</a>。<br><strong>點擊網址列左側的「大小 (Aa)」圖示，選擇「切換為電腦版網站」</strong>。",
+                img: './images/ios_1.jpg'
+            },
+            {
+                title: "2. 建立專案",
+                desc: "將手機橫放操作較方便。點擊上方專案選單 > New Project。",
+                img: './images/ios_2.jpg'
+            },
+            {
+                title: "3. 設定 Billing",
+                desc: "左側選單 (☰) > 「帳單 (Billing)」>「付款方式」。依指示綁定信用卡 (享每月 $200 免費額度)。",
+                img: './images/ios_3.jpg'
+            },
+            {
+                title: "4. 啟用 API",
+                desc: "左側選單(☰) 前往「API 和服務（APIs & Services）」>「啟用 API 和服務」。搜尋並啟用：" + commonApiList,
+                img: './images/ios_4.jpg'
+            },
+            {
+                title: "5. 取得 Key",
+                desc: "選單 > 「API 和服務（APIs & Services）」 > 「憑證 (Credentials)」 > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
+                img: './images/ios_5.jpg'
+            }
         ]
     }
 };
