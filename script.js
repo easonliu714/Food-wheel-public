@@ -504,13 +504,13 @@ function getDistances(origin, destinations, mode) {
     });
 }
 
-// 初始化左側結果列表 (修改：加入超連結)
+// 初始化左側結果列表 (修改：加入星評細節與距離欄位)
 function initResultList(list) {
     const tbody = document.querySelector('#resultsTable tbody');
     tbody.innerHTML = ''; // 清空
 
     if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">無資料</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">無資料</td></tr>';
         return;
     }
 
@@ -518,12 +518,18 @@ function initResultList(list) {
         const tr = document.createElement('tr');
         tr.id = `row-${p.place_id}`; 
         
-        // 建立 Google Maps 超連結
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}&query_place_id=${p.place_id}`;
         
+        // 格式化星等與評論數
+        const ratingText = p.rating ? `${p.rating} <span style="font-size:0.8em; color:#666;">(${p.user_ratings_total || 0})</span>` : "無評價";
+        
+        // 格式化距離與時間 (Matrix Distance)
+        const distanceText = p.realDistanceText ? `${p.realDistanceText}<br><span style="font-size:0.85em; color:#666;">${p.realDurationText}</span>` : "未知";
+
         tr.innerHTML = `
             <td><a href="${mapUrl}" target="_blank" class="store-link" title="在 Google 地圖上查看">${p.name}</a></td>
-            <td>⭐${p.rating}</td>
+            <td>⭐ ${ratingText}</td>
+            <td>${distanceText}</td>
             <td class="hit-count">0</td>
         `;
         tbody.appendChild(tr);
@@ -723,7 +729,6 @@ function updateWinnerStatus(winner) {
     }
     
     const link = document.getElementById('menuLink');
-    // 使用標準 Google Maps Search URL
     link.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}&query_place_id=${winner.place_id}`;
     link.style.display = 'inline-block';
     link.innerText = "📍 導航去這家";
