@@ -386,7 +386,6 @@ function processResults(origin, results) {
         });
 }
 
-// 【核心修正】刷新輪盤資料 (確保按鈕狀態正確更新)
 function refreshWheelData() {
     const filterDislikeEl = document.getElementById('filterDislike');
     const filterDislike = filterDislikeEl ? filterDislikeEl.checked : false;
@@ -587,6 +586,7 @@ document.getElementById('spinBtn').onclick = () => {
     if(userRateEl) userRateEl.innerText = "";
 
     setTimeout(() => {
+        // 使用 try-catch 確保發生錯誤時也能解鎖按鈕
         try {
             const numOptions = places.length;
             if (numOptions === 0) throw new Error("No places left");
@@ -596,31 +596,34 @@ document.getElementById('spinBtn').onclick = () => {
             const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
             const winner = places[winningIndex];
 
-            if(!winner) throw new Error("Winner undefined");
+            if(!winner) throw new Error("Winner calculation error");
 
             updateWinnerStatus(winner);
             updateHitCountUI(winner.place_id);
 
-            const spinMode = document.getElementById('spinMode').value;
+            const spinModeEl = document.getElementById('spinMode');
+            const spinMode = spinModeEl ? spinModeEl.value : 'repeat';
             
             if (spinMode === 'eliminate') {
                 eliminatedIds.add(winner.place_id); 
-                // 延遲刷新輪盤
+                
+                // 淘汰制需要視覺延遲，再刷新轉盤
                 setTimeout(() => {
                     canvas.style.transition = 'none';
                     currentRotation = 0;
                     canvas.style.transform = `rotate(0deg)`;
+                    
                     refreshWheelData(); // 此處會自動判斷是否解鎖按鈕
                 }, 2000); 
             } else {
-                // 重複模式：立即解鎖按鈕，不重繪輪盤
+                // 重複模式：立即解鎖按鈕
                 spinBtn.disabled = false;
-                // 強制更新一次列表狀態(避免過濾器狀態不同步)
-                // refreshWheelData(); // 可加可不加，為了效能此處不重繪 Canvas，只解鎖
+                // 強制更新一次列表狀態 (避免過濾器狀態不同步)
+                refreshWheelData();
             }
         } catch (error) {
             console.error("Spin Error:", error);
-            alert("發生錯誤，按鈕已重置");
+            alert("發生錯誤，按鈕已重置: " + error.message);
             spinBtn.disabled = false;
         }
     }, 4000);
@@ -674,6 +677,7 @@ function updateWinnerStatus(winner) {
     const btnDislike = document.getElementById('btnDislike');
     const ratingText = document.getElementById('userPersonalRating');
     
+    // 安全操作按鈕
     if(btnLike) {
         btnLike.style.display = 'inline-block';
         btnLike.classList.remove('active');
