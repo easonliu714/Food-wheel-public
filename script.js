@@ -1,15 +1,17 @@
-// 全域變數
-let places = []; // 輪盤上目前可用的店家 (會隨淘汰減少)
-let allSearchResults = []; // 搜尋到的所有原始店家 (列表用，永遠保留)
-let hitCounts = {}; // 記錄每個 place_id 被轉到的次數
-let userRatings = {}; // 使用者個人評價 (from LocalStorage)
-let eliminatedIds = new Set(); // 記錄被淘汰的店家 ID
+// ================== 全域變數定義 ==================
+let places = []; // 輪盤上目前可用的店家
+let allSearchResults = []; // 搜尋到的所有原始店家
+let hitCounts = {}; // 次數統計
+let userRatings = {}; // 個人評價
+let eliminatedIds = new Set(); // 淘汰名單
 let currentRotation = 0;
 let userCoordinates = null; 
-const canvas = document.getElementById('wheel');
-const ctx = canvas.getContext('2d');
 
-// 定義預設關鍵字字典
+// Canvas 相關變數 (改為動態獲取，避免初始化錯誤)
+let canvas = null;
+let ctx = null;
+
+// 定義預設關鍵字
 const keywordDict = {
     breakfast: "早餐 早午餐",
     lunch: "餐廳 小吃 午餐",
@@ -22,7 +24,7 @@ const keywordDict = {
     all: "美食 餐廳 小吃" 
 };
 
-// ================== 0. 教學內容資料庫 ==================
+// ================== 0. 教學內容與工具函式 ==================
 const commonApiList = `
     <ul class="api-list">
         <li>✅ Maps JavaScript API</li>
@@ -66,7 +68,6 @@ const guideData = {
 };
 
 function showGuide(platform) {
-    const data = guideData[platform];
     const container = document.getElementById('guide-content');
     if(!container) return;
     
@@ -76,6 +77,7 @@ function showGuide(platform) {
     if(platform === 'android' && btns[1]) btns[1].classList.add('active');
     if(platform === 'ios' && btns[2]) btns[2].classList.add('active');
 
+    const data = guideData[platform];
     let html = `<h3>${data.title}</h3>`;
     data.steps.forEach(step => {
         let imgHtml = step.img ? `<div class="step-image-container"><img src="${step.img}" alt="${step.title}"></div>` : '';
@@ -84,16 +86,20 @@ function showGuide(platform) {
     container.innerHTML = html;
 }
 
-// ================== 1. 初始化與事件綁定 ==================
+// ================== 1. 初始化 ==================
 
 window.onload = () => {
-    // 1. 載入評價
+    // 初始化 Canvas
+    canvas = document.getElementById('wheel');
+    if(canvas) ctx = canvas.getContext('2d');
+
+    // 載入評價
     const savedRatings = localStorage.getItem('food_wheel_user_ratings');
     if (savedRatings) {
         try { userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
     }
 
-    // 2. 載入 API Key
+    // 載入 API Key
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if (savedKey) {
         loadGoogleMapsScript(savedKey);
@@ -105,7 +111,7 @@ window.onload = () => {
         showGuide('desktop');
     }
 
-    // 3. 綁定過濾器事件
+    // 綁定過濾器事件
     const filterCheckbox = document.getElementById('filterDislike');
     if (filterCheckbox) {
         filterCheckbox.addEventListener('change', () => {
@@ -113,6 +119,9 @@ window.onload = () => {
         });
     }
 };
+
+// ... (省略部分通用函式，如 saveAndStart, resetApiKey, editPreferences, loadGoogleMapsScript, initApp, applyPreferences) ...
+// 為了完整性，這些函式我會保留在下方，請確保複製完整
 
 function saveAndStart() {
     const inputKey = document.getElementById('userApiKey').value.trim();
@@ -170,7 +179,7 @@ function initApp() {
     applyPreferences();
     autoSelectMealType();
     initLocation();
-    resetGame(true); // 初始化遊戲狀態
+    resetGame(true);
 }
 
 function applyPreferences() {
@@ -187,8 +196,6 @@ function applyPreferences() {
         } catch (e) { console.error(e); }
     }
 }
-
-// ================== 2. 核心邏輯 ==================
 
 function autoSelectMealType() {
     const hour = new Date().getHours();
@@ -249,7 +256,6 @@ function handleSearch() {
     if (!addrInput) return alert("請輸入地址");
     if (!keywordsRaw.trim()) return alert("請輸入關鍵字");
 
-    // 搜尋開始時，重置遊戲狀態
     resetGame(false); 
 
     if(spinBtn) {
@@ -390,14 +396,12 @@ function refreshWheelData() {
     const filterDislikeEl = document.getElementById('filterDislike');
     const filterDislike = filterDislikeEl ? filterDislikeEl.checked : false;
     
-    // 重新過濾名單
     places = allSearchResults.filter(p => {
         if (eliminatedIds.has(p.place_id)) return false;
         if (filterDislike && userRatings[p.place_id] === 'dislike') return false;
         return true;
     });
 
-    // 更新搜尋按鈕文字 (保持即時性)
     const searchBtn = document.querySelector('.search-btn');
     if(searchBtn && !searchBtn.disabled && searchBtn.innerText.includes("搜尋完成")) {
         searchBtn.innerText = `搜尋完成 (共 ${places.length} 間)`;
@@ -405,7 +409,7 @@ function refreshWheelData() {
 
     initResultList(allSearchResults);
     drawWheel();
-    enableSpinButton(places.length); // 根據新的數量決定按鈕狀態
+    enableSpinButton(places.length);
 }
 
 function getDistances(origin, destinations, mode) {
@@ -476,7 +480,6 @@ function initResultList(list) {
     });
 }
 
-// 重置遊戲狀態
 function resetGame(fullReset) {
     currentRotation = 0; 
     canvas.style.transform = `rotate(0deg)`;
@@ -502,7 +505,7 @@ function resetGame(fullReset) {
         places = [];
         allSearchResults = [];
         eliminatedIds.clear();
-        ctx.clearRect(0, 0, 400, 400);
+        if(ctx) ctx.clearRect(0, 0, 400, 400); // 這裡加了 ctx 檢查
         enableSpinButton(0);
     }
 }
@@ -520,7 +523,6 @@ function enableSpinButton(count) {
         spinBtn.disabled = true;
         spinBtn.style.opacity = "0.5";
         spinBtn.style.cursor = "not-allowed";
-        
         if (allSearchResults.length > 0) {
             spinBtn.innerText = "商家已全數濾除/淘汰";
         } else {
@@ -531,7 +533,7 @@ function enableSpinButton(count) {
 
 function drawWheel() {
     const numOptions = places.length;
-    ctx.clearRect(0, 0, 400, 400);
+    if(ctx) ctx.clearRect(0, 0, 400, 400); // 加強檢查
     if (numOptions === 0) return;
     
     const arcSize = (2 * Math.PI) / numOptions;
@@ -539,94 +541,109 @@ function drawWheel() {
 
     places.forEach((place, i) => {
         const angle = startAngleOffset + (i * arcSize);
-        ctx.fillStyle = `hsl(${i * (360 / numOptions)}, 70%, 60%)`;
-        ctx.beginPath();
-        ctx.moveTo(200, 200);
-        ctx.arc(200, 200, 200, angle, angle + arcSize);
-        ctx.fill();
-        ctx.stroke();
+        if(ctx) {
+            ctx.fillStyle = `hsl(${i * (360 / numOptions)}, 70%, 60%)`;
+            ctx.beginPath();
+            ctx.moveTo(200, 200);
+            ctx.arc(200, 200, 200, angle, angle + arcSize);
+            ctx.fill();
+            ctx.stroke();
 
-        ctx.save();
-        ctx.translate(200, 200);
-        ctx.rotate(angle + arcSize / 2);
-        
-        let fontSize = 16;
-        if (numOptions > 20) fontSize = 12;
-        if (numOptions > 30) fontSize = 10;
-        
-        ctx.fillStyle = "white";
-        ctx.font = `bold ${fontSize}px Arial`;
-        let text = place.name;
-        if (text.length > 8) text = text.substring(0, 7) + "..";
-        ctx.fillText(text, 60, 5);
-        ctx.restore();
+            ctx.save();
+            ctx.translate(200, 200);
+            ctx.rotate(angle + arcSize / 2);
+            
+            let fontSize = 16;
+            if (numOptions > 20) fontSize = 12;
+            if (numOptions > 30) fontSize = 10;
+            
+            ctx.fillStyle = "white";
+            ctx.font = `bold ${fontSize}px Arial`;
+            let text = place.name;
+            if (text.length > 8) text = text.substring(0, 7) + "..";
+            ctx.fillText(text, 60, 5);
+            ctx.restore();
+        }
     });
 }
 
-// 【核心修正】按鈕點擊事件，增加 DOM 檢查與 Try-Catch 防呆
+// 【關鍵修正】按鈕點擊事件，加入除錯標記與 Try-Catch
 document.getElementById('spinBtn').onclick = () => {
-    if (places.length === 0) return;
+    let debugStep = "Start"; // 用來標記執行到哪一步
     
-    const spinBtn = document.getElementById('spinBtn');
-    spinBtn.disabled = true; // 旋轉期間鎖定
+    try {
+        if (places.length === 0) return;
+        
+        const spinBtn = document.getElementById('spinBtn');
+        spinBtn.disabled = true; 
 
-    const spinAngle = Math.floor(Math.random() * 1800) + 1800; 
-    currentRotation += spinAngle;
-    canvas.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
-    canvas.style.transform = `rotate(${currentRotation}deg)`;
+        debugStep = "Animation Start";
+        const spinAngle = Math.floor(Math.random() * 1800) + 1800; 
+        currentRotation += spinAngle;
+        canvas.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
+        canvas.style.transform = `rotate(${currentRotation}deg)`;
 
-    // 安全隱藏操作區
-    const idsToHide = ['btnLike', 'btnDislike'];
-    idsToHide.forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.style.display = 'none';
-    });
-    
-    const userRateEl = document.getElementById('userPersonalRating');
-    if(userRateEl) userRateEl.innerText = "";
+        // 隱藏操作區
+        const btnLike = document.getElementById('btnLike');
+        const btnDislike = document.getElementById('btnDislike');
+        const ratingText = document.getElementById('userPersonalRating');
+        if(btnLike) btnLike.style.display = 'none';
+        if(btnDislike) btnDislike.style.display = 'none';
+        if(ratingText) ratingText.innerText = "";
 
-    setTimeout(() => {
-        // 使用 try-catch 確保發生錯誤時也能解鎖按鈕
-        try {
-            const numOptions = places.length;
-            if (numOptions === 0) throw new Error("No places left");
+        setTimeout(() => {
+            try {
+                debugStep = "Calculating Winner";
+                const numOptions = places.length;
+                if (numOptions === 0) throw new Error("清單為空，無法計算贏家");
 
-            const arcSize = 360 / numOptions;
-            const actualRotation = currentRotation % 360;
-            const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
-            const winner = places[winningIndex];
+                const arcSize = 360 / numOptions;
+                const actualRotation = currentRotation % 360;
+                const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
+                const winner = places[winningIndex];
 
-            if(!winner) throw new Error("Winner calculation error");
+                if(!winner) throw new Error("贏家物件為 undefined");
 
-            updateWinnerStatus(winner);
-            updateHitCountUI(winner.place_id);
-
-            const spinModeEl = document.getElementById('spinMode');
-            const spinMode = spinModeEl ? spinModeEl.value : 'repeat';
-            
-            if (spinMode === 'eliminate') {
-                eliminatedIds.add(winner.place_id); 
+                debugStep = "Update Winner Status";
+                updateWinnerStatus(winner);
                 
-                // 淘汰制需要視覺延遲，再刷新轉盤
-                setTimeout(() => {
-                    canvas.style.transition = 'none';
-                    currentRotation = 0;
-                    canvas.style.transform = `rotate(0deg)`;
+                debugStep = "Update Hit Count";
+                updateHitCountUI(winner.place_id);
+
+                debugStep = "Checking Spin Mode";
+                const spinModeEl = document.getElementById('spinMode');
+                const spinMode = spinModeEl ? spinModeEl.value : 'repeat';
+                
+                if (spinMode === 'eliminate') {
+                    debugStep = "Processing Elimination";
+                    eliminatedIds.add(winner.place_id); 
                     
-                    refreshWheelData(); // 此處會自動判斷是否解鎖按鈕
-                }, 2000); 
-            } else {
-                // 重複模式：立即解鎖按鈕
-                spinBtn.disabled = false;
-                // 強制更新一次列表狀態 (避免過濾器狀態不同步)
-                refreshWheelData();
+                    setTimeout(() => {
+                        // 這裡不加 try-catch，因為外層已無法捕獲，但重繪相對安全
+                        canvas.style.transition = 'none';
+                        currentRotation = 0;
+                        canvas.style.transform = `rotate(0deg)`;
+                        refreshWheelData(); 
+                    }, 2000); 
+                } else {
+                    debugStep = "Resetting Button";
+                    spinBtn.disabled = false;
+                    // refreshWheelData(); // 重複模式不需重繪，避免視覺跳動
+                }
+            } catch (innerError) {
+                console.error("Spin Logic Error:", innerError);
+                alert(`抽籤邏輯錯誤 (步驟: ${debugStep}): ${innerError.message}`);
+                // 發生錯誤時務必解鎖按鈕，避免卡死
+                if(spinBtn) spinBtn.disabled = false;
             }
-        } catch (error) {
-            console.error("Spin Error:", error);
-            alert("發生錯誤，按鈕已重置: " + error.message);
-            spinBtn.disabled = false;
-        }
-    }, 4000);
+        }, 4000);
+
+    } catch (e) {
+        console.error("Spin Init Error:", e);
+        alert(`啟動抽籤失敗 (步驟: ${debugStep}): ${e.message}`);
+        const spinBtn = document.getElementById('spinBtn');
+        if(spinBtn) spinBtn.disabled = false;
+    }
 };
 
 function handleUserRating(placeId, type) {
@@ -652,7 +669,6 @@ function handleUserRating(placeId, type) {
     const rateText = document.getElementById('userPersonalRating');
     if(rateText) rateText.innerText = text;
     
-    // 評價改變可能影響過濾，因此必須刷新輪盤
     refreshWheelData();
 }
 
@@ -677,7 +693,7 @@ function updateWinnerStatus(winner) {
     const btnDislike = document.getElementById('btnDislike');
     const ratingText = document.getElementById('userPersonalRating');
     
-    // 安全操作按鈕
+    // 安全操作 DOM
     if(btnLike) {
         btnLike.style.display = 'inline-block';
         btnLike.classList.remove('active');
