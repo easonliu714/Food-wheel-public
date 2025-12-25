@@ -223,13 +223,20 @@
                 <div class="action-area">
                     <button id="spinBtn" disabled style="opacity: 0.5; cursor: not-allowed;">請先搜尋店家</button>
                 </div>
-
+                
                 <div id="result">
                     <h2 id="storeName">準備好就搜尋店家吧！</h2>
                     <p id="storeRating" style="font-weight: bold; color: #f39c12;"></p>
                     <p id="storeAddress"></p>
                     <p id="storeDistance" style="color: #666; font-size: 0.9em;"></p>
-                    <a id="menuLink" href="#" target="_blank" style="display:none;">📍 查看地圖與評價</a>
+                    
+                    <p id="userPersonalRating" style="font-size: 0.9rem; margin: 5px 0; min-height: 20px;"></p>
+
+                    <div class="action-row">
+                        <button id="btnDislike" class="rate-btn dislike" title="標記為地雷">💣 踩雷</button>
+                        <a id="menuLink" href="#" target="_blank" style="display:none;" class="nav-btn">📍 導航去這家</a>
+                        <button id="btnLike" class="rate-btn like" title="標記為回訪">👍 再次回訪</button>
+                    </div>
                 </div>
             </div>
         </div>
