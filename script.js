@@ -1,6 +1,6 @@
 // ================== 全域變數定義 ==================
-let places = []; // 輪盤上目前可用的店家
-let allSearchResults = []; // 搜尋到的所有原始店家
+let places = []; // 輪盤上目前可用的店家 (動態變動)
+let allSearchResults = []; // 搜尋到的所有原始店家 (固定不變，用於列表顯示)
 let hitCounts = {}; // 次數統計
 let userRatings = {}; // 個人評價
 let eliminatedIds = new Set(); // 淘汰名單
@@ -392,13 +392,19 @@ function processResults(origin, results) {
         });
 }
 
+// 【核心修正】刷新資料並更新 UI
 function refreshWheelData() {
     const filterDislikeEl = document.getElementById('filterDislike');
     const filterDislike = filterDislikeEl ? filterDislikeEl.checked : false;
     
+    // 重新過濾名單 (根據原始資料 + 淘汰名單 + 地雷設定)
     places = allSearchResults.filter(p => {
+        // 1. 如果在淘汰名單中 -> 移除
         if (eliminatedIds.has(p.place_id)) return false;
+        
+        // 2. 如果是地雷且開啟了過濾 -> 移除
         if (filterDislike && userRatings[p.place_id] === 'dislike') return false;
+        
         return true;
     });
 
@@ -459,6 +465,8 @@ function initResultList(list) {
 
         const tr = document.createElement('tr');
         tr.id = `row-${p.place_id}`; 
+        
+        // 【關鍵】如果被淘汰或被過濾，加上刪除線樣式
         if (isEliminated || isFiltered) tr.classList.add('eliminated'); 
 
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}&query_place_id=${p.place_id}`;
@@ -510,7 +518,7 @@ function resetGame(fullReset) {
     }
 }
 
-// 【修改】此函式現在只控制 設定選單，不控制 spinBtn
+// 鎖定/解鎖介面
 function setControlsDisabled(disabled) {
     const ids = ['filterDislike', 'spinMode', 'resultCount', 'mealType', 'geoBtn'];
     ids.forEach(id => {
@@ -519,7 +527,6 @@ function setControlsDisabled(disabled) {
     });
 }
 
-// 【核心】SpinBtn 狀態只由這裡控制
 function enableSpinButton(count) {
     const spinBtn = document.getElementById('spinBtn');
     if(!spinBtn) return;
@@ -577,14 +584,18 @@ function drawWheel() {
     });
 }
 
-// 【核心修正】抽籤邏輯 (移除 alert，強化流程控制)
+// 【核心修正】按鈕點擊事件 - 提前鎖定狀態
 document.getElementById('spinBtn').onclick = () => {
     try {
         if (places.length === 0) return;
         
+        // 1. 立即讀取並鎖定當下的設定狀態 (避免動畫中被改)
+        const spinModeEl = document.getElementById('spinMode');
+        const spinMode = spinModeEl ? spinModeEl.value : 'repeat';
+        
         const spinBtn = document.getElementById('spinBtn');
-        spinBtn.disabled = true; // 按下後立即鎖定抽籤鈕
-        setControlsDisabled(true); // 鎖定其他設定
+        spinBtn.disabled = true; 
+        setControlsDisabled(true); 
 
         const spinAngle = Math.floor(Math.random() * 1800) + 1800; 
         currentRotation += spinAngle;
@@ -602,19 +613,17 @@ document.getElementById('spinBtn').onclick = () => {
         setTimeout(() => {
             try {
                 const numOptions = places.length;
-                if (numOptions === 0) return; // 防呆
+                if (numOptions === 0) return;
 
                 const arcSize = 360 / numOptions;
                 const actualRotation = currentRotation % 360;
                 
-                // 數學修正：確保 index 為正數
                 let winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
                 if (winningIndex < 0) winningIndex += numOptions;
                 
                 const winner = places[winningIndex];
                 if(!winner) {
                     console.error("Winner undefined");
-                    // 發生嚴重錯誤，嘗試恢復
                     setControlsDisabled(false);
                     spinBtn.disabled = false;
                     return;
@@ -623,35 +632,27 @@ document.getElementById('spinBtn').onclick = () => {
                 updateWinnerStatus(winner);
                 updateHitCountUI(winner.place_id);
 
-                const spinModeEl = document.getElementById('spinMode');
-                const spinMode = spinModeEl ? spinModeEl.value : 'repeat';
-                
+                // 使用剛開始讀取的 spinMode
                 if (spinMode === 'eliminate') {
                     eliminatedIds.add(winner.place_id); 
                     
+                    // 淘汰制：等待 2 秒後重繪
                     setTimeout(() => {
                         canvas.style.transition = 'none';
                         currentRotation = 0;
                         canvas.style.transform = `rotate(0deg)`;
                         
-                        // 1. 更新資料與輪盤
-                        refreshWheelData(); 
-                        
-                        // 2. 解鎖設定選單
-                        setControlsDisabled(false); 
-                        
-                        // 3. spinBtn 的狀態已由 refreshWheelData -> enableSpinButton 處理
-                        // 如果還有店家，它會自動 enable
+                        refreshWheelData(); // 更新資料與 UI
+                        setControlsDisabled(false); // 解鎖
                     }, 2000); 
                 } else {
-                    // 重複模式
-                    setControlsDisabled(false); // 解鎖設定
-                    spinBtn.disabled = false;   // 解鎖抽籤
+                    // 重複模式：直接解鎖
+                    setControlsDisabled(false);
+                    spinBtn.disabled = false;
                     refreshWheelData(); // 僅更新列表高亮
                 }
             } catch (innerError) {
                 console.error("Spin Logic Error:", innerError);
-                // 發生錯誤，強制解鎖以免卡死
                 setControlsDisabled(false);
                 spinBtn.disabled = false;
             }
