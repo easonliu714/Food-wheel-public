@@ -1,6 +1,6 @@
 // ================== 全域變數定義 ==================
-let places = []; // 輪盤上目前可用的店家 (動態變動)
-let allSearchResults = []; // 搜尋到的所有原始店家 (固定不變，用於列表顯示)
+let places = []; // 輪盤上目前可用的店家
+let allSearchResults = []; // 搜尋到的所有原始店家
 let hitCounts = {}; // 次數統計
 let userRatings = {}; // 個人評價
 let eliminatedIds = new Set(); // 淘汰名單
@@ -16,12 +16,12 @@ const keywordDict = {
     breakfast: "早餐 早午餐",
     lunch: "餐廳 小吃 午餐",
     afternoon_tea: "飲料 甜點 咖啡",
-    dinner: "餐廳 晚餐 小吃 火鍋",
+    dinner: "餐廳 晚餐 小吃 火鍋 夜市",
     late_night: "宵夜 鹽酥雞 清粥 滷味 炸物",
     noodles_rice: "麵 飯 水餃 壽司 快炒 合菜", 
     western_steak: "牛排 義大利麵 漢堡 披薩",
     dessert: "冰品 豆花 甜點 蛋糕",
-    all: "美食 餐廳 小吃" 
+    all: "美食 餐廳 小吃 夜市" 
 };
 
 // ================== 0. 教學內容 ==================
@@ -89,14 +89,17 @@ function showGuide(platform) {
 // ================== 1. 初始化 ==================
 
 window.onload = () => {
+    // 確保 Canvas 載入
     canvas = document.getElementById('wheel');
     if(canvas) ctx = canvas.getContext('2d');
 
+    // 載入評價
     const savedRatings = localStorage.getItem('food_wheel_user_ratings');
     if (savedRatings) {
         try { userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
     }
 
+    // 載入 API Key
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if (savedKey) {
         loadGoogleMapsScript(savedKey);
@@ -108,6 +111,7 @@ window.onload = () => {
         showGuide('desktop');
     }
 
+    // 綁定過濾器事件
     const filterCheckbox = document.getElementById('filterDislike');
     if (filterCheckbox) {
         filterCheckbox.addEventListener('change', () => {
@@ -120,6 +124,7 @@ function saveAndStart() {
     const inputKey = document.getElementById('userApiKey').value.trim();
     if (inputKey.length < 20) return alert("API Key 格式不正確");
     
+    // 儲存偏好
     const spinModeEl = document.getElementById('setupSpinMode');
     const spinModeVal = spinModeEl ? spinModeEl.value : 'repeat';
 
@@ -188,6 +193,7 @@ function applyPreferences() {
             if(prefs.maxTime) document.getElementById('maxTime').value = prefs.maxTime;
             if(prefs.priceLevel) document.getElementById('priceLevel').value = prefs.priceLevel;
             if(prefs.resultCount) document.getElementById('resultCount').value = prefs.resultCount;
+            // 套用到主畫面的選單
             if(prefs.spinMode && document.getElementById('spinMode')) {
                 document.getElementById('spinMode').value = prefs.spinMode;
             }
@@ -392,19 +398,13 @@ function processResults(origin, results) {
         });
 }
 
-// 【核心修正】刷新資料並更新 UI
 function refreshWheelData() {
     const filterDislikeEl = document.getElementById('filterDislike');
     const filterDislike = filterDislikeEl ? filterDislikeEl.checked : false;
     
-    // 重新過濾名單 (根據原始資料 + 淘汰名單 + 地雷設定)
     places = allSearchResults.filter(p => {
-        // 1. 如果在淘汰名單中 -> 移除
         if (eliminatedIds.has(p.place_id)) return false;
-        
-        // 2. 如果是地雷且開啟了過濾 -> 移除
         if (filterDislike && userRatings[p.place_id] === 'dislike') return false;
-        
         return true;
     });
 
@@ -466,7 +466,7 @@ function initResultList(list) {
         const tr = document.createElement('tr');
         tr.id = `row-${p.place_id}`; 
         
-        // 【關鍵】如果被淘汰或被過濾，加上刪除線樣式
+        // 增加 eliminated 樣式
         if (isEliminated || isFiltered) tr.classList.add('eliminated'); 
 
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}&query_place_id=${p.place_id}`;
@@ -518,7 +518,6 @@ function resetGame(fullReset) {
     }
 }
 
-// 鎖定/解鎖介面
 function setControlsDisabled(disabled) {
     const ids = ['filterDislike', 'spinMode', 'resultCount', 'mealType', 'geoBtn'];
     ids.forEach(id => {
@@ -584,14 +583,22 @@ function drawWheel() {
     });
 }
 
-// 【核心修正】按鈕點擊事件 - 提前鎖定狀態
+// 【核心修正】按鈕點擊事件：正確讀取 spinMode
 document.getElementById('spinBtn').onclick = () => {
     try {
         if (places.length === 0) return;
         
-        // 1. 立即讀取並鎖定當下的設定狀態 (避免動畫中被改)
-        const spinModeEl = document.getElementById('spinMode');
-        const spinMode = spinModeEl ? spinModeEl.value : 'repeat';
+        // 1. 【關鍵修正】優先讀取主畫面上的 spinMode 設定
+        let spinMode = 'repeat';
+        const spinModeEl = document.getElementById('spinMode'); // 改為 'spinMode'
+        
+        if (spinModeEl) {
+            spinMode = spinModeEl.value;
+        } else {
+            // 如果畫面沒載入，才從偏好讀取 (Fallback)
+            const prefs = JSON.parse(localStorage.getItem('food_wheel_prefs') || '{}');
+            if(prefs.spinMode) spinMode = prefs.spinMode;
+        }
         
         const spinBtn = document.getElementById('spinBtn');
         spinBtn.disabled = true; 
@@ -602,7 +609,6 @@ document.getElementById('spinBtn').onclick = () => {
         canvas.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
         canvas.style.transform = `rotate(${currentRotation}deg)`;
 
-        // 隱藏操作區
         const btnLike = document.getElementById('btnLike');
         const btnDislike = document.getElementById('btnDislike');
         const ratingText = document.getElementById('userPersonalRating');
@@ -613,46 +619,38 @@ document.getElementById('spinBtn').onclick = () => {
         setTimeout(() => {
             try {
                 const numOptions = places.length;
-                if (numOptions === 0) return;
+                if (numOptions === 0) throw new Error("No places");
 
                 const arcSize = 360 / numOptions;
                 const actualRotation = currentRotation % 360;
-                
                 let winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
                 if (winningIndex < 0) winningIndex += numOptions;
                 
                 const winner = places[winningIndex];
-                if(!winner) {
-                    console.error("Winner undefined");
-                    setControlsDisabled(false);
-                    spinBtn.disabled = false;
-                    return;
-                }
+                if(!winner) throw new Error("Winner undefined");
 
                 updateWinnerStatus(winner);
                 updateHitCountUI(winner.place_id);
 
-                // 使用剛開始讀取的 spinMode
+                // 使用開頭鎖定的 spinMode 變數判斷
                 if (spinMode === 'eliminate') {
                     eliminatedIds.add(winner.place_id); 
                     
-                    // 淘汰制：等待 2 秒後重繪
                     setTimeout(() => {
                         canvas.style.transition = 'none';
                         currentRotation = 0;
                         canvas.style.transform = `rotate(0deg)`;
                         
-                        refreshWheelData(); // 更新資料與 UI
-                        setControlsDisabled(false); // 解鎖
+                        refreshWheelData(); 
+                        setControlsDisabled(false); 
                     }, 2000); 
                 } else {
-                    // 重複模式：直接解鎖
                     setControlsDisabled(false);
                     spinBtn.disabled = false;
-                    refreshWheelData(); // 僅更新列表高亮
+                    refreshWheelData(); 
                 }
-            } catch (innerError) {
-                console.error("Spin Logic Error:", innerError);
+            } catch (error) {
+                console.error("Spin Logic Error:", error);
                 setControlsDisabled(false);
                 spinBtn.disabled = false;
             }
@@ -807,6 +805,20 @@ function getDetailedOpeningStatus(place) {
     const dayStr = days[targetEvent.day];
     const timeStr = formatTime(targetEvent.time);
     return isOpen ? `🟢 營業中，預計 (${dayStr} ${timeStr}) 結束營業` : `🔴 已打烊，預計 (${dayStr} ${timeStr}) 開始營業`;
+}
+
+function updateHitCountUI(placeId) {
+    if (!hitCounts[placeId]) hitCounts[placeId] = 0;
+    hitCounts[placeId]++;
+    
+    const row = document.getElementById(`row-${placeId}`);
+    if (row) {
+        const countCell = row.querySelector('.hit-count');
+        if (countCell) countCell.innerText = hitCounts[placeId];
+        
+        row.classList.add('active-winner');
+        setTimeout(() => row.classList.remove('active-winner'), 2000); 
+    }
 }
 
 // 綁定全域函式
