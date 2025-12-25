@@ -14,14 +14,14 @@ let ctx = null;
 // 關鍵字字典
 const keywordDict = {
     breakfast: "早餐 早午餐",
-    lunch: "餐廳 小吃 午餐",
+    lunch: "餐廳 小吃 午餐 異國料理",
     afternoon_tea: "飲料 甜點 咖啡",
     dinner: "餐廳 晚餐 小吃 火鍋 夜市",
-    late_night: "宵夜 鹽酥雞 清粥 滷味 炸物",
-    noodles_rice: "麵 飯 水餃 壽司 快炒 合菜", 
-    western_steak: "牛排 義大利麵 漢堡 披薩",
+    late_night: "宵夜 鹽酥雞 清粥 滷味 炸物 夜市",
+    noodles_rice: "麵 飯 水餃 壽司 快炒 合菜 異國料理 中式", 
+    western_steak: "牛排 義大利麵 漢堡 披薩 吃到飽 西式",
     dessert: "冰品 豆花 甜點 蛋糕",
-    all: "美食 餐廳 小吃 夜市" 
+    all: "美食 餐廳 小吃 夜市 料理 吃到飽" 
 };
 
 // ================== 0. 教學內容 ==================
