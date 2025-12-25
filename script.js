@@ -7,11 +7,11 @@ let eliminatedIds = new Set(); // 淘汰名單
 let currentRotation = 0;
 let userCoordinates = null; 
 
-// Canvas 相關變數 (改為動態獲取，避免初始化錯誤)
+// Canvas 相關
 let canvas = null;
 let ctx = null;
 
-// 定義預設關鍵字
+// 關鍵字字典
 const keywordDict = {
     breakfast: "早餐 早午餐",
     lunch: "餐廳 小吃 午餐",
@@ -24,7 +24,7 @@ const keywordDict = {
     all: "美食 餐廳 小吃" 
 };
 
-// ================== 0. 教學內容與工具函式 ==================
+// ================== 0. 教學內容 ==================
 const commonApiList = `
     <ul class="api-list">
         <li>✅ Maps JavaScript API</li>
@@ -89,17 +89,17 @@ function showGuide(platform) {
 // ================== 1. 初始化 ==================
 
 window.onload = () => {
-    // 初始化 Canvas
+    // 檢查 HTML 完整性 (除錯用)
+    checkRequiredElements();
+
     canvas = document.getElementById('wheel');
     if(canvas) ctx = canvas.getContext('2d');
 
-    // 載入評價
     const savedRatings = localStorage.getItem('food_wheel_user_ratings');
     if (savedRatings) {
         try { userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
     }
 
-    // 載入 API Key
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if (savedKey) {
         loadGoogleMapsScript(savedKey);
@@ -111,7 +111,7 @@ window.onload = () => {
         showGuide('desktop');
     }
 
-    // 綁定過濾器事件
+    // 綁定過濾器
     const filterCheckbox = document.getElementById('filterDislike');
     if (filterCheckbox) {
         filterCheckbox.addEventListener('change', () => {
@@ -120,20 +120,31 @@ window.onload = () => {
     }
 };
 
-// ... (省略部分通用函式，如 saveAndStart, resetApiKey, editPreferences, loadGoogleMapsScript, initApp, applyPreferences) ...
-// 為了完整性，這些函式我會保留在下方，請確保複製完整
+// 【新增】檢查頁面是否缺少必要元素
+function checkRequiredElements() {
+    const ids = ['spinBtn', 'spinMode', 'filterDislike', 'storeName', 'resultsTable'];
+    const missing = ids.filter(id => !document.getElementById(id));
+    if (missing.length > 0) {
+        console.error("Missing HTML Elements:", missing);
+        // 如果是在設定頁，某些元素隱藏是正常的，所以只在 console 警告
+    }
+}
 
 function saveAndStart() {
     const inputKey = document.getElementById('userApiKey').value.trim();
     if (inputKey.length < 20) return alert("API Key 格式不正確");
     
+    // 這裡使用 setupSpinMode (設定頁的 ID)
+    const spinModeEl = document.getElementById('setupSpinMode');
+    const spinModeVal = spinModeEl ? spinModeEl.value : 'repeat';
+
     const userPrefs = {
         minRating: document.getElementById('setupMinRating').value,
         transport: document.getElementById('setupTransport').value,
         maxTime: document.getElementById('setupMaxTime').value,
         priceLevel: document.getElementById('setupPriceLevel').value,
         resultCount: document.getElementById('setupResultCount').value,
-        spinMode: document.getElementById('setupSpinMode').value 
+        spinMode: spinModeVal
     };
     
     localStorage.setItem('food_wheel_api_key', inputKey);
@@ -192,10 +203,15 @@ function applyPreferences() {
             if(prefs.maxTime) document.getElementById('maxTime').value = prefs.maxTime;
             if(prefs.priceLevel) document.getElementById('priceLevel').value = prefs.priceLevel;
             if(prefs.resultCount) document.getElementById('resultCount').value = prefs.resultCount;
-            if(prefs.spinMode) document.getElementById('spinMode').value = prefs.spinMode; 
+            // 這裡使用 spinMode (主畫面的 ID)
+            if(prefs.spinMode && document.getElementById('spinMode')) {
+                document.getElementById('spinMode').value = prefs.spinMode;
+            }
         } catch (e) { console.error(e); }
     }
 }
+
+// ================== 2. 核心邏輯 ==================
 
 function autoSelectMealType() {
     const hour = new Date().getHours();
@@ -396,12 +412,14 @@ function refreshWheelData() {
     const filterDislikeEl = document.getElementById('filterDislike');
     const filterDislike = filterDislikeEl ? filterDislikeEl.checked : false;
     
+    // 重新過濾
     places = allSearchResults.filter(p => {
         if (eliminatedIds.has(p.place_id)) return false;
         if (filterDislike && userRatings[p.place_id] === 'dislike') return false;
         return true;
     });
 
+    // 更新搜尋按鈕文字
     const searchBtn = document.querySelector('.search-btn');
     if(searchBtn && !searchBtn.disabled && searchBtn.innerText.includes("搜尋完成")) {
         searchBtn.innerText = `搜尋完成 (共 ${places.length} 間)`;
@@ -480,6 +498,7 @@ function initResultList(list) {
     });
 }
 
+// 重置遊戲
 function resetGame(fullReset) {
     currentRotation = 0; 
     canvas.style.transform = `rotate(0deg)`;
@@ -505,9 +524,18 @@ function resetGame(fullReset) {
         places = [];
         allSearchResults = [];
         eliminatedIds.clear();
-        if(ctx) ctx.clearRect(0, 0, 400, 400); // 這裡加了 ctx 檢查
+        if(ctx) ctx.clearRect(0, 0, 400, 400);
         enableSpinButton(0);
     }
+}
+
+// 【控制項鎖定/解鎖】防止在轉動時改變設定
+function setControlsDisabled(disabled) {
+    const ids = ['spinBtn', 'filterDislike', 'spinMode', 'resultCount', 'mealType', 'geoBtn'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.disabled = disabled;
+    });
 }
 
 function enableSpinButton(count) {
@@ -523,6 +551,7 @@ function enableSpinButton(count) {
         spinBtn.disabled = true;
         spinBtn.style.opacity = "0.5";
         spinBtn.style.cursor = "not-allowed";
+        
         if (allSearchResults.length > 0) {
             spinBtn.innerText = "商家已全數濾除/淘汰";
         } else {
@@ -533,9 +562,10 @@ function enableSpinButton(count) {
 
 function drawWheel() {
     const numOptions = places.length;
-    if(ctx) ctx.clearRect(0, 0, 400, 400); // 加強檢查
+    if(ctx) ctx.clearRect(0, 0, 400, 400);
     if (numOptions === 0) return;
     
+    // 使用 Radians 計算
     const arcSize = (2 * Math.PI) / numOptions;
     const startAngleOffset = -Math.PI / 2;
 
@@ -567,15 +597,15 @@ function drawWheel() {
     });
 }
 
-// 【關鍵修正】按鈕點擊事件，加入除錯標記與 Try-Catch
+// 【核心修正】抽籤邏輯 (加入鎖定機制與錯誤處理)
 document.getElementById('spinBtn').onclick = () => {
-    let debugStep = "Start"; // 用來標記執行到哪一步
+    let debugStep = "Start";
     
     try {
         if (places.length === 0) return;
         
-        const spinBtn = document.getElementById('spinBtn');
-        spinBtn.disabled = true; 
+        // 1. 鎖定介面
+        setControlsDisabled(true);
 
         debugStep = "Animation Start";
         const spinAngle = Math.floor(Math.random() * 1800) + 1800; 
@@ -599,50 +629,47 @@ document.getElementById('spinBtn').onclick = () => {
 
                 const arcSize = 360 / numOptions;
                 const actualRotation = currentRotation % 360;
-                const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
-                const winner = places[winningIndex];
-
-                if(!winner) throw new Error("贏家物件為 undefined");
-
-                debugStep = "Update Winner Status";
-                updateWinnerStatus(winner);
                 
-                debugStep = "Update Hit Count";
+                // 更嚴謹的索引計算
+                let winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
+                if (winningIndex < 0) winningIndex += numOptions; // 防止負數
+                
+                const winner = places[winningIndex];
+                if(!winner) throw new Error(`Winner undefined (Index: ${winningIndex}, Len: ${numOptions})`);
+
+                debugStep = "Update UI";
+                updateWinnerStatus(winner);
                 updateHitCountUI(winner.place_id);
 
-                debugStep = "Checking Spin Mode";
                 const spinModeEl = document.getElementById('spinMode');
                 const spinMode = spinModeEl ? spinModeEl.value : 'repeat';
                 
                 if (spinMode === 'eliminate') {
-                    debugStep = "Processing Elimination";
                     eliminatedIds.add(winner.place_id); 
                     
                     setTimeout(() => {
-                        // 這裡不加 try-catch，因為外層已無法捕獲，但重繪相對安全
                         canvas.style.transition = 'none';
                         currentRotation = 0;
                         canvas.style.transform = `rotate(0deg)`;
-                        refreshWheelData(); 
+                        refreshWheelData(); // 此處會自動判斷按鈕狀態
+                        setControlsDisabled(false); // 解鎖介面
                     }, 2000); 
                 } else {
-                    debugStep = "Resetting Button";
-                    spinBtn.disabled = false;
-                    // refreshWheelData(); // 重複模式不需重繪，避免視覺跳動
+                    // 重複模式：直接解鎖
+                    setControlsDisabled(false);
+                    refreshWheelData(); // 更新列表狀態但不重繪轉盤
                 }
             } catch (innerError) {
                 console.error("Spin Logic Error:", innerError);
-                alert(`抽籤邏輯錯誤 (步驟: ${debugStep}): ${innerError.message}`);
-                // 發生錯誤時務必解鎖按鈕，避免卡死
-                if(spinBtn) spinBtn.disabled = false;
+                alert(`抽籤錯誤 (${debugStep}): ${innerError.message}`);
+                setControlsDisabled(false); // 發生錯誤務必解鎖
             }
         }, 4000);
 
     } catch (e) {
         console.error("Spin Init Error:", e);
-        alert(`啟動抽籤失敗 (步驟: ${debugStep}): ${e.message}`);
-        const spinBtn = document.getElementById('spinBtn');
-        if(spinBtn) spinBtn.disabled = false;
+        alert(`啟動失敗 (${debugStep}): ${e.message}`);
+        setControlsDisabled(false);
     }
 };
 
@@ -652,7 +679,6 @@ function handleUserRating(placeId, type) {
     
     localStorage.setItem('food_wheel_user_ratings', JSON.stringify(userRatings));
     
-    // 更新按鈕 UI
     const btnLike = document.getElementById('btnLike');
     const btnDislike = document.getElementById('btnDislike');
     if(btnLike) btnLike.classList.remove('active');
@@ -693,7 +719,6 @@ function updateWinnerStatus(winner) {
     const btnDislike = document.getElementById('btnDislike');
     const ratingText = document.getElementById('userPersonalRating');
     
-    // 安全操作 DOM
     if(btnLike) {
         btnLike.style.display = 'inline-block';
         btnLike.classList.remove('active');
