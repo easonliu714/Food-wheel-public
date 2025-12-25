@@ -1,6 +1,5 @@
-
 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; background: #f4f7f6; margin: 0; min-height: 100vh; }
-.container { text-align: center; max-width: 900px; /* 放寬寬度以容納左右配置 */ width: 100%; padding: 20px; box-sizing: border-box; background: #f4f7f6; }
+.container { text-align: center; max-width: 900px; width: 100%; padding: 20px; box-sizing: border-box; background: #f4f7f6; }
 
 /* 標題與標籤 */
 h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -79,7 +78,7 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .search-btn { width: 100%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 5px; font-size: 1rem; cursor: pointer; margin-top: 5px; transition: background 0.3s; }
 .search-btn:hover { background: #2980b9; }
 
-/* ============ 新增：遊戲區域佈局 ============ */
+/* ============ 遊戲區域佈局 ============ */
 .game-layout {
     display: flex;
     flex-wrap: wrap;
@@ -113,6 +112,18 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 #resultsTable tr:last-child td { border-bottom: none; }
 #resultsTable tr.active-winner { background-color: #d5f5e3; font-weight: bold; } /* 選中時高亮 */
 #resultsTable tr.eliminated { color: #aaa; text-decoration: line-through; background-color: #fcfcfc; } /* 淘汰樣式 */
+
+/* 新增：列表中的店家連結樣式 */
+.store-link {
+    color: #3498db;
+    text-decoration: none;
+    font-weight: bold;
+    cursor: pointer;
+}
+.store-link:hover {
+    text-decoration: underline;
+    color: #2980b9;
+}
 
 /* 右側：輪盤與結果區 */
 .wheel-section {
