@@ -90,12 +90,14 @@
             <p class="privacy-note">🔒 您的 Key 與偏好設定僅儲存於瀏覽器 (LocalStorage)。</p>
         </div>
     </div>
-
-
+    
     <div id="app-screen" class="container" style="display: none;">
         <div class="header-bar">
             <h1>🍴 今天吃什麼？</h1>
-            <button onclick="clearKey()" class="logout-btn">⚙️ 設定/更換Key</button>
+            <div class="header-actions">
+                <button onclick="editPreferences()" class="header-btn prefs-btn">⚙️ 偏好設定</button>
+                <button onclick="resetApiKey()" class="header-btn key-btn">🔑 重設金鑰</button>
+            </div>
         </div>
         
         <div class="location-box">
