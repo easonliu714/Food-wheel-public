@@ -12,14 +12,14 @@ const ctx = canvas.getContext('2d');
 // 定義預設關鍵字字典
 const keywordDict = {
     breakfast: "早餐 早午餐",
-    lunch: "餐廳 小吃 午餐 異國料理",
+    lunch: "餐廳 小吃 午餐",
     afternoon_tea: "飲料 甜點 咖啡",
-    dinner: "餐廳 晚餐 小吃 火鍋 夜市",
+    dinner: "餐廳 晚餐 小吃 火鍋",
     late_night: "宵夜 鹽酥雞 清粥 滷味 炸物",
-    noodles_rice: "麵 飯 水餃 壽司 快炒 合菜 中式", 
-    western_steak: "牛排 義大利麵 漢堡 披薩 吃到飽 西式",
+    noodles_rice: "麵 飯 水餃 壽司 快炒 合菜", 
+    western_steak: "牛排 義大利麵 漢堡 披薩",
     dessert: "冰品 豆花 甜點 蛋糕",
-    all: "美食 餐廳 小吃 夜市 吃到飽" 
+    all: "美食 餐廳 小吃" 
 };
 
 // ================== 0. 教學內容資料庫 ==================
@@ -86,11 +86,13 @@ function showGuide(platform) {
 // ================== 1. 初始化與事件綁定 ==================
 
 window.onload = () => {
+    // 1. 載入評價
     const savedRatings = localStorage.getItem('food_wheel_user_ratings');
     if (savedRatings) {
         try { userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
     }
 
+    // 2. 載入 API Key
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if (savedKey) {
         loadGoogleMapsScript(savedKey);
@@ -100,6 +102,7 @@ window.onload = () => {
         showGuide('desktop');
     }
 
+    // 3. 綁定過濾器事件
     const filterCheckbox = document.getElementById('filterDislike');
     if (filterCheckbox) {
         filterCheckbox.addEventListener('change', () => {
@@ -164,7 +167,7 @@ function initApp() {
     applyPreferences();
     autoSelectMealType();
     initLocation();
-    resetButtons();
+    resetGame(true); // 初始化遊戲狀態
 }
 
 function applyPreferences() {
@@ -243,6 +246,9 @@ function handleSearch() {
     if (!addrInput) return alert("請輸入地址");
     if (!keywordsRaw.trim()) return alert("請輸入關鍵字");
 
+    // 搜尋開始時，重置遊戲狀態
+    resetGame(false); 
+
     if(spinBtn) {
         spinBtn.disabled = true;
         spinBtn.innerText = "資料載入中...";
@@ -298,14 +304,16 @@ function startSearch(location, keywordsRaw) {
         let combinedResults = [].concat(...resultsArray);
         if (combinedResults.length === 0) {
             alert("附近找不到符合條件的店家");
-            resetButtons();
+            btn.innerText = "🔄 開始搜尋店家";
+            btn.disabled = false;
             return;
         }
         processResults(location, combinedResults);
     }).catch(err => {
         console.error(err);
         alert("搜尋錯誤");
-        resetButtons();
+        btn.innerText = "🔄 開始搜尋店家";
+        btn.disabled = false;
     });
 }
 
@@ -330,7 +338,8 @@ function processResults(origin, results) {
 
     if (filtered.length === 0) {
         alert(`無符合 ${minRating} 星以上的店家`);
-        resetButtons();
+        btn.innerText = "🔄 開始搜尋店家";
+        btn.disabled = false;
         return;
     }
 
@@ -349,7 +358,8 @@ function processResults(origin, results) {
 
             if (validPlaces.length === 0) {
                 alert(`${maxTime} 分鐘內無符合店家`);
-                resetButtons();
+                btn.innerText = "🔄 開始搜尋店家";
+                btn.disabled = false;
                 return;
             }
 
@@ -360,35 +370,39 @@ function processResults(origin, results) {
             hitCounts = {};
             allSearchResults.forEach(p => hitCounts[p.place_id] = 0);
 
-            refreshWheelData(); // 計算 places 並更新列表
+            refreshWheelData(); 
             
-            // 【修復】搜尋完成後，將按鈕文字更新為符合數量的店家
             btn.innerText = `搜尋完成 (共 ${places.length} 間)`;
             btn.disabled = false;
         })
         .catch(err => {
             console.error(err);
             alert("路程計算失敗");
-            resetButtons();
+            btn.innerText = "🔄 開始搜尋店家";
+            btn.disabled = false;
         });
 }
 
+// 【核心修正】刷新輪盤資料 (確保按鈕狀態正確更新)
 function refreshWheelData() {
     const filterDislike = document.getElementById('filterDislike').checked;
     
+    // 重新過濾名單
     places = allSearchResults.filter(p => {
         if (eliminatedIds.has(p.place_id)) return false;
         if (filterDislike && userRatings[p.place_id] === 'dislike') return false;
         return true;
     });
 
-    // 【修復】若有勾選過濾，按鈕文字也要即時更新
-    const btn = document.querySelector('.search-btn');
-    if(btn) btn.innerText = `搜尋完成 (共 ${places.length} 間)`;
+    // 更新搜尋按鈕文字 (保持即時性)
+    const searchBtn = document.querySelector('.search-btn');
+    if(searchBtn && !searchBtn.disabled && searchBtn.innerText.includes("搜尋完成")) {
+        searchBtn.innerText = `搜尋完成 (共 ${places.length} 間)`;
+    }
 
     initResultList(allSearchResults);
     drawWheel();
-    enableSpinButton(places.length);
+    enableSpinButton(places.length); // 根據新的數量決定按鈕狀態
 }
 
 function getDistances(origin, destinations, mode) {
@@ -432,6 +446,7 @@ function initResultList(list) {
     list.forEach(p => {
         const isEliminated = eliminatedIds.has(p.place_id);
         const isDislike = userRatings[p.place_id] === 'dislike';
+        // 如果開啟過濾且是地雷，也視為"視覺上的淘汰"
         const isFiltered = filterDislike && isDislike;
 
         const tr = document.createElement('tr');
@@ -457,50 +472,50 @@ function initResultList(list) {
     });
 }
 
-function resetButtons() {
-    const btn = document.querySelector('.search-btn');
-    if(btn) { btn.innerText = "🔄 開始搜尋店家"; btn.disabled = false; }
+// 【新增】重置遊戲狀態 (包含角度歸零)
+function resetGame(fullReset) {
+    currentRotation = 0; // 只有在全新搜尋或初始化時才歸零
+    canvas.style.transform = `rotate(0deg)`;
+    canvas.style.transition = 'none'; // 避免歸零時旋轉
     
-    if (allSearchResults.length === 0) {
-        const spinBtn = document.getElementById('spinBtn');
-        if(spinBtn) {
-            spinBtn.disabled = true;
-            spinBtn.style.opacity = "0.5";
-            spinBtn.style.cursor = "not-allowed";
-            spinBtn.innerText = "請先搜尋店家";
-        }
-    } else {
-        enableSpinButton(places.length); 
+    document.getElementById('storeName').innerText = "點擊輪盤開始抉擇";
+    document.getElementById('storeRating').innerText = "";
+    document.getElementById('storeAddress').innerText = "";
+    document.getElementById('storeDistance').innerText = "";
+    document.getElementById('userPersonalRating').innerText = ""; 
+    document.getElementById('menuLink').style.display = "none";
+    document.getElementById('btnLike').style.display = 'none'; 
+    document.getElementById('btnDislike').style.display = 'none';
+
+    if(fullReset) {
+        places = [];
+        allSearchResults = [];
+        eliminatedIds.clear();
+        ctx.clearRect(0, 0, 400, 400);
+        enableSpinButton(0);
     }
 }
 
+// 【修復】解耦：此函式現在只負責按鈕狀態，不再隨意重置轉盤角度
 function enableSpinButton(count) {
     const spinBtn = document.getElementById('spinBtn');
-    if(spinBtn) {
-        if (count > 0) {
-            spinBtn.disabled = false;
-            spinBtn.style.opacity = "1";
-            spinBtn.style.cursor = "pointer";
-            spinBtn.innerText = "開始抽籤";
+    if(!spinBtn) return;
+
+    if (count > 0) {
+        spinBtn.disabled = false;
+        spinBtn.style.opacity = "1";
+        spinBtn.style.cursor = "pointer";
+        spinBtn.innerText = "開始抽籤";
+    } else {
+        spinBtn.disabled = true;
+        spinBtn.style.opacity = "0.5";
+        spinBtn.style.cursor = "not-allowed";
+        
+        if (allSearchResults.length > 0) {
+            spinBtn.innerText = "商家已全數濾除/淘汰";
         } else {
-            spinBtn.disabled = true;
-            spinBtn.style.opacity = "0.5";
-            spinBtn.style.cursor = "not-allowed";
-            spinBtn.innerText = (allSearchResults.length > 0) ? "商家已全數濾除/淘汰" : "請先搜尋店家";
+            spinBtn.innerText = "請先搜尋店家";
         }
-    }
-    
-    if(count === allSearchResults.length && eliminatedIds.size === 0) {
-        currentRotation = 0;
-        canvas.style.transform = `rotate(0deg)`;
-        document.getElementById('storeName').innerText = "點擊輪盤開始抉擇";
-        document.getElementById('storeRating').innerText = "";
-        document.getElementById('storeAddress').innerText = "";
-        document.getElementById('storeDistance').innerText = "";
-        document.getElementById('userPersonalRating').innerText = ""; 
-        document.getElementById('menuLink').style.display = "none";
-        document.getElementById('btnLike').style.display = 'none'; 
-        document.getElementById('btnDislike').style.display = 'none';
     }
 }
 
@@ -542,41 +557,61 @@ document.getElementById('spinBtn').onclick = () => {
     if (places.length === 0) return;
     
     const spinBtn = document.getElementById('spinBtn');
-    spinBtn.disabled = true; 
+    spinBtn.disabled = true; // 鎖定按鈕
 
+    // 計算旋轉
     const spinAngle = Math.floor(Math.random() * 1800) + 1800; 
     currentRotation += spinAngle;
     canvas.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
     canvas.style.transform = `rotate(${currentRotation}deg)`;
 
+    // 隱藏操作區，避免動畫中操作
     document.getElementById('btnLike').style.display = 'none';
     document.getElementById('btnDislike').style.display = 'none';
     document.getElementById('userPersonalRating').innerText = "";
 
+    // 4秒後動畫結束
     setTimeout(() => {
-        const numOptions = places.length;
-        const arcSize = 360 / numOptions;
-        const actualRotation = currentRotation % 360;
-        const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
-        const winner = places[winningIndex];
+        // 【容錯機制】使用 try-catch 確保發生錯誤時也能解鎖按鈕
+        try {
+            const numOptions = places.length;
+            if (numOptions === 0) throw new Error("No places left");
 
-        updateWinnerStatus(winner);
-        updateHitCountUI(winner.place_id);
+            const arcSize = 360 / numOptions;
+            const actualRotation = currentRotation % 360;
+            const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
+            const winner = places[winningIndex];
 
-        const spinMode = document.getElementById('spinMode').value;
-        if (spinMode === 'eliminate') {
-            eliminatedIds.add(winner.place_id); 
-            setTimeout(() => {
-                canvas.style.transition = 'none';
-                currentRotation = 0;
-                canvas.style.transform = `rotate(0deg)`;
-                refreshWheelData(); 
-            }, 2000); 
-        } else {
-            refreshWheelData(); 
+            updateWinnerStatus(winner);
+            updateHitCountUI(winner.place_id);
+
+            const spinMode = document.getElementById('spinMode').value;
+            
+            if (spinMode === 'eliminate') {
+                eliminatedIds.add(winner.place_id); 
+                
+                // 淘汰制需要視覺延遲，再刷新轉盤
+                setTimeout(() => {
+                    // 重置角度 (僅在淘汰制重繪前做，避免視覺跳動)
+                    canvas.style.transition = 'none';
+                    currentRotation = 0;
+                    canvas.style.transform = `rotate(0deg)`;
+                    
+                    refreshWheelData(); // 這會呼叫 enableSpinButton
+                }, 2000); 
+            } else {
+                // 重複抽取模式：不需要重繪輪盤，直接解鎖
+                // refreshWheelData(); // 不需要呼叫，除非我們要更新列表狀態? 
+                // 其實列表狀態已經在 updateHitCountUI 更新了。
+                // 為了保險起見 (例如過濾條件變更)，還是呼叫一下，但不會造成角度重置
+                refreshWheelData();
+                spinBtn.disabled = false; 
+            }
+        } catch (error) {
+            console.error("Spin Error:", error);
+            alert("發生錯誤，按鈕已重置");
             spinBtn.disabled = false;
         }
-
     }, 4000);
 };
 
@@ -586,21 +621,24 @@ function handleUserRating(placeId, type) {
     
     localStorage.setItem('food_wheel_user_ratings', JSON.stringify(userRatings));
     
+    // 更新按鈕 UI
     const btnLike = document.getElementById('btnLike');
     const btnDislike = document.getElementById('btnDislike');
-    btnLike.classList.remove('active');
-    btnDislike.classList.remove('active');
+    if(btnLike) btnLike.classList.remove('active');
+    if(btnDislike) btnDislike.classList.remove('active');
     
     let text = "";
     if (userRatings[placeId] === 'like') {
-        btnLike.classList.add('active');
+        if(btnLike) btnLike.classList.add('active');
         text = "👍 您標記為：再次回訪";
     } else if (userRatings[placeId] === 'dislike') {
-        btnDislike.classList.add('active');
+        if(btnDislike) btnDislike.classList.add('active');
         text = "💣 您標記為：踩雷";
     }
-    document.getElementById('userPersonalRating').innerText = text;
+    const rateText = document.getElementById('userPersonalRating');
+    if(rateText) rateText.innerText = text;
     
+    // 評價改變可能影響過濾，因此必須刷新輪盤
     refreshWheelData();
 }
 
@@ -629,6 +667,7 @@ function updateWinnerStatus(winner) {
     btnDislike.classList.remove('active');
     ratingText.innerText = "";
 
+    // 使用箭頭函式綁定，避免閉包問題
     btnLike.onclick = () => handleUserRating(winner.place_id, 'like');
     btnDislike.onclick = () => handleUserRating(winner.place_id, 'dislike');
 
