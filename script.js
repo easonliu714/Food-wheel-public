@@ -12,12 +12,12 @@ const ctx = canvas.getContext('2d');
 // 定義預設關鍵字字典
 const keywordDict = {
     breakfast: "早餐 早午餐",
-    lunch: "餐廳 小吃 午餐 異國料理 吃到飽",
+    lunch: "餐廳 小吃 午餐 異國料理",
     afternoon_tea: "飲料 甜點 咖啡",
     dinner: "餐廳 晚餐 小吃 火鍋 夜市",
     late_night: "宵夜 鹽酥雞 清粥 滷味 炸物",
-    noodles_rice: "麵 飯 水餃 壽司 快炒 合菜", 
-    western_steak: "牛排 義大利麵 漢堡 披薩 吃到飽",
+    noodles_rice: "麵 飯 水餃 壽司 快炒 合菜 中式", 
+    western_steak: "牛排 義大利麵 漢堡 披薩 吃到飽 西式",
     dessert: "冰品 豆花 甜點 蛋糕",
     all: "美食 餐廳 小吃 夜市 吃到飽" 
 };
@@ -86,15 +86,11 @@ function showGuide(platform) {
 // ================== 1. 初始化與事件綁定 ==================
 
 window.onload = () => {
-    // 1. 先載入使用者評價記錄 (最優先)
     const savedRatings = localStorage.getItem('food_wheel_user_ratings');
     if (savedRatings) {
-        try {
-            userRatings = JSON.parse(savedRatings);
-        } catch(e) { console.error("Ratings load error", e); }
+        try { userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
     }
 
-    // 2. 檢查 API Key
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if (savedKey) {
         loadGoogleMapsScript(savedKey);
@@ -104,7 +100,6 @@ window.onload = () => {
         showGuide('desktop');
     }
 
-    // 3. 綁定 Filter Checkbox 事件
     const filterCheckbox = document.getElementById('filterDislike');
     if (filterCheckbox) {
         filterCheckbox.addEventListener('change', () => {
@@ -153,11 +148,9 @@ function loadGoogleMapsScript(apiKey) {
     script.async = true;
     script.defer = true;
     script.onload = () => {
-        // API 載入成功後，才顯示 APP 畫面並執行初始化
         document.getElementById('setup-screen').style.display = 'none';
         document.getElementById('app-screen').style.display = 'block';
-        
-        initApp(); // 統一初始化入口
+        initApp(); 
     };
     script.onerror = () => {
         alert("API 載入失敗，請檢查 Key");
@@ -167,12 +160,11 @@ function loadGoogleMapsScript(apiKey) {
     document.head.appendChild(script);
 }
 
-// 【核心修改】統一初始化流程，確保執行順序正確
 function initApp() {
-    applyPreferences();   // 1. 套用使用者偏好 (交通、預算等)
-    autoSelectMealType(); // 2. 依時間自動選擇餐點 (並更新關鍵字)
-    initLocation();       // 3. 抓取目前定位
-    resetButtons();       // 4. 重置按鈕狀態
+    applyPreferences();
+    autoSelectMealType();
+    initLocation();
+    resetButtons();
 }
 
 function applyPreferences() {
@@ -204,7 +196,6 @@ function autoSelectMealType() {
     const mealSelect = document.getElementById('mealType');
     if(mealSelect) {
         mealSelect.value = type;
-        // 【重要】必須手動觸發 updateKeywords，因為程式改值不會觸發 onchange
         updateKeywords(); 
     }
 }
@@ -223,7 +214,7 @@ function initLocation() {
     const detailDisplay = document.getElementById('detailedAddressDisplay');
     
     addrInput.value = "定位中...";
-    if(detailDisplay) detailDisplay.style.display = 'none'; // 重置詳細地址顯示
+    if(detailDisplay) detailDisplay.style.display = 'none';
 
     if (!navigator.geolocation) return alert("瀏覽器不支援定位");
 
@@ -369,9 +360,10 @@ function processResults(origin, results) {
             hitCounts = {};
             allSearchResults.forEach(p => hitCounts[p.place_id] = 0);
 
-            refreshWheelData(); 
+            refreshWheelData(); // 計算 places 並更新列表
             
-            btn.innerText = "🔄 開始搜尋店家";
+            // 【修復】搜尋完成後，將按鈕文字更新為符合數量的店家
+            btn.innerText = `搜尋完成 (共 ${places.length} 間)`;
             btn.disabled = false;
         })
         .catch(err => {
@@ -389,6 +381,10 @@ function refreshWheelData() {
         if (filterDislike && userRatings[p.place_id] === 'dislike') return false;
         return true;
     });
+
+    // 【修復】若有勾選過濾，按鈕文字也要即時更新
+    const btn = document.querySelector('.search-btn');
+    if(btn) btn.innerText = `搜尋完成 (共 ${places.length} 間)`;
 
     initResultList(allSearchResults);
     drawWheel();
@@ -465,7 +461,6 @@ function resetButtons() {
     const btn = document.querySelector('.search-btn');
     if(btn) { btn.innerText = "🔄 開始搜尋店家"; btn.disabled = false; }
     
-    // 初始化時，如果沒有搜尋結果，轉盤按鈕應該是鎖定的
     if (allSearchResults.length === 0) {
         const spinBtn = document.getElementById('spinBtn');
         if(spinBtn) {
