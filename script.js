@@ -3,6 +3,7 @@ let places = []; // 輪盤上目前可用的店家 (會隨淘汰減少)
 let allSearchResults = []; // 搜尋到的所有原始店家 (列表用，永遠保留)
 let hitCounts = {}; // 記錄每個 place_id 被轉到的次數
 let userRatings = {}; // 使用者個人評價 (from LocalStorage)
+let eliminatedIds = new Set(); // 記錄被淘汰的店家 ID
 let currentRotation = 0;
 let userCoordinates = null; 
 const canvas = document.getElementById('wheel');
@@ -35,158 +36,87 @@ const guideData = {
     desktop: {
         title: "💻 電腦版申請步驟 (推薦使用)",
         steps: [
-            {
-                title: "1. 登入 Google Cloud",
-                desc: "使用 Chrome 瀏覽器前往 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud Console</a> 並登入您的 Google 帳號。",
-                img: './images/desktop_1.jpg' 
-            },
-            {
-                title: "2. 建立新專案",
-                desc: "點擊左上角的專案選單，選擇「建立新專案」。輸入專案名稱 (如 FoodWheel) 並建立。",
-                img: './images/desktop_2.jpg'
-            },
-            {
-                title: "3. 綁定結算帳戶 (免費額度)",
-                desc: "前往左側選單 (☰) 的「帳單 (Billing)」>「付款方式」。綁定信用卡以驗證身分 (Google 每月贈送 $200 美金額度，個人使用通常完全免費)。",
-                img: './images/desktop_3.jpg'
-            },
-            {
-                title: "4. 啟用 4 項必要 API",
-                desc: "左側選單(☰) 前往「API 和服務」>「啟用 API 和服務」，搜尋並啟用以下 4 個服務：" + commonApiList,
-                img: './images/desktop_4.jpg'
-            },
-            {
-                title: "5. 取得 API Key",
-                desc: "左側選單前往「憑證 (Credentials)」，點擊「建立憑證」>「API 金鑰」。複製該金鑰並貼到下方的輸入框。",
-                img: './images/desktop_5.jpg'
-            }
+            { title: "1. 登入 Google Cloud", desc: "使用 Chrome 瀏覽器前往 Google Cloud Console 並登入。", img: './images/desktop_1.jpg' },
+            { title: "2. 建立新專案", desc: "點擊左上角專案選單，建立新專案。", img: './images/desktop_2.jpg' },
+            { title: "3. 綁定結算帳戶", desc: "前往「帳單 (Billing)」綁定信用卡 (享每月 $200 免費額度)。", img: './images/desktop_3.jpg' },
+            { title: "4. 啟用 4 項 API", desc: "前往「API 和服務」啟用：" + commonApiList, img: './images/desktop_4.jpg' },
+            { title: "5. 取得 API Key", desc: "前往「憑證 (Credentials)」建立 API Key 並複製。", img: './images/desktop_5.jpg' }
         ]
     },
     android: {
         title: "🤖 Android 手機申請步驟",
         steps: [
-            {
-                title: "1. 開啟電腦版網頁 (關鍵步驟)",
-                desc: "開啟 Chrome 瀏覽器，前往 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud Console</a>。<br><strong>點擊右上角「⋮」選單，勾選「電腦版網站」</strong> (因為 Google 後台不支援手機介面)。",
-                img: './images/android_1.jpg'
-            },
-            {
-                title: "2. 建立新專案",
-                desc: "放大畫面，點擊左上角專案選單 >「New Project」。建立一個新專案。",
-                img: './images/android_2.jpg'
-            },
-            {
-                title: "3. 綁定帳單",
-                desc: "點擊左上角漢堡選單 (☰) > 「帳單 (Billing)」>「付款方式」。依指示綁定信用卡 (享每月 $200 免費額度)。",
-                img: './images/android_3.jpg'
-            },
-            {
-                title: "4. 啟用 4 項 API",
-                desc: "左側選單(☰) 前往「API 和服務」>「啟用 API 和服務」。搜尋並啟用以下服務：" + commonApiList,
-                img: './images/android_4.jpg'
-            },
-            {
-                title: "5. 複製金鑰",
-                desc: "選單(☰) > APIs & Services > Credentials > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
-                img: './images/android_5.jpg'
-            }
+            { title: "1. 開啟電腦版網頁", desc: "Chrome 右上角選單 > 勾選「電腦版網站」。", img: './images/android_1.jpg' },
+            { title: "2. 建立新專案", desc: "建立一個新專案。", img: './images/android_2.jpg' },
+            { title: "3. 綁定帳單", desc: "選單 > Billing > 綁定信用卡。", img: './images/android_3.jpg' },
+            { title: "4. 啟用 API", desc: "搜尋並啟用必要 API。", img: './images/android_4.jpg' },
+            { title: "5. 複製金鑰", desc: "建立 Credentials > API Key。", img: './images/android_5.jpg' }
         ]
     },
     ios: {
-        title: "🍎 iOS (iPhone/iPad) 申請步驟",
+        title: "🍎 iOS (iPhone) 申請步驟",
         steps: [
-            {
-                title: "1. 切換電腦版網站 (關鍵步驟)",
-                desc: "開啟 Safari，前往 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud Console</a>。<br><strong>點擊網址列左側的「大小 (Aa)」圖示，選擇「切換為電腦版網站」</strong>。",
-                img: './images/ios_1.jpg'
-            },
-            {
-                title: "2. 建立專案",
-                desc: "將手機橫放操作較方便。點擊上方專案選單 > New Project。",
-                img: './images/ios_2.jpg'
-            },
-            {
-                title: "3. 設定 Billing",
-                desc: "左側選單 (☰) > 「帳單 (Billing)」>「付款方式」。依指示綁定信用卡 (享每月 $200 免費額度)。",
-                img: './images/ios_3.jpg'
-            },
-            {
-                title: "4. 啟用 API",
-                desc: "左側選單(☰) 前往「API 和服務」>「啟用 API 和服務」。搜尋並啟用：" + commonApiList,
-                img: './images/ios_4.jpg'
-            },
-            {
-                title: "5. 取得 Key",
-                desc: "選單 > APIs & Services > Credentials > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
-                img: './images/ios_5.jpg'
-            }
+            { title: "1. 切換電腦版網站", desc: "Safari 網址列左側「大小 (Aa)」>「切換為電腦版網站」。", img: './images/ios_1.jpg' },
+            { title: "2. 建立專案", desc: "建立新專案。", img: './images/ios_2.jpg' },
+            { title: "3. 設定 Billing", desc: "綁定信用卡。", img: './images/ios_3.jpg' },
+            { title: "4. 啟用 API", desc: "啟用必要 API。", img: './images/ios_4.jpg' },
+            { title: "5. 取得 Key", desc: "建立並複製 API Key。", img: './images/ios_5.jpg' }
         ]
     }
 };
-
 
 function showGuide(platform) {
     const data = guideData[platform];
     const container = document.getElementById('guide-content');
+    if(!container) return;
     
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     const btns = document.querySelectorAll('.tab-btn');
-    if(platform === 'desktop') btns[0].classList.add('active');
-    if(platform === 'android') btns[1].classList.add('active');
-    if(platform === 'ios') btns[2].classList.add('active');
+    if(platform === 'desktop' && btns[0]) btns[0].classList.add('active');
+    if(platform === 'android' && btns[1]) btns[1].classList.add('active');
+    if(platform === 'ios' && btns[2]) btns[2].classList.add('active');
 
     let html = `<h3>${data.title}</h3>`;
     data.steps.forEach(step => {
-        let imgHtml = '';
-        if (step.img) {
-            imgHtml = `<div class="step-image-container"><img src="${step.img}" alt="${step.title}"></div>`;
-        } else {
-            imgHtml = `<div class="step-image-container"><div class="img-placeholder">（此處可插入 ${platform} 操作截圖：${step.title}）</div></div>`;
-        }
-
-        html += `
-            <div class="step-card">
-                <div class="step-header">
-                    <div class="step-title">${step.title}</div>
-                </div>
-                ${imgHtml}
-                <div class="step-content">
-                    <p>${step.desc}</p>
-                </div>
-            </div>
-        `;
+        let imgHtml = step.img ? `<div class="step-image-container"><img src="${step.img}" alt="${step.title}"></div>` : '';
+        html += `<div class="step-card"><div class="step-header"><div class="step-title">${step.title}</div></div>${imgHtml}<div class="step-content"><p>${step.desc}</p></div></div>`;
     });
-
     container.innerHTML = html;
 }
 
-// ================== 1. 系統初始化與 Key 管理 ==================
+// ================== 1. 初始化與事件綁定 ==================
 
 window.onload = () => {
-    const savedKey = localStorage.getItem('food_wheel_api_key');
-    
-    // 載入使用者評價記錄
+    // 1. 載入評價
     const savedRatings = localStorage.getItem('food_wheel_user_ratings');
     if (savedRatings) {
-        userRatings = JSON.parse(savedRatings);
+        try { userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
     }
 
+    // 2. 載入 API Key
+    const savedKey = localStorage.getItem('food_wheel_api_key');
     if (savedKey) {
         loadGoogleMapsScript(savedKey);
     } else {
-        document.getElementById('setup-screen').style.display = 'block';
-        document.getElementById('app-screen').style.display = 'none';
+        const setupScreen = document.getElementById('setup-screen');
+        const appScreen = document.getElementById('app-screen');
+        if(setupScreen) setupScreen.style.display = 'block';
+        if(appScreen) appScreen.style.display = 'none';
         showGuide('desktop');
     }
-    autoSelectMealType();
+
+    // 3. 綁定過濾器事件
+    const filterCheckbox = document.getElementById('filterDislike');
+    if (filterCheckbox) {
+        filterCheckbox.addEventListener('change', () => {
+            refreshWheelData(); 
+        });
+    }
 };
 
 function saveAndStart() {
     const inputKey = document.getElementById('userApiKey').value.trim();
-    if (inputKey.length < 20) {
-        alert("API Key 格式看起來不正確，請確認。");
-        return;
-    }
+    if (inputKey.length < 20) return alert("API Key 格式不正確");
     
     const userPrefs = {
         minRating: document.getElementById('setupMinRating').value,
@@ -199,13 +129,11 @@ function saveAndStart() {
     
     localStorage.setItem('food_wheel_api_key', inputKey);
     localStorage.setItem('food_wheel_prefs', JSON.stringify(userPrefs));
-    
     loadGoogleMapsScript(inputKey);
 }
 
-// 修改：拆分成兩個功能
 function resetApiKey() {
-    if(confirm("確定要重設 API Key 嗎？\n(您的偏好設定與评价紀錄將會保留)")) {
+    if(confirm("確定要重設 API Key 嗎？\n(您的偏好設定與評價紀錄將會保留)")) {
         localStorage.removeItem('food_wheel_api_key');
         location.reload(); 
     }
@@ -214,14 +142,8 @@ function resetApiKey() {
 function editPreferences() {
     document.getElementById('app-screen').style.display = 'none';
     document.getElementById('setup-screen').style.display = 'block';
-    
-    // 嘗試填入現有 API Key 以免使用者要重貼
     const savedKey = localStorage.getItem('food_wheel_api_key');
-    if(savedKey) {
-        document.getElementById('userApiKey').value = savedKey;
-    }
-
-    // 捲動到偏好設定區
+    if(savedKey) document.getElementById('userApiKey').value = savedKey;
     const prefsBox = document.querySelector('.preferences-box');
     if(prefsBox) prefsBox.scrollIntoView({ behavior: 'smooth' });
 }
@@ -231,21 +153,24 @@ function loadGoogleMapsScript(apiKey) {
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`;
     script.async = true;
     script.defer = true;
-    
     script.onload = () => {
         document.getElementById('setup-screen').style.display = 'none';
         document.getElementById('app-screen').style.display = 'block';
-        applyPreferences(); 
-        initLocation(); 
+        initApp(); 
     };
-    
     script.onerror = () => {
-        alert("Google Maps API 載入失敗！\n可能是 Key 無效或網路問題，請檢查後重試。");
-        localStorage.removeItem('food_wheel_api_key'); 
+        alert("API 載入失敗，請檢查 Key");
+        localStorage.removeItem('food_wheel_api_key');
         location.reload();
     };
-
     document.head.appendChild(script);
+}
+
+function initApp() {
+    applyPreferences();
+    autoSelectMealType();
+    initLocation();
+    resetGame(true); // 初始化遊戲狀態
 }
 
 function applyPreferences() {
@@ -259,19 +184,11 @@ function applyPreferences() {
             if(prefs.priceLevel) document.getElementById('priceLevel').value = prefs.priceLevel;
             if(prefs.resultCount) document.getElementById('resultCount').value = prefs.resultCount;
             if(prefs.spinMode) document.getElementById('spinMode').value = prefs.spinMode; 
-        } catch (e) {
-            console.error("讀取偏好設定失敗", e);
-        }
+        } catch (e) { console.error(e); }
     }
 }
 
-window.gm_authFailure = function() {
-    alert("Google Maps API 驗證失敗！\n請檢查：\n1. 是否已啟用 Places, Maps JS, Geocoding, Distance Matrix API\n2. 是否已綁定信用卡(結算帳戶)\n3. 網址限制是否正確");
-    resetApiKey();
-};
-
-
-// ================== 2. 主程式邏輯 ==================
+// ================== 2. 核心邏輯 ==================
 
 function autoSelectMealType() {
     const hour = new Date().getHours();
@@ -302,39 +219,24 @@ function initLocation() {
     const addrInput = document.getElementById('currentAddress');
     const detailDisplay = document.getElementById('detailedAddressDisplay');
     
-    addrInput.value = "定位中...";
-    if(detailDisplay) {
-        detailDisplay.style.display = 'none';
-        detailDisplay.innerText = '';
-    }
+    if(addrInput) addrInput.value = "定位中...";
+    if(detailDisplay) detailDisplay.style.display = 'none';
 
-    if (!navigator.geolocation) {
-        alert("瀏覽器不支援定位");
-        return;
-    }
+    if (!navigator.geolocation) return alert("瀏覽器不支援定位");
 
     navigator.geolocation.getCurrentPosition(
         (position) => {
-            userCoordinates = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude
-            };
+            userCoordinates = { lat: position.coords.latitude, lng: position.coords.longitude };
             const geocoder = new google.maps.Geocoder();
             geocoder.geocode({ location: userCoordinates }, (results, status) => {
                 if (status === "OK" && results[0]) {
-                    let formatted = results[0].formatted_address;
-                    formatted = formatted.replace(/^\d+\s*/, '').replace(/^台灣/, ''); 
-                    addrInput.value = formatted;
+                    if(addrInput) addrInput.value = results[0].formatted_address.replace(/^\d+\s*/, '').replace(/^台灣/, '');
                 } else {
-                    addrInput.value = `${userCoordinates.lat.toFixed(5)}, ${userCoordinates.lng.toFixed(5)}`;
+                    if(addrInput) addrInput.value = `${userCoordinates.lat.toFixed(5)}, ${userCoordinates.lng.toFixed(5)}`;
                 }
             });
         },
-        (error) => {
-            console.error(error);
-            addrInput.value = "";
-            addrInput.placeholder = "無法取得定位，請手動輸入地址";
-        },
+        (error) => { if(addrInput) { addrInput.value = ""; addrInput.placeholder = "無法定位，請手動輸入"; } },
         { enableHighAccuracy: true }
     );
 }
@@ -342,35 +244,37 @@ function initLocation() {
 function handleSearch() {
     const addrInput = document.getElementById('currentAddress').value;
     const keywordsRaw = document.getElementById('keywordInput').value;
-    const detailDisplay = document.getElementById('detailedAddressDisplay');
     const spinBtn = document.getElementById('spinBtn');
 
-    if (!addrInput) return alert("請輸入地址或按下「重抓定位」");
-    if (!keywordsRaw.trim()) return alert("請輸入至少一個關鍵字");
+    if (!addrInput) return alert("請輸入地址");
+    if (!keywordsRaw.trim()) return alert("請輸入關鍵字");
+
+    // 搜尋開始時，重置遊戲狀態
+    resetGame(false); 
+
+    if(spinBtn) {
+        spinBtn.disabled = true;
+        spinBtn.innerText = "資料載入中...";
+        spinBtn.style.opacity = "0.5";
+        spinBtn.style.cursor = "not-allowed";
+    }
 
     const btn = document.querySelector('.search-btn');
     btn.innerText = "解析地址中...";
     btn.disabled = true;
-    
-    // 【修改】開始搜尋時，鎖定轉盤按鈕
-    if(spinBtn) {
-        spinBtn.disabled = true;
-        spinBtn.innerText = "資料載入中...";
-    }
 
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ address: addrInput }, (results, status) => {
         if (status === "OK" && results[0]) {
             userCoordinates = results[0].geometry.location;
-            
+            const detailDisplay = document.getElementById('detailedAddressDisplay');
             if (detailDisplay) {
                 detailDisplay.style.display = 'block';
                 detailDisplay.innerText = `🎯 已定位至：${results[0].formatted_address}`;
             }
-
             startSearch(userCoordinates, keywordsRaw);
         } else {
-            alert("找不到此地址，請檢查輸入內容");
+            alert("找不到此地址");
             btn.innerText = "🔄 開始搜尋店家";
             btn.disabled = false;
         }
@@ -379,10 +283,8 @@ function handleSearch() {
 
 function startSearch(location, keywordsRaw) {
     const service = new google.maps.places.PlacesService(document.createElement('div'));
-    const maxTime = parseInt(document.getElementById('maxTime').value, 10);
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
     const keywordList = keywordsRaw.split(/\s+/).filter(k => k.length > 0);
-
     const btn = document.querySelector('.search-btn');
     btn.innerText = `搜尋 ${keywordList.length} 組關鍵字中...`;
 
@@ -393,68 +295,44 @@ function startSearch(location, keywordsRaw) {
                 rankBy: google.maps.places.RankBy.DISTANCE, 
                 keyword: keyword
             };
-
-            if (priceLevel !== -1) {
-                request.maxPrice = priceLevel;
-            }
+            if (priceLevel !== -1) request.maxPrice = priceLevel;
             
             service.nearbySearch(request, (results, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-                    resolve(results);
-                } else {
-                    resolve([]); 
-                }
+                resolve((status === google.maps.places.PlacesServiceStatus.OK && results) ? results : []);
             });
         });
     });
 
     Promise.all(searchPromises).then(resultsArray => {
-        let combinedResults = [];
-        resultsArray.forEach(res => {
-            combinedResults = combinedResults.concat(res);
-        });
-
+        let combinedResults = [].concat(...resultsArray);
         if (combinedResults.length === 0) {
-            if (priceLevel !== -1) {
-                alert("附近找不到符合預算與關鍵字的店家。\n提示：部分小吃店未在 Google Maps 標註價格，建議將預算設為「不限」再試試。");
-            } else {
-                alert("附近找不到符合任何關鍵字的店家。");
-            }
-            resetButtons();
+            alert("附近找不到符合條件的店家");
+            btn.innerText = "🔄 開始搜尋店家";
+            btn.disabled = false;
             return;
         }
-
-        processResults(location, combinedResults, maxTime);
+        processResults(location, combinedResults);
     }).catch(err => {
         console.error(err);
-        alert("搜尋過程發生錯誤");
-        resetButtons();
+        alert("搜尋錯誤");
+        btn.innerText = "🔄 開始搜尋店家";
+        btn.disabled = false;
     });
 }
 
-function processResults(origin, results, maxTime) {
+function processResults(origin, results) {
     const btn = document.querySelector('.search-btn');
     const userMaxCount = parseInt(document.getElementById('resultCount').value, 10);
     const transportMode = document.getElementById('transportMode').value;
     const minRating = parseFloat(document.getElementById('minRating').value);
-    
-    // 【修改】讀取是否啟用過濾地雷
-    const filterDislike = document.getElementById('filterDislike').checked;
+    const maxTime = parseInt(document.getElementById('maxTime').value, 10);
 
     const uniqueIds = new Set();
     let filtered = [];
     
     results.forEach(p => {
-        // 先過濾星等
         if (p.rating && p.rating >= minRating && p.user_ratings_total > 0) {
             if (!uniqueIds.has(p.place_id)) {
-                
-                // 【修改】過濾地雷邏輯
-                if (filterDislike && userRatings[p.place_id] === 'dislike') {
-                    // 如果是地雷且有開啟過濾，則不加入
-                    return; 
-                }
-
                 uniqueIds.add(p.place_id);
                 filtered.push(p);
             }
@@ -462,14 +340,13 @@ function processResults(origin, results, maxTime) {
     });
 
     if (filtered.length === 0) {
-        let msg = `搜尋結果經篩選後無符合店家 (需 ${minRating} 星以上)。`;
-        if (filterDislike) msg += "\n(或是附近的店家都已被標記為地雷)";
-        alert(msg);
-        resetButtons();
+        alert(`無符合 ${minRating} 星以上的店家`);
+        btn.innerText = "🔄 開始搜尋店家";
+        btn.disabled = false;
         return;
     }
 
-    btn.innerText = `計算路程時間 (共 ${filtered.length} 間)...`;
+    btn.innerText = `計算路程 (共 ${filtered.length} 間)...`;
 
     const batchSize = 25;
     const batches = [];
@@ -480,46 +357,61 @@ function processResults(origin, results, maxTime) {
     Promise.all(batches.map(batch => getDistances(origin, batch, transportMode)))
         .then(resultsArray => {
             let validPlaces = [].concat(...resultsArray);
-
             validPlaces = validPlaces.filter(p => p.realDurationMins <= maxTime);
 
             if (validPlaces.length === 0) {
-                alert(`在 ${maxTime} 分鐘範圍內找不到符合店家。\n(已搜尋最近且評分合格的店家，但距離太遠)`);
-                resetButtons();
+                alert(`${maxTime} 分鐘內無符合店家`);
+                btn.innerText = "🔄 開始搜尋店家";
+                btn.disabled = false;
                 return;
             }
 
             validPlaces.sort((a, b) => b.rating - a.rating);
 
-            // 更新全域變數
-            places = validPlaces.slice(0, userMaxCount); 
-            allSearchResults = [...places]; 
-            
-            // 初始化點擊次數
+            allSearchResults = validPlaces.slice(0, userMaxCount); 
+            eliminatedIds.clear(); 
             hitCounts = {};
-            places.forEach(p => hitCounts[p.place_id] = 0);
+            allSearchResults.forEach(p => hitCounts[p.place_id] = 0);
 
-            // 繪製列表與輪盤
-            initResultList(allSearchResults);
-            drawWheel();
-            enableSpinButton(places.length); // 計算完成，解鎖按鈕
+            refreshWheelData(); 
+            
+            btn.innerText = `搜尋完成 (共 ${places.length} 間)`;
+            btn.disabled = false;
         })
         .catch(err => {
             console.error(err);
-            places = filtered.slice(0, userMaxCount);
-            allSearchResults = [...places];
-            initResultList(allSearchResults);
-            drawWheel();
-            enableSpinButton(places.length);
-            alert("路程計算失敗，改為顯示直線距離結果。");
+            alert("路程計算失敗");
+            btn.innerText = "🔄 開始搜尋店家";
+            btn.disabled = false;
         });
+}
+
+function refreshWheelData() {
+    const filterDislikeEl = document.getElementById('filterDislike');
+    const filterDislike = filterDislikeEl ? filterDislikeEl.checked : false;
+    
+    // 重新過濾名單
+    places = allSearchResults.filter(p => {
+        if (eliminatedIds.has(p.place_id)) return false;
+        if (filterDislike && userRatings[p.place_id] === 'dislike') return false;
+        return true;
+    });
+
+    // 更新搜尋按鈕文字 (保持即時性)
+    const searchBtn = document.querySelector('.search-btn');
+    if(searchBtn && !searchBtn.disabled && searchBtn.innerText.includes("搜尋完成")) {
+        searchBtn.innerText = `搜尋完成 (共 ${places.length} 間)`;
+    }
+
+    initResultList(allSearchResults);
+    drawWheel();
+    enableSpinButton(places.length); // 根據新的數量決定按鈕狀態
 }
 
 function getDistances(origin, destinations, mode) {
     return new Promise((resolve) => {
         const service = new google.maps.DistanceMatrixService();
         const destLocs = destinations.map(d => d.geometry.location);
-
         service.getDistanceMatrix({
             origins: [origin],
             destinations: destLocs,
@@ -540,158 +432,110 @@ function getDistances(origin, destinations, mode) {
                     }
                 }
                 resolve(processed);
-            } else {
-                resolve([]); 
-            }
+            } else { resolve([]); }
         });
     });
 }
 
-// 初始化左側結果列表
 function initResultList(list) {
     const tbody = document.querySelector('#resultsTable tbody');
+    if(!tbody) return;
     tbody.innerHTML = ''; 
-
     if (list.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">無資料</td></tr>';
         return;
     }
+    const filterDislikeEl = document.getElementById('filterDislike');
+    const filterDislike = filterDislikeEl ? filterDislikeEl.checked : false;
 
     list.forEach(p => {
+        const isEliminated = eliminatedIds.has(p.place_id);
+        const isDislike = userRatings[p.place_id] === 'dislike';
+        const isFiltered = filterDislike && isDislike;
+
         const tr = document.createElement('tr');
         tr.id = `row-${p.place_id}`; 
-        
+        if (isEliminated || isFiltered) tr.classList.add('eliminated'); 
+
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}&query_place_id=${p.place_id}`;
         
-        // 檢查是否有個人評價
         let nameHtml = `<a href="${mapUrl}" target="_blank" class="store-link" title="在 Google 地圖上查看">${p.name}</a>`;
         if (userRatings[p.place_id]) {
             if (userRatings[p.place_id] === 'like') {
-                nameHtml = `<span class="personal-tag like">👍回訪</span> ` + nameHtml;
-            } else if (userRatings[p.place_id] === 'dislike') {
-                nameHtml = `<span class="personal-tag dislike">💣踩雷</span> ` + nameHtml;
+                nameHtml = `<span class="personal-tag like">👍</span> ` + nameHtml;
+            } else if (isDislike) {
+                nameHtml = `<span class="personal-tag dislike">💣</span> ` + nameHtml;
             }
         }
 
         const ratingText = p.rating ? `${p.rating} <span style="font-size:0.8em; color:#666;">(${p.user_ratings_total || 0})</span>` : "無評價";
         const distanceText = p.realDistanceText ? `${p.realDistanceText}<br><span style="font-size:0.85em; color:#666;">${p.realDurationText}</span>` : "未知";
 
-        tr.innerHTML = `
-            <td>${nameHtml}</td>
-            <td>⭐ ${ratingText}</td>
-            <td>${distanceText}</td>
-            <td class="hit-count">0</td>
-        `;
+        tr.innerHTML = `<td>${nameHtml}</td><td>⭐ ${ratingText}</td><td>${distanceText}</td><td class="hit-count">${hitCounts[p.place_id] || 0}</td>`;
         tbody.appendChild(tr);
     });
 }
 
-// 處理使用者評分
-function handleUserRating(placeId, type) {
-    if (userRatings[placeId] === type) {
-        delete userRatings[placeId];
-    } else {
-        userRatings[placeId] = type;
-    }
+// 重置遊戲狀態
+function resetGame(fullReset) {
+    currentRotation = 0; 
+    canvas.style.transform = `rotate(0deg)`;
+    canvas.style.transition = 'none'; 
     
-    localStorage.setItem('food_wheel_user_ratings', JSON.stringify(userRatings));
+    const storeName = document.getElementById('storeName');
+    if(storeName) storeName.innerText = "點擊輪盤開始抉擇";
     
-    const btnLike = document.getElementById('btnLike');
-    const btnDislike = document.getElementById('btnDislike');
+    ['storeRating', 'storeAddress', 'storeDistance', 'userPersonalRating'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.innerText = "";
+    });
     
-    btnLike.classList.remove('active');
-    btnDislike.classList.remove('active');
+    const menuLink = document.getElementById('menuLink');
+    if(menuLink) menuLink.style.display = "none";
     
-    let text = "";
-    if (userRatings[placeId] === 'like') {
-        btnLike.classList.add('active');
-        text = "👍 您標記為：再次回訪";
-    } else if (userRatings[placeId] === 'dislike') {
-        btnDislike.classList.add('active');
-        text = "💣 您標記為：踩雷";
-    }
-    
-    document.getElementById('userPersonalRating').innerText = text;
-    
-    // 更新左側列表
-    initResultList(allSearchResults);
-}
+    ['btnLike', 'btnDislike'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.style.display = 'none';
+    });
 
-function updateHitCountUI(placeId) {
-    if (!hitCounts[placeId]) hitCounts[placeId] = 0;
-    hitCounts[placeId]++;
-    
-    const row = document.getElementById(`row-${placeId}`);
-    if (row) {
-        const countCell = row.querySelector('.hit-count');
-        if (countCell) countCell.innerText = hitCounts[placeId];
-        
-        row.classList.add('active-winner');
-        setTimeout(() => row.classList.remove('active-winner'), 2000); 
-    }
-}
-
-function markAsEliminated(placeId) {
-    const row = document.getElementById(`row-${placeId}`);
-    if (row) {
-        row.classList.add('eliminated');
-    }
-}
-
-function resetButtons() {
-    const btn = document.querySelector('.search-btn');
-    if(btn) {
-        btn.innerText = "🔄 開始搜尋店家";
-        btn.disabled = false;
-    }
-    const spinBtn = document.getElementById('spinBtn');
-    if(spinBtn) {
-        spinBtn.disabled = true;
-        spinBtn.style.opacity = "0.5";
-        spinBtn.style.cursor = "not-allowed";
-        spinBtn.innerText = "請先搜尋店家";
+    if(fullReset) {
+        places = [];
+        allSearchResults = [];
+        eliminatedIds.clear();
+        ctx.clearRect(0, 0, 400, 400);
+        enableSpinButton(0);
     }
 }
 
 function enableSpinButton(count) {
-    const btn = document.querySelector('.search-btn');
     const spinBtn = document.getElementById('spinBtn');
-    
-    if(btn) {
-        btn.innerText = `搜尋完成 (共 ${count} 間)`;
-        btn.disabled = false;
-    }
-    
-    if(spinBtn) {
+    if(!spinBtn) return;
+
+    if (count > 0) {
         spinBtn.disabled = false;
         spinBtn.style.opacity = "1";
         spinBtn.style.cursor = "pointer";
         spinBtn.innerText = "開始抽籤";
+    } else {
+        spinBtn.disabled = true;
+        spinBtn.style.opacity = "0.5";
+        spinBtn.style.cursor = "not-allowed";
+        
+        if (allSearchResults.length > 0) {
+            spinBtn.innerText = "商家已全數濾除/淘汰";
+        } else {
+            spinBtn.innerText = "請先搜尋店家";
+        }
     }
-
-    currentRotation = 0;
-    canvas.style.transform = `rotate(0deg)`;
-    document.getElementById('storeName').innerText = "點擊輪盤開始抉擇";
-    document.getElementById('storeRating').innerText = "";
-    document.getElementById('storeAddress').innerText = "";
-    document.getElementById('storeDistance').innerText = "";
-    document.getElementById('userPersonalRating').innerText = ""; 
-    document.getElementById('menuLink').style.display = "none";
-    document.getElementById('btnLike').style.display = 'none'; 
-    document.getElementById('btnDislike').style.display = 'none';
 }
 
 function drawWheel() {
     const numOptions = places.length;
-    if (numOptions === 0) {
-        ctx.clearRect(0, 0, 400, 400);
-        return;
-    }
+    ctx.clearRect(0, 0, 400, 400);
+    if (numOptions === 0) return;
     
     const arcSize = (2 * Math.PI) / numOptions;
     const startAngleOffset = -Math.PI / 2;
-
-    ctx.clearRect(0, 0, 400, 400);
 
     places.forEach((place, i) => {
         const angle = startAngleOffset + (i * arcSize);
@@ -719,137 +563,172 @@ function drawWheel() {
     });
 }
 
+// 【核心修正】按鈕點擊事件，增加 DOM 檢查與 Try-Catch 防呆
 document.getElementById('spinBtn').onclick = () => {
-    if (places.length === 0) {
-        alert("輪盤上的店家已全部抽完！請重新搜尋。");
-        return;
-    }
+    if (places.length === 0) return;
     
     const spinBtn = document.getElementById('spinBtn');
-    spinBtn.disabled = true;
+    spinBtn.disabled = true; // 旋轉期間鎖定
 
     const spinAngle = Math.floor(Math.random() * 1800) + 1800; 
     currentRotation += spinAngle;
     canvas.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
     canvas.style.transform = `rotate(${currentRotation}deg)`;
 
-    document.getElementById('btnLike').style.display = 'none';
-    document.getElementById('btnDislike').style.display = 'none';
-    document.getElementById('userPersonalRating').innerText = "";
+    // 安全隱藏操作區
+    const idsToHide = ['btnLike', 'btnDislike'];
+    idsToHide.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.style.display = 'none';
+    });
+    
+    const userRateEl = document.getElementById('userPersonalRating');
+    if(userRateEl) userRateEl.innerText = "";
 
     setTimeout(() => {
-        const numOptions = places.length;
-        const arcSize = 360 / numOptions;
-        const actualRotation = currentRotation % 360;
-        const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
-        const winner = places[winningIndex];
+        // 使用 try-catch 確保發生錯誤時也能解鎖按鈕
+        try {
+            const numOptions = places.length;
+            if (numOptions === 0) throw new Error("No places left");
 
-        updateWinnerStatus(winner);
-        updateHitCountUI(winner.place_id);
+            const arcSize = 360 / numOptions;
+            const actualRotation = currentRotation % 360;
+            const winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
+            const winner = places[winningIndex];
 
-        const spinMode = document.getElementById('spinMode').value;
-        if (spinMode === 'eliminate') {
-            places.splice(winningIndex, 1);
-            markAsEliminated(winner.place_id);
+            if(!winner) throw new Error("Winner calculation error");
 
-            // 【修改】確保在 2 秒動畫期間按鈕保持鎖定
-            setTimeout(() => {
-                canvas.style.transition = 'none';
-                currentRotation = 0;
-                canvas.style.transform = `rotate(0deg)`;
-                drawWheel();
+            updateWinnerStatus(winner);
+            updateHitCountUI(winner.place_id);
+
+            const spinModeEl = document.getElementById('spinMode');
+            const spinMode = spinModeEl ? spinModeEl.value : 'repeat';
+            
+            if (spinMode === 'eliminate') {
+                eliminatedIds.add(winner.place_id); 
                 
-                if (places.length === 0) {
-                    spinBtn.innerText = "已全數抽完";
-                    spinBtn.disabled = true;
-                } else {
-                    spinBtn.disabled = false;
-                }
-            }, 2000); 
-        } else {
+                // 淘汰制需要視覺延遲，再刷新轉盤
+                setTimeout(() => {
+                    canvas.style.transition = 'none';
+                    currentRotation = 0;
+                    canvas.style.transform = `rotate(0deg)`;
+                    
+                    refreshWheelData(); // 此處會自動判斷是否解鎖按鈕
+                }, 2000); 
+            } else {
+                // 重複模式：立即解鎖按鈕
+                spinBtn.disabled = false;
+                // 強制更新一次列表狀態 (避免過濾器狀態不同步)
+                refreshWheelData();
+            }
+        } catch (error) {
+            console.error("Spin Error:", error);
+            alert("發生錯誤，按鈕已重置: " + error.message);
             spinBtn.disabled = false;
         }
-
     }, 4000);
 };
 
-function updateWinnerStatus(winner) {
-    document.getElementById('storeName').innerText = "就決定吃：" + winner.name;
+function handleUserRating(placeId, type) {
+    if (userRatings[placeId] === type) delete userRatings[placeId];
+    else userRatings[placeId] = type;
     
-    if (document.getElementById('storeRating')) {
+    localStorage.setItem('food_wheel_user_ratings', JSON.stringify(userRatings));
+    
+    // 更新按鈕 UI
+    const btnLike = document.getElementById('btnLike');
+    const btnDislike = document.getElementById('btnDislike');
+    if(btnLike) btnLike.classList.remove('active');
+    if(btnDislike) btnDislike.classList.remove('active');
+    
+    let text = "";
+    if (userRatings[placeId] === 'like') {
+        if(btnLike) btnLike.classList.add('active');
+        text = "👍 您標記為：再次回訪";
+    } else if (userRatings[placeId] === 'dislike') {
+        if(btnDislike) btnDislike.classList.add('active');
+        text = "💣 您標記為：踩雷";
+    }
+    const rateText = document.getElementById('userPersonalRating');
+    if(rateText) rateText.innerText = text;
+    
+    // 評價改變可能影響過濾，因此必須刷新輪盤
+    refreshWheelData();
+}
+
+function updateWinnerStatus(winner) {
+    const nameEl = document.getElementById('storeName');
+    if(nameEl) nameEl.innerText = "就決定吃：" + winner.name;
+    
+    const ratingEl = document.getElementById('storeRating');
+    if (ratingEl) {
         if (winner.rating) {
-            document.getElementById('storeRating').innerText = `⭐ ${winner.rating} (${winner.user_ratings_total || 0} 則評價)`;
+            ratingEl.innerText = `⭐ ${winner.rating} (${winner.user_ratings_total || 0} 則評價)`;
         } else {
-            document.getElementById('storeRating').innerText = "暫無評價資料";
+            ratingEl.innerText = "暫無評價資料";
         }
     }
     
     const address = winner.formatted_address || winner.vicinity || "地址不詳";
     const storeAddressEl = document.getElementById('storeAddress');
-    
-    storeAddressEl.innerText = `⏳ 正在查詢詳細營業狀態...\n📍 ${address}`;
+    if(storeAddressEl) storeAddressEl.innerText = `⏳ 正在查詢詳細營業狀態...\n📍 ${address}`;
 
     const btnLike = document.getElementById('btnLike');
     const btnDislike = document.getElementById('btnDislike');
     const ratingText = document.getElementById('userPersonalRating');
     
-    btnLike.style.display = 'inline-block';
-    btnDislike.style.display = 'inline-block';
-    
-    btnLike.classList.remove('active');
-    btnDislike.classList.remove('active');
-    ratingText.innerText = "";
+    // 安全操作按鈕
+    if(btnLike) {
+        btnLike.style.display = 'inline-block';
+        btnLike.classList.remove('active');
+        btnLike.onclick = () => handleUserRating(winner.place_id, 'like');
+    }
+    if(btnDislike) {
+        btnDislike.style.display = 'inline-block';
+        btnDislike.classList.remove('active');
+        btnDislike.onclick = () => handleUserRating(winner.place_id, 'dislike');
+    }
+    if(ratingText) ratingText.innerText = "";
 
-    btnLike.onclick = () => handleUserRating(winner.place_id, 'like');
-    btnDislike.onclick = () => handleUserRating(winner.place_id, 'dislike');
-
-    if (userRatings[winner.place_id]) {
-        if (userRatings[winner.place_id] === 'like') {
-            btnLike.classList.add('active');
-            ratingText.innerText = "👍 您曾標記：再次回訪";
-        } else if (userRatings[winner.place_id] === 'dislike') {
-            btnDislike.classList.add('active');
-            ratingText.innerText = "💣 您曾標記：踩雷";
-        }
+    if (userRatings[winner.place_id] === 'like') {
+        if(btnLike) btnLike.classList.add('active');
+        if(ratingText) ratingText.innerText = "👍 您曾標記：再次回訪";
+    } else if (userRatings[winner.place_id] === 'dislike') {
+        if(btnDislike) btnDislike.classList.add('active');
+        if(ratingText) ratingText.innerText = "💣 您曾標記：踩雷";
     }
 
     const service = new google.maps.places.PlacesService(document.createElement('div'));
-    
     service.getDetails({
         placeId: winner.place_id,
         fields: ['opening_hours', 'utc_offset_minutes']
     }, (place, status) => {
         let openStatus = "⚪ 營業時間不明，請聯繫商家確認";
-
         if (status === google.maps.places.PlacesServiceStatus.OK && place && place.opening_hours) {
             openStatus = getDetailedOpeningStatus(place);
         }
-        
-        storeAddressEl.innerHTML = `
-            <strong>${openStatus}</strong><br>
-            <span style="font-size: 0.85em; color: #999;">(營業時間僅供參考，以商家資訊為準)</span><br>
-            📍 ${address}
-        `;
+        if(storeAddressEl) {
+            storeAddressEl.innerHTML = `<strong>${openStatus}</strong><br><span style="font-size: 0.85em; color: #999;">(營業時間僅供參考，以商家資訊為準)</span><br>📍 ${address}`;
+        }
     });
 
-    if (winner.realDurationText) {
-         document.getElementById('storeDistance').innerText = 
-            `⏱️ 預估耗時：${winner.realDurationText} (${winner.realDistanceText})`;
+    const distEl = document.getElementById('storeDistance');
+    if (winner.realDurationText && distEl) {
+         distEl.innerText = `⏱️ 預估耗時：${winner.realDurationText} (${winner.realDistanceText})`;
     }
     
     const link = document.getElementById('menuLink');
-    link.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}&query_place_id=${winner.place_id}`;
-    link.style.display = 'inline-block';
-    link.innerText = "📍 導航去這家";
+    if(link) {
+        link.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}&query_place_id=${winner.place_id}`;
+        link.style.display = 'inline-block';
+        link.innerText = "📍 導航去這家";
+    }
 }
 
 function getDetailedOpeningStatus(place) {
     const isOpen = place.opening_hours.isOpen();
     const periods = place.opening_hours.periods;
-    
-    if (!periods || periods.length === 0) {
-        return isOpen ? "🟢 營業中" : "🔴 已打烊";
-    }
+    if (!periods || periods.length === 0) return isOpen ? "🟢 營業中" : "🔴 已打烊";
 
     let now = new Date();
     if (typeof place.utc_offset_minutes !== 'undefined') {
@@ -859,7 +738,6 @@ function getDetailedOpeningStatus(place) {
 
     const currentDay = now.getDay();
     const currentTime = now.getHours() * 100 + now.getMinutes(); 
-
     const days = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
     const formatTime = (t) => {
         const s = t.toString().padStart(4, '0');
@@ -871,34 +749,20 @@ function getDetailedOpeningStatus(place) {
         if (p.open) events.push({ type: 'open', day: p.open.day, time: parseInt(p.open.time) });
         if (p.close) events.push({ type: 'close', day: p.close.day, time: parseInt(p.close.time) });
     });
-    
-    events.sort((a, b) => {
-        if (a.day !== b.day) return a.day - b.day;
-        return a.time - b.time;
-    });
+    events.sort((a, b) => (a.day !== b.day) ? a.day - b.day : a.time - b.time);
 
     let targetEvent = null;
-    
     for (let e of events) {
         if (e.day > currentDay || (e.day === currentDay && e.time > currentTime)) {
-            if (isOpen && e.type === 'close') {
-                targetEvent = e;
-                break;
-            }
-            if (!isOpen && e.type === 'open') {
+            if ((isOpen && e.type === 'close') || (!isOpen && e.type === 'open')) {
                 targetEvent = e;
                 break;
             }
         }
     }
-
     if (!targetEvent) {
         for (let e of events) {
-             if (isOpen && e.type === 'close') {
-                targetEvent = e;
-                break;
-            }
-            if (!isOpen && e.type === 'open') {
+             if ((isOpen && e.type === 'close') || (!isOpen && e.type === 'open')) {
                 targetEvent = e;
                 break;
             }
@@ -906,13 +770,18 @@ function getDetailedOpeningStatus(place) {
     }
 
     if (!targetEvent) return isOpen ? "🟢 營業中" : "🔴 已打烊";
-
     const dayStr = days[targetEvent.day];
     const timeStr = formatTime(targetEvent.time);
-
-    if (isOpen) {
-        return `🟢 營業中，預計 (${dayStr} ${timeStr}) 結束營業`;
-    } else {
-        return `🔴 已打烊，預計 (${dayStr} ${timeStr}) 開始營業`;
-    }
+    return isOpen ? `🟢 營業中，預計 (${dayStr} ${timeStr}) 結束營業` : `🔴 已打烊，預計 (${dayStr} ${timeStr}) 開始營業`;
 }
+
+// 綁定全域函式
+window.handleUserRating = handleUserRating;
+window.editPreferences = editPreferences;
+window.resetApiKey = resetApiKey;
+window.handleSearch = handleSearch;
+window.initLocation = initLocation;
+window.showGuide = showGuide;
+window.saveAndStart = saveAndStart;
+window.clearKey = clearKey;
+window.updateKeywords = updateKeywords;
