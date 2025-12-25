@@ -107,13 +107,13 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 }
 
 #resultsTable { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-#resultsTable th { background: #f9f9f9; padding: 8px; text-align: left; color: #666; font-weight: bold; border-bottom: 2px solid #eee; position: sticky; top: 0; }
-#resultsTable td { padding: 8px; border-bottom: 1px solid #eee; color: #333; }
+#resultsTable th { background: #f9f9f9; padding: 8px; text-align: left; color: #666; font-weight: bold; border-bottom: 2px solid #eee; position: sticky; top: 0; white-space: nowrap; }
+#resultsTable td { padding: 8px; border-bottom: 1px solid #eee; color: #333; vertical-align: middle; }
 #resultsTable tr:last-child td { border-bottom: none; }
 #resultsTable tr.active-winner { background-color: #d5f5e3; font-weight: bold; } /* 選中時高亮 */
 #resultsTable tr.eliminated { color: #aaa; text-decoration: line-through; background-color: #fcfcfc; } /* 淘汰樣式 */
 
-/* 新增：列表中的店家連結樣式 */
+/* 列表中的店家連結樣式 */
 .store-link {
     color: #3498db;
     text-decoration: none;
