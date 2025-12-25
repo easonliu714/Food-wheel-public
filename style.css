@@ -2,7 +2,7 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: fl
 .container { text-align: center; max-width: 900px; width: 100%; padding: 20px; box-sizing: border-box; background: #f4f7f6; }
 
 /* 標題與標籤 */
-h1 { color: #333; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; }
 .badge { background: #3498db; color: white; font-size: 0.8rem; padding: 2px 8px; border-radius: 12px; vertical-align: middle; }
 
 /* ============ 設定頁面樣式 ============ */
@@ -54,17 +54,68 @@ h1 { color: #333; margin-bottom: 16px; display: flex; align-items: center; justi
 .start-btn:hover { background: #219150; }
 
 /* ============ 主程式頁面樣式 ============ */
-.header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.header-bar h1 { margin: 0; }
+.header-bar { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 15px; 
+    flex-wrap: nowrap; /* 強制不換行 */
+}
 
-/* 新增：Header 按鈕群組 */
-.header-actions { display: flex; gap: 8px; }
-.header-btn { background: none; border: 1px solid #ccc; padding: 5px 12px; border-radius: 20px; color: #666; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
+.header-bar h1 { 
+    margin: 0; 
+    line-height: 1.2;
+    white-space: nowrap; 
+    flex-shrink: 1; /* 空間不足時，標題可以被壓縮 */
+    overflow: hidden; 
+    text-overflow: ellipsis;
+    
+    /* 【關鍵修改】流體排版：最小 1rem，最大 1.5rem，中間依照視窗寬度的 4% 自動調整 */
+    font-size: clamp(1rem, 4vw, 1.5rem); 
+}
+
+/* Header 按鈕群組 */
+.header-actions { 
+    display: flex; 
+    gap: 8px; 
+    flex-shrink: 0; /* 按鈕維持原大小，不被壓縮 */
+}
+
+.header-btn { 
+    background: none; 
+    border: 1px solid #ccc; 
+    padding: 5px 12px; 
+    border-radius: 20px; 
+    color: #666; 
+    cursor: pointer; 
+    font-size: 0.85rem; 
+    transition: all 0.2s; 
+    white-space: nowrap; 
+}
 .header-btn:hover { background: #eee; color: #333; }
 .header-btn.key-btn { border-color: #e74c3c; color: #e74c3c; }
 .header-btn.key-btn:hover { background: #fdedec; }
 
-/* 地點與控制區：保持最大寬度 */
+/* 手機版微調 */
+@media (max-width: 600px) {
+    .header-bar {
+        gap: 5px; 
+    }
+    /* 這裡不需要再寫死 font-size 了，因為上面的 clamp() 會自動處理 */
+    
+    .header-actions {
+        gap: 4px;
+    }
+    .header-btn {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+    .container {
+        padding: 10px;
+    }
+}
+
+/* 地點與控制區 */
 .location-box, .controls { max-width: 600px; margin-left: auto; margin-right: auto; }
 
 .location-box { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 15px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
@@ -151,7 +202,7 @@ h1 { color: #333; margin-bottom: 16px; display: flex; align-items: center; justi
     order: 0; /* 手機上輪盤優先顯示 */
 }
 
-/* 新增：地雷濾除開關樣式 */
+/* 地雷濾除開關樣式 */
 .filter-box { margin-bottom: 10px; font-size: 0.9rem; color: #555; background: #fff; padding: 8px; border-radius: 20px; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 .filter-box input { margin-right: 5px; vertical-align: middle; }
 .filter-box label { vertical-align: middle; cursor: pointer; font-weight: bold; }
@@ -173,7 +224,7 @@ h1 { color: #333; margin-bottom: 16px; display: flex; align-items: center; justi
 .action-area { margin: 20px 0 30px 0; }
 #spinBtn { padding: 12px 40px; font-size: 1.3rem; background: #27ae60; color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 0 #219150; transition: transform 0.1s; width: 100%; }
 #spinBtn:active { transform: translateY(4px); box-shadow: none; }
-#spinBtn:disabled { background: #bdc3c7; cursor: not-allowed; box-shadow: none; } /* Disabled 樣式 */
+#spinBtn:disabled { background: #bdc3c7; cursor: not-allowed; box-shadow: none; }
 
 #result { padding: 20px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); min-height: 100px; }
 
