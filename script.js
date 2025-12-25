@@ -35,7 +35,6 @@ const commonApiList = `
 `;
 
 const guideData = {
-const guideData = {
     desktop: {
         title: "💻 電腦版申請步驟 (推薦使用)",
         steps: [
