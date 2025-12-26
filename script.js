@@ -482,13 +482,36 @@ function startSearch(location, keywordsRaw) {
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
     const keywordList = keywordsRaw.split(/\s+/).filter(k => k.length > 0);
     const btn = document.querySelector('.search-btn');
-    btn.innerText = `搜尋 ${keywordList.length} 組關鍵字中...`;
+    
+    // 【核心修正】計算搜尋半徑 (Radius)
+    // Google Maps 預設是 "Prominence" (關聯性/知名度優先)，這需要 radius 參數。
+    // 原本的 rankBy: DISTANCE 會嚴格只找最近的，導致稍遠的名店被截斷。
+    
+    const transportMode = document.getElementById('transportMode').value;
+    const maxTime = parseInt(document.getElementById('maxTime').value, 10);
+    
+    // 估算半徑 (公尺)：
+    // 走路：假設時速 6km/h => 每分鐘 100m。
+    // 開車/機車：市區假設時速 50-60km/h => 每分鐘約 800-1000m。
+    let searchRadius = 1000; // 預設值
+    if (transportMode === 'DRIVING') {
+        searchRadius = maxTime * 600; // 10分鐘約 6000m (6公里)
+    } else {
+        searchRadius = maxTime * 100;  // 10分鐘約 1000m
+    }
+    
+    // 上限設定：開車不要超過 20km，走路不要超過 5km
+    if (transportMode === 'DRIVING' && searchRadius > 20000) searchRadius = 20000;
+    if (transportMode === 'WALKING' && searchRadius > 5000) searchRadius = 5000;
+
+    btn.innerText = `搜尋 ${keywordList.length} 組關鍵字 (範圍約 ${(searchRadius/1000).toFixed(1)}km)...`;
 
     const searchPromises = keywordList.map(keyword => {
         return new Promise((resolve) => {
             const request = {
                 location: location,
-                rankBy: google.maps.places.RankBy.DISTANCE, 
+                radius: searchRadius, // 【修正】改用 radius 搜尋範圍
+                // rankBy: google.maps.places.RankBy.DISTANCE, // 【修正】移除絕對距離排序
                 keyword: keyword
             };
             if (priceLevel !== -1) request.maxPrice = priceLevel;
@@ -562,6 +585,7 @@ function processResults(origin, results) {
                 return;
             }
 
+            // 排序邏輯：評價高的優先 (Google Maps 原生體驗)
             validPlaces.sort((a, b) => b.rating - a.rating);
 
             allSearchResults = validPlaces.slice(0, userMaxCount); 
