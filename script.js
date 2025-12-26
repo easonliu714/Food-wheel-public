@@ -63,7 +63,7 @@ const guideData = {
             },
             {
                 title: "5. 取得 API Key",
-                desc: "左側選單(☰)選「憑證 (Credentials)」，點擊「建立憑證」>「API 金鑰」。複製該金鑰並貼到下方的輸入框。",
+                desc: "左側選單(☰)前往「憑證 (Credentials)」，點擊「建立憑證」>「API 金鑰」。複製該金鑰並貼到下方的輸入框。",
                 img: './images/desktop_5.jpg'
             }
         ]
@@ -113,7 +113,7 @@ const guideData = {
             },
             {
                 title: "3. 設定 Billing",
-                desc: "左側選單(☰) > 「帳單 (Billing)」>「付款方式」。依指示綁定信用卡 (享每月 $200 免費額度)。",
+                desc: "左側選單 (☰) > 「帳單 (Billing)」>「付款方式」。依指示綁定信用卡 (享每月 $200 免費額度)。",
                 img: './images/ios_3.jpg'
             },
             {
@@ -250,7 +250,7 @@ function populateSetupGeneralPrefs() {
                 }
             };
 
-            setVal('setupSearchMode', prefs.searchMode); // 新增搜尋模式
+            setVal('setupSearchMode', prefs.searchMode);
             setVal('setupMinRating', prefs.minRating);
             setVal('setupSpinMode', prefs.spinMode);
             setVal('setupTransport', prefs.transport);
@@ -269,7 +269,7 @@ function saveAndStart() {
     if (inputKey.length < 20) return alert("API Key 格式不正確");
     
     const userPrefs = {
-        searchMode: document.getElementById('setupSearchMode').value, // 新增
+        searchMode: document.getElementById('setupSearchMode').value,
         minRating: document.getElementById('setupMinRating').value,
         transport: document.getElementById('setupTransport').value,
         maxTime: document.getElementById('setupMaxTime').value,
@@ -358,7 +358,6 @@ function applyPreferencesToApp() {
     if (prefsJson) {
         try {
             const prefs = JSON.parse(prefsJson);
-            // 套用搜尋模式到主畫面
             if(prefs.searchMode) document.getElementById('searchMode').value = prefs.searchMode;
             if(prefs.minRating) document.getElementById('minRating').value = prefs.minRating;
             if(prefs.transport) document.getElementById('transportMode').value = prefs.transport;
@@ -464,7 +463,7 @@ function handleSearch() {
     });
 }
 
-// 【核心修正】雙模式搜尋策略 (Nearby vs Famous)
+// 【核心修正】雙模式搜尋策略 (Nearby vs Famous with Step-wise Scan)
 function startSearch(location, keywordsRaw) {
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
@@ -487,41 +486,70 @@ function startSearch(location, keywordsRaw) {
         speedMetersPerMin = 333.33; // 20 km/h = ~333 m/min (走路/單車)
     }
 
-    // 依據時間計算理論搜尋半徑 (Radius) - 用於 API 參數 (僅 Famous 模式)
-    const theoreticalRadius = speedMetersPerMin * maxTime;
-
-    // 計算最大直線距離過濾門檻 (Max Linear Distance) - 用於後端 geometry 過濾
-    // 規則：(速度 * 時間) * 1.5 倍
-    const maxLinearDist = theoreticalRadius * 1.5;
+    // 計算最大理論半徑 (用於 Famous 模式的最大邊界與 Geometry Filter)
+    const maxTheoreticalRadius = speedMetersPerMin * maxTime;
+    
+    // 計算幾何過濾半徑 (Geometry Filter) = 速度 x 時間 x 1.5
+    const maxLinearDist = maxTheoreticalRadius * 1.5;
 
     const btn = document.querySelector('.search-btn');
-    let statusText = (searchMode === 'nearby') 
-        ? `📍 距離優先搜尋 (抓取最近 60 筆)...` 
-        : `🌟 熱門優先搜尋 (半徑 ${(theoreticalRadius/1000).toFixed(1)}km)...`;
-    btn.innerText = statusText;
+    let statusText = "";
 
-    // 3. 執行多重非同步搜尋 (含分頁)
+    // 3. 建立搜尋請求矩陣
     let promises = [];
 
-    searchQueries.forEach(keyword => {
-        let request = {
-            location: location,
-            keyword: keyword
-        };
-        if (priceLevel !== -1) request.maxPrice = priceLevel;
+    if (searchMode === 'nearby') {
+        // === Mode A: 距離優先 (Nearby Mode) ===
+        // 不設 Radius，RankBy=DISTANCE，抓取最近的店
+        statusText = `📍 距離優先搜尋 (抓取最近 60 筆)...`;
+        
+        searchQueries.forEach(keyword => {
+            let request = {
+                location: location,
+                rankBy: google.maps.places.RankBy.DISTANCE,
+                keyword: keyword
+            };
+            if (priceLevel !== -1) request.maxPrice = priceLevel;
+            
+            // 強制抓滿 3 頁
+            promises.push(fetchPlacesWithPagination(service, request, 3));
+        });
 
-        if (searchMode === 'nearby') {
-            // Nearby Mode: 距離優先，不可帶 radius
-            request.rankBy = google.maps.places.RankBy.DISTANCE;
-        } else {
-            // Famous Mode: 知名度優先 (預設)，必須帶 radius
-            request.rankBy = google.maps.places.RankBy.PROMINENCE;
-            request.radius = theoreticalRadius; // 使用計算出的理論半徑
+    } else {
+        // === Mode B: 熱門優先 (Famous Mode) - 分段式同心圓掃描 ===
+        // 邏輯：每 5 分鐘切一個半徑，分別搜尋 Prominence
+        let steps = [];
+        for (let t = 5; t <= maxTime; t += 5) {
+            steps.push(t);
         }
+        // 如果 maxTime 不是 5 的倍數，確保最後一個時間點有被加進去 (例如 user 輸入 12 分)
+        if (maxTime % 5 !== 0) steps.push(maxTime);
+        // 去重並排序
+        steps = [...new Set(steps)].sort((a,b)=>a-b);
 
-        // 呼叫支援分頁的函式 (強制抓滿 3 頁)
-        promises.push(fetchPlacesWithPagination(service, request));
-    });
+        statusText = `🌟 熱門優先：分段掃描 (${steps.join(',')}分) x 關鍵字...`;
+
+        searchQueries.forEach(keyword => {
+            steps.forEach(stepTime => {
+                let stepRadius = stepTime * speedMetersPerMin;
+                // API 最小半徑建議 500m
+                if (stepRadius < 500) stepRadius = 500; 
+
+                let request = {
+                    location: location,
+                    radius: stepRadius,
+                    rankBy: google.maps.places.RankBy.PROMINENCE, // 重點：使用熱門度排序
+                    keyword: keyword
+                };
+                if (priceLevel !== -1) request.maxPrice = priceLevel;
+
+                // 強制抓滿 3 頁，收集該半徑內的高分店
+                promises.push(fetchPlacesWithPagination(service, request, 3));
+            });
+        });
+    }
+
+    btn.innerText = statusText;
 
     // 4. 合併結果
     Promise.all(promises).then(resultsArray => {
@@ -542,17 +570,19 @@ function startSearch(location, keywordsRaw) {
     });
 }
 
-// 遞迴抓取分頁的輔助函式 (最多抓 3 頁，共 60 筆)
-function fetchPlacesWithPagination(service, request) {
+// 遞迴抓取分頁的輔助函式 (可指定抓幾頁)
+function fetchPlacesWithPagination(service, request, maxPages = 3) {
     return new Promise((resolve) => {
         let allResults = [];
+        let pageCount = 0;
         
         service.nearbySearch(request, (results, status, pagination) => {
             if (status === google.maps.places.PlacesServiceStatus.OK && results) {
                 allResults = allResults.concat(results);
+                pageCount++;
                 
-                // 檢查是否有下一頁 (且目前累積數量不超過 60)
-                if (pagination && pagination.hasNextPage && allResults.length < 60) {
+                // 檢查是否有下一頁 (且未達頁數上限，且總數未爆量)
+                if (pagination && pagination.hasNextPage && pageCount < maxPages && allResults.length < (maxPages * 20)) {
                     // Google API 要求：next_page_token 出現後，必須等待約 2 秒才能使用
                     setTimeout(() => {
                         pagination.nextPage();
