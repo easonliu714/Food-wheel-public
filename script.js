@@ -162,7 +162,7 @@ window.onload = () => {
         try { userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
     }
 
-    // 1. 載入關鍵字邏輯 (優先讀取 LocalStorage -> 變數)
+    // 1. 載入關鍵字邏輯
     loadUserKeywords();
 
     // 載入 API Key
@@ -170,13 +170,12 @@ window.onload = () => {
     if (savedKey) {
         loadGoogleMapsScript(savedKey);
     } else {
-        // 沒有 Key，顯示設定畫面
         const setupScreen = document.getElementById('setup-screen');
         const appScreen = document.getElementById('app-screen');
         if(setupScreen) setupScreen.style.display = 'block';
         if(appScreen) appScreen.style.display = 'none';
         
-        // 2. 將載入的設定填入「設定頁面」的輸入框中 (關鍵字 + 一般設定)
+        // 2. 填入設定頁面的輸入框
         populateSetupKeywords(); 
         populateSetupGeneralPrefs();
         
@@ -194,14 +193,12 @@ window.onload = () => {
 
 // ================== 設定頁面資料處理 (關鍵字) ==================
 
-// 從 LocalStorage 讀取關鍵字到記憶體 (activeKeywordDict)
 function loadUserKeywords() {
     const savedKw = localStorage.getItem('food_wheel_custom_keywords');
     if (savedKw) {
         try {
             const parsed = JSON.parse(savedKw);
             activeKeywordDict = {};
-            // 逐一檢查，若使用者設定為空字串，則強制使用預設值
             for (const key in defaultKeywordDict) {
                 if (parsed[key] && parsed[key].trim() !== "") {
                     activeKeywordDict[key] = parsed[key];
@@ -218,7 +215,6 @@ function loadUserKeywords() {
     }
 }
 
-// 將記憶體中的關鍵字填入「設定頁面」的輸入框
 function populateSetupKeywords() {
     const mapping = {
         'kw_breakfast': 'breakfast',
@@ -235,7 +231,6 @@ function populateSetupKeywords() {
     for (const [id, key] of Object.entries(mapping)) {
         const input = document.getElementById(id);
         if (input) {
-            // 這裡 activeKeywordDict 已經經過處理，保證有值 (預設或自訂)
             input.value = activeKeywordDict[key]; 
         }
     }
@@ -243,14 +238,11 @@ function populateSetupKeywords() {
 
 // ================== 設定頁面資料處理 (一般設定) ==================
 
-// 從 LocalStorage 讀取一般設定，並填入「設定頁面」的下拉選單
 function populateSetupGeneralPrefs() {
     const prefsJson = localStorage.getItem('food_wheel_prefs');
     if (prefsJson) {
         try {
             const prefs = JSON.parse(prefsJson);
-            
-            // 輔助函式：若值存在則填入
             const setVal = (id, val) => {
                 const el = document.getElementById(id);
                 if (el && val !== undefined && val !== null) {
@@ -267,7 +259,6 @@ function populateSetupGeneralPrefs() {
             
         } catch (e) { console.error("Error parsing general prefs", e); }
     }
-    // 若沒有 LocalStorage 紀錄，則保留 HTML 中的 `selected` 預設值
 }
 
 // ================== 儲存與重設 ==================
@@ -276,7 +267,6 @@ function saveAndStart() {
     const inputKey = document.getElementById('userApiKey').value.trim();
     if (inputKey.length < 20) return alert("API Key 格式不正確");
     
-    // 1. 蒐集一般偏好設定
     const userPrefs = {
         minRating: document.getElementById('setupMinRating').value,
         transport: document.getElementById('setupTransport').value,
@@ -286,7 +276,6 @@ function saveAndStart() {
         spinMode: document.getElementById('setupSpinMode') ? document.getElementById('setupSpinMode').value : 'repeat'
     };
     
-    // 2. 蒐集自訂關鍵字
     const customKw = {};
     const mapping = {
         'kw_breakfast': 'breakfast',
@@ -305,12 +294,10 @@ function saveAndStart() {
         if (input && input.value.trim() !== "") {
             customKw[key] = input.value.trim();
         } else {
-            // 使用者若清空，存檔時視為使用預設值
             customKw[key] = defaultKeywordDict[key];
         }
     }
     
-    // 更新變數並寫入 Storage
     activeKeywordDict = customKw;
     localStorage.setItem('food_wheel_custom_keywords', JSON.stringify(customKw));
     localStorage.setItem('food_wheel_api_key', inputKey);
@@ -326,16 +313,14 @@ function resetApiKey() {
     }
 }
 
-// 點擊「⚙️ 偏好設定」時觸發
 function editPreferences() {
     document.getElementById('app-screen').style.display = 'none';
     document.getElementById('setup-screen').style.display = 'block';
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if(savedKey) document.getElementById('userApiKey').value = savedKey;
     
-    // 重新載入設定值到輸入框 (確保顯示的是當前設定，而非網頁預設)
     populateSetupKeywords();
-    populateSetupGeneralPrefs(); // 新增：也要回填一般設定
+    populateSetupGeneralPrefs(); 
 
     const prefsBox = document.querySelector('.preferences-box');
     if(prefsBox) prefsBox.scrollIntoView({ behavior: 'smooth' });
@@ -360,13 +345,12 @@ function loadGoogleMapsScript(apiKey) {
 }
 
 function initApp() {
-    applyPreferencesToApp(); // 將設定套用到主畫面的控制項
+    applyPreferencesToApp();
     autoSelectMealType();
     initLocation();
     resetGame(true);
 }
 
-// 將 LocalStorage 設定套用到「主畫面 (App Screen)」的控制項
 function applyPreferencesToApp() {
     const prefsJson = localStorage.getItem('food_wheel_prefs');
     if (prefsJson) {
@@ -405,7 +389,6 @@ function autoSelectMealType() {
 function updateKeywords() {
     const type = document.getElementById('mealType').value;
     const input = document.getElementById('keywordInput');
-    // 使用 activeKeywordDict (已處理過空值回退邏輯)
     if (activeKeywordDict[type]) {
         input.value = activeKeywordDict[type];
     }
@@ -477,53 +460,77 @@ function handleSearch() {
     });
 }
 
+// 【核心修正】混合搜尋策略：同時執行「多關鍵字拆分」+「單字搜尋」+「混合距離與範圍模式」
 function startSearch(location, keywordsRaw) {
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
-    const keywordList = keywordsRaw.split(/\s+/).filter(k => k.length > 0);
-    const btn = document.querySelector('.search-btn');
-    
-    // 【核心修正】計算搜尋半徑 (Radius)
-    // Google Maps 預設是 "Prominence" (關聯性/知名度優先)，這需要 radius 參數。
-    // 原本的 rankBy: DISTANCE 會嚴格只找最近的，導致稍遠的名店被截斷。
-    
     const transportMode = document.getElementById('transportMode').value;
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
     
-    // 估算半徑 (公尺)：
-    // 走路：假設時速 6km/h => 每分鐘 100m。
-    // 開車/機車：市區假設時速 50-60km/h => 每分鐘約 800-1000m。
-    let searchRadius = 1000; // 預設值
-    if (transportMode === 'DRIVING') {
-        searchRadius = maxTime * 600; // 10分鐘約 6000m (6公里)
-    } else {
-        searchRadius = maxTime * 100;  // 10分鐘約 1000m
-    }
+    // 1. 準備關鍵字清單：包含「分割的單字」以及「原始的組合字串」
+    const splitKeywords = keywordsRaw.split(/\s+/).filter(k => k.length > 0);
+    let searchQueries = [...splitKeywords];
     
-    // 上限設定：開車不要超過 20km，走路不要超過 5km
-    if (transportMode === 'DRIVING' && searchRadius > 20000) searchRadius = 20000;
-    if (transportMode === 'WALKING' && searchRadius > 5000) searchRadius = 5000;
+    // 如果原始輸入包含多個詞（例如 "午餐 義大利麵"），則把完整組合也當作一個搜尋條件加入
+    // 這樣可以搜到那些符合 "午餐" AND "義大利麵" 的精準結果
+    if (splitKeywords.length > 1) {
+        searchQueries.push(keywordsRaw);
+    }
 
-    btn.innerText = `搜尋 ${keywordList.length} 組關鍵字 (範圍約 ${(searchRadius/1000).toFixed(1)}km)...`;
+    // 2. 計算搜尋半徑 (Radius) 給 Prominence 模式使用
+    // 走路：假設 80m/min。開車：假設 400m/min (考慮市區停等)
+    let searchRadius = 1000; 
+    if (transportMode === 'DRIVING') {
+        searchRadius = maxTime * 400; 
+    } else {
+        searchRadius = maxTime * 80;
+    }
+    // 安全上限
+    if (transportMode === 'DRIVING' && searchRadius > 8000) searchRadius = 8000;
+    if (transportMode === 'WALKING' && searchRadius > 3000) searchRadius = 3000;
+    // 最小半徑
+    if (searchRadius < 500) searchRadius = 500;
 
-    const searchPromises = keywordList.map(keyword => {
-        return new Promise((resolve) => {
-            const request = {
-                location: location,
-                radius: searchRadius, // 【修正】改用 radius 搜尋範圍
-                // rankBy: google.maps.places.RankBy.DISTANCE, // 【修正】移除絕對距離排序
-                keyword: keyword
-            };
-            if (priceLevel !== -1) request.maxPrice = priceLevel;
-            
-            service.nearbySearch(request, (results, status) => {
-                resolve((status === google.maps.places.PlacesServiceStatus.OK && results) ? results : []);
-            });
-        });
+    const btn = document.querySelector('.search-btn');
+    // 計算總查詢數：關鍵字數量 * 2 (因為每個關鍵字跑兩種模式)
+    const totalRequests = searchQueries.length * 2;
+    btn.innerText = `執行 ${totalRequests} 次混合搜尋 (半徑 ${(searchRadius/1000).toFixed(1)}km)...`;
+
+    // 3. 建立所有搜尋請求 (混合模式)
+    let promises = [];
+
+    searchQueries.forEach(keyword => {
+        // 模式 A: 距離優先 (不設 Radius, RankBy DISTANCE) -> 抓最近的 20 家 (不管是否有成名)
+        const requestDistance = {
+            location: location,
+            rankBy: google.maps.places.RankBy.DISTANCE,
+            keyword: keyword
+        };
+        if (priceLevel !== -1) requestDistance.maxPrice = priceLevel;
+        
+        // 模式 B: 知名度優先 (設 Radius, RankBy PROMINENCE) -> 抓範圍內最有名的 20 家 (解決遠處名店被忽略問題)
+        const requestProminence = {
+            location: location,
+            radius: searchRadius,
+            // rankBy 預設為 PROMINENCE (不可與 DISTANCE 共用)
+            keyword: keyword
+        };
+        if (priceLevel !== -1) requestProminence.maxPrice = priceLevel;
+
+        // 推入 Promise 陣列
+        promises.push(new Promise(resolve => {
+            service.nearbySearch(requestDistance, (res, stat) => resolve((stat === 'OK' && res) ? res : []));
+        }));
+        promises.push(new Promise(resolve => {
+            service.nearbySearch(requestProminence, (res, stat) => resolve((stat === 'OK' && res) ? res : []));
+        }));
     });
 
-    Promise.all(searchPromises).then(resultsArray => {
+    // 4. 執行所有搜尋並合併結果
+    Promise.all(promises).then(resultsArray => {
+        // 攤平陣列
         let combinedResults = [].concat(...resultsArray);
+        
         if (combinedResults.length === 0) {
             alert("附近找不到符合條件的店家");
             btn.innerText = "🔄 開始搜尋店家";
@@ -546,6 +553,7 @@ function processResults(origin, results) {
     const minRating = parseFloat(document.getElementById('minRating').value);
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
 
+    // 1. 去除重複 (因為混合搜尋會有大量重複)
     const uniqueIds = new Set();
     let filtered = [];
     
@@ -565,8 +573,18 @@ function processResults(origin, results) {
         return;
     }
 
+    // 為了節省 Distance Matrix Quota，若店家數量過多，先進行初步距離篩選 (直線距離)
+    // 假設開車 10分鐘約 4km，那直線距離超過 6km 的通常不用算路程了
+    // 這裡做一個寬鬆的篩選
+    /*
+    const roughMaxDist = (transportMode === 'DRIVING') ? (maxTime * 800) : (maxTime * 100);
+    // (因這部分需要 geometry library 的 computeDistanceBetween，為簡化程式碼與避免依賴錯誤，暫不執行嚴格直線過濾，
+    // 直接依賴上面的 searchRadius 已經做了初步限制)
+    */
+
     btn.innerText = `計算路程 (共 ${filtered.length} 間)...`;
 
+    // Distance Matrix 一次最多 25 個目的地
     const batchSize = 25;
     const batches = [];
     for (let i = 0; i < filtered.length; i += batchSize) {
@@ -576,18 +594,21 @@ function processResults(origin, results) {
     Promise.all(batches.map(batch => getDistances(origin, batch, transportMode)))
         .then(resultsArray => {
             let validPlaces = [].concat(...resultsArray);
+            
+            // 嚴格過濾實際路程時間
             validPlaces = validPlaces.filter(p => p.realDurationMins <= maxTime);
 
             if (validPlaces.length === 0) {
-                alert(`${maxTime} 分鐘內無符合店家`);
+                alert(`${maxTime} 分鐘內無符合店家 (可能距離過遠或塞車)`);
                 btn.innerText = "🔄 開始搜尋店家";
                 btn.disabled = false;
                 return;
             }
 
-            // 排序邏輯：評價高的優先 (Google Maps 原生體驗)
+            // 排序：評價高的優先
             validPlaces.sort((a, b) => b.rating - a.rating);
 
+            // 截取用戶需要的數量
             allSearchResults = validPlaces.slice(0, userMaxCount); 
             eliminatedIds.clear(); 
             hitCounts = {};
@@ -674,7 +695,6 @@ function initResultList(list) {
         const tr = document.createElement('tr');
         tr.id = `row-${p.place_id}`; 
         
-        // 增加 eliminated 樣式
         if (isEliminated || isFiltered) tr.classList.add('eliminated'); 
 
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}&query_place_id=${p.place_id}`;
@@ -791,7 +811,6 @@ function drawWheel() {
     });
 }
 
-// 按鈕點擊事件：正確讀取 spinMode
 document.getElementById('spinBtn').onclick = () => {
     try {
         if (places.length === 0) return;
