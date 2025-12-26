@@ -460,75 +460,69 @@ function handleSearch() {
     });
 }
 
-// 【核心修正】混合搜尋策略：同時執行「多關鍵字拆分」+「單字搜尋」+「混合距離與範圍模式」
+// 【核心修正】全方位深層搜尋策略 (Deep Search Strategy)
 function startSearch(location, keywordsRaw) {
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
     const transportMode = document.getElementById('transportMode').value;
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
     
-    // 1. 準備關鍵字清單：包含「分割的單字」以及「原始的組合字串」
+    // 1. 關鍵字擴充：單詞 + 組合詞
     const splitKeywords = keywordsRaw.split(/\s+/).filter(k => k.length > 0);
     let searchQueries = [...splitKeywords];
-    
-    // 如果原始輸入包含多個詞（例如 "午餐 義大利麵"），則把完整組合也當作一個搜尋條件加入
-    // 這樣可以搜到那些符合 "午餐" AND "義大利麵" 的精準結果
     if (splitKeywords.length > 1) {
         searchQueries.push(keywordsRaw);
     }
 
-    // 2. 計算搜尋半徑 (Radius) 給 Prominence 模式使用
-    // 走路：假設 80m/min。開車：假設 400m/min (考慮市區停等)
-    let searchRadius = 1000; 
+    // 2. 距離同心圓策略：近 + 中 + 遠
+    // 計算最大半徑
+    let maxRadius = 1000; 
     if (transportMode === 'DRIVING') {
-        searchRadius = maxTime * 400; 
+        maxRadius = maxTime * 400; // 400m/min
     } else {
-        searchRadius = maxTime * 80;
+        maxRadius = maxTime * 80;  // 80m/min
     }
-    // 安全上限
-    if (transportMode === 'DRIVING' && searchRadius > 8000) searchRadius = 8000;
-    if (transportMode === 'WALKING' && searchRadius > 3000) searchRadius = 3000;
-    // 最小半徑
-    if (searchRadius < 500) searchRadius = 500;
+    // 上下限防呆
+    if (transportMode === 'DRIVING' && maxRadius > 15000) maxRadius = 15000;
+    if (transportMode === 'WALKING' && maxRadius > 5000) maxRadius = 5000;
+    if (maxRadius < 500) maxRadius = 500;
+
+    let radiiLayers = [];
+    radiiLayers.push(800); // 基礎層 (近距離)
+    
+    if (maxRadius > 1200) {
+        radiiLayers.push(Math.floor(maxRadius / 2)); // 中間層
+        radiiLayers.push(maxRadius); // 最外層
+    } else if (maxRadius > 800) {
+        radiiLayers.push(maxRadius);
+    }
+    // 去除重複的距離層 (例如算出來中間層跟外層差不多)
+    radiiLayers = [...new Set(radiiLayers)].sort((a,b)=>a-b);
 
     const btn = document.querySelector('.search-btn');
-    // 計算總查詢數：關鍵字數量 * 2 (因為每個關鍵字跑兩種模式)
-    const totalRequests = searchQueries.length * 2;
-    btn.innerText = `執行 ${totalRequests} 次混合搜尋 (半徑 ${(searchRadius/1000).toFixed(1)}km)...`;
+    const totalRequestsEstimate = searchQueries.length * radiiLayers.length;
+    btn.innerText = `深層搜尋中 (分頁抓取)...`;
 
-    // 3. 建立所有搜尋請求 (混合模式)
+    // 3. 執行多重非同步搜尋 (含分頁)
     let promises = [];
 
     searchQueries.forEach(keyword => {
-        // 模式 A: 距離優先 (不設 Radius, RankBy DISTANCE) -> 抓最近的 20 家 (不管是否有成名)
-        const requestDistance = {
-            location: location,
-            rankBy: google.maps.places.RankBy.DISTANCE,
-            keyword: keyword
-        };
-        if (priceLevel !== -1) requestDistance.maxPrice = priceLevel;
-        
-        // 模式 B: 知名度優先 (設 Radius, RankBy PROMINENCE) -> 抓範圍內最有名的 20 家 (解決遠處名店被忽略問題)
-        const requestProminence = {
-            location: location,
-            radius: searchRadius,
-            // rankBy 預設為 PROMINENCE (不可與 DISTANCE 共用)
-            keyword: keyword
-        };
-        if (priceLevel !== -1) requestProminence.maxPrice = priceLevel;
+        radiiLayers.forEach(radius => {
+            const request = {
+                location: location,
+                radius: radius,
+                keyword: keyword,
+                rankBy: google.maps.places.RankBy.PROMINENCE // 強制使用關聯性排序
+            };
+            if (priceLevel !== -1) request.maxPrice = priceLevel;
 
-        // 推入 Promise 陣列
-        promises.push(new Promise(resolve => {
-            service.nearbySearch(requestDistance, (res, stat) => resolve((stat === 'OK' && res) ? res : []));
-        }));
-        promises.push(new Promise(resolve => {
-            service.nearbySearch(requestProminence, (res, stat) => resolve((stat === 'OK' && res) ? res : []));
-        }));
+            // 呼叫支援分頁的函式
+            promises.push(fetchPlacesWithPagination(service, request));
+        });
     });
 
-    // 4. 執行所有搜尋並合併結果
+    // 4. 合併結果
     Promise.all(promises).then(resultsArray => {
-        // 攤平陣列
         let combinedResults = [].concat(...resultsArray);
         
         if (combinedResults.length === 0) {
@@ -537,7 +531,7 @@ function startSearch(location, keywordsRaw) {
             btn.disabled = false;
             return;
         }
-        processResults(location, combinedResults);
+        processResults(location, combinedResults, maxRadius);
     }).catch(err => {
         console.error(err);
         alert("搜尋錯誤");
@@ -546,14 +540,39 @@ function startSearch(location, keywordsRaw) {
     });
 }
 
-function processResults(origin, results) {
+// 遞迴抓取分頁的輔助函式 (最多抓 3 頁，共 60 筆)
+function fetchPlacesWithPagination(service, request) {
+    return new Promise((resolve) => {
+        let allResults = [];
+        
+        service.nearbySearch(request, (results, status, pagination) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+                allResults = allResults.concat(results);
+                
+                // 檢查是否有下一頁 (且目前累積數量不超過 60，避免無限迴圈或過度消耗)
+                if (pagination && pagination.hasNextPage && allResults.length < 60) {
+                    // Google API 要求：next_page_token 出現後，必須等待約 2 秒才能使用
+                    setTimeout(() => {
+                        pagination.nextPage();
+                    }, 2000);
+                } else {
+                    resolve(allResults);
+                }
+            } else {
+                resolve(allResults); // 即使失敗或沒資料，也回傳目前抓到的
+            }
+        });
+    });
+}
+
+function processResults(origin, results, searchRadiusLimit) {
     const btn = document.querySelector('.search-btn');
     const userMaxCount = parseInt(document.getElementById('resultCount').value, 10);
     const transportMode = document.getElementById('transportMode').value;
     const minRating = parseFloat(document.getElementById('minRating').value);
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
 
-    // 1. 去除重複 (因為混合搜尋會有大量重複)
+    // 1. 去除重複 (Deduplication)
     const uniqueIds = new Set();
     let filtered = [];
     
@@ -561,7 +580,15 @@ function processResults(origin, results) {
         if (p.rating && p.rating >= minRating && p.user_ratings_total > 0) {
             if (!uniqueIds.has(p.place_id)) {
                 uniqueIds.add(p.place_id);
-                filtered.push(p);
+                
+                // 2. 初步幾何距離過濾 (Geometry Filter)
+                const loc = p.geometry.location;
+                const distanceMeters = google.maps.geometry.spherical.computeDistanceBetween(origin, loc);
+                
+                // 寬容度設定：直線距離不要超過「搜尋半徑的 1.3 倍」
+                if (distanceMeters <= searchRadiusLimit * 1.3) {
+                    filtered.push(p);
+                }
             }
         }
     });
@@ -573,18 +600,22 @@ function processResults(origin, results) {
         return;
     }
 
-    // 為了節省 Distance Matrix Quota，若店家數量過多，先進行初步距離篩選 (直線距離)
-    // 假設開車 10分鐘約 4km，那直線距離超過 6km 的通常不用算路程了
-    // 這裡做一個寬鬆的篩選
-    /*
-    const roughMaxDist = (transportMode === 'DRIVING') ? (maxTime * 800) : (maxTime * 100);
-    // (因這部分需要 geometry library 的 computeDistanceBetween，為簡化程式碼與避免依賴錯誤，暫不執行嚴格直線過濾，
-    // 直接依賴上面的 searchRadius 已經做了初步限制)
-    */
+    btn.innerText = `計算路程 (過濾前 ${filtered.length} 間)...`;
 
-    btn.innerText = `計算路程 (共 ${filtered.length} 間)...`;
+    // 為了避免 Distance Matrix 爆量 (如果抓回 200 間)，我們只取「直線距離最近」或「評價最高」的前 50-80 間去算路程
+    // 這裡採用「加權分數」排序後取前 80 間，確保算路程的都是高品質店家
+    filtered.sort((a, b) => {
+        const scoreA = a.rating * Math.log10(a.user_ratings_total + 1);
+        const scoreB = b.rating * Math.log10(b.user_ratings_total + 1);
+        return scoreB - scoreA;
+    });
+    
+    // 如果數量太多，截斷以節省 API 額度 (Matrix API 很貴)
+    if (filtered.length > 80) {
+        filtered = filtered.slice(0, 80);
+    }
 
-    // Distance Matrix 一次最多 25 個目的地
+    // 3. 批量計算實際路程 (Distance Matrix)
     const batchSize = 25;
     const batches = [];
     for (let i = 0; i < filtered.length; i += batchSize) {
@@ -595,18 +626,22 @@ function processResults(origin, results) {
         .then(resultsArray => {
             let validPlaces = [].concat(...resultsArray);
             
-            // 嚴格過濾實際路程時間
+            // 4. 嚴格過濾實際時間
             validPlaces = validPlaces.filter(p => p.realDurationMins <= maxTime);
 
             if (validPlaces.length === 0) {
-                alert(`${maxTime} 分鐘內無符合店家 (可能距離過遠或塞車)`);
+                alert(`${maxTime} 分鐘內無符合店家`);
                 btn.innerText = "🔄 開始搜尋店家";
                 btn.disabled = false;
                 return;
             }
 
-            // 排序：評價高的優先
-            validPlaces.sort((a, b) => b.rating - a.rating);
+            // 5. 最終排序：再次依照評價與權重排序
+            validPlaces.sort((a, b) => {
+                const scoreA = a.rating * Math.log10(a.user_ratings_total + 1);
+                const scoreB = b.rating * Math.log10(b.user_ratings_total + 1);
+                return scoreB - scoreA;
+            });
 
             // 截取用戶需要的數量
             allSearchResults = validPlaces.slice(0, userMaxCount); 
