@@ -1011,5 +1011,3 @@ window.initLocation = initLocation;
 window.showGuide = showGuide;
 window.saveAndStart = saveAndStart;
 window.updateKeywords = updateKeywords;
-
-}
