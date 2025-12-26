@@ -11,7 +11,7 @@ let userCoordinates = null;
 let canvas = null;
 let ctx = null;
 
-// 預設關鍵字字典 (Fallback值)
+// 預設關鍵字字典 (系統預設值)
 const defaultKeywordDict = {
     breakfast: "早餐 早午餐",
     lunch: "餐廳 小吃 午餐 異國料理",
@@ -162,7 +162,7 @@ window.onload = () => {
         try { userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
     }
 
-    // 載入並初始化關鍵字 (必須在 initApp 之前)
+    // 1. 載入關鍵字邏輯 (優先讀取 LocalStorage -> 變數)
     loadUserKeywords();
 
     // 載入 API Key
@@ -170,13 +170,15 @@ window.onload = () => {
     if (savedKey) {
         loadGoogleMapsScript(savedKey);
     } else {
+        // 沒有 Key，顯示設定畫面
         const setupScreen = document.getElementById('setup-screen');
         const appScreen = document.getElementById('app-screen');
         if(setupScreen) setupScreen.style.display = 'block';
         if(appScreen) appScreen.style.display = 'none';
         
-        // 填入偏好設定頁面的關鍵字預設值
+        // 2. 將載入的設定填入「設定頁面」的輸入框中 (關鍵字 + 一般設定)
         populateSetupKeywords(); 
+        populateSetupGeneralPrefs();
         
         showGuide('desktop');
     }
@@ -190,14 +192,16 @@ window.onload = () => {
     }
 };
 
-// 讀取使用者自訂關鍵字 (新增邏輯：若存檔中有空值，自動回填預設值)
+// ================== 設定頁面資料處理 (關鍵字) ==================
+
+// 從 LocalStorage 讀取關鍵字到記憶體 (activeKeywordDict)
 function loadUserKeywords() {
     const savedKw = localStorage.getItem('food_wheel_custom_keywords');
     if (savedKw) {
         try {
             const parsed = JSON.parse(savedKw);
             activeKeywordDict = {};
-            // 逐一檢查每個類別，若使用者存檔為空，則強制使用預設值
+            // 逐一檢查，若使用者設定為空字串，則強制使用預設值
             for (const key in defaultKeywordDict) {
                 if (parsed[key] && parsed[key].trim() !== "") {
                     activeKeywordDict[key] = parsed[key];
@@ -214,9 +218,8 @@ function loadUserKeywords() {
     }
 }
 
-// 將關鍵字填入設定頁面的輸入框
+// 將記憶體中的關鍵字填入「設定頁面」的輸入框
 function populateSetupKeywords() {
-    // 定義欄位 ID 對應的 Key
     const mapping = {
         'kw_breakfast': 'breakfast',
         'kw_lunch': 'lunch',
@@ -232,30 +235,58 @@ function populateSetupKeywords() {
     for (const [id, key] of Object.entries(mapping)) {
         const input = document.getElementById(id);
         if (input) {
-            // 雙重保險：如果 activeKeywordDict[key] 意外為空，直接顯示預設值
-            input.value = activeKeywordDict[key] || defaultKeywordDict[key];
+            // 這裡 activeKeywordDict 已經經過處理，保證有值 (預設或自訂)
+            input.value = activeKeywordDict[key]; 
         }
     }
 }
+
+// ================== 設定頁面資料處理 (一般設定) ==================
+
+// 從 LocalStorage 讀取一般設定，並填入「設定頁面」的下拉選單
+function populateSetupGeneralPrefs() {
+    const prefsJson = localStorage.getItem('food_wheel_prefs');
+    if (prefsJson) {
+        try {
+            const prefs = JSON.parse(prefsJson);
+            
+            // 輔助函式：若值存在則填入
+            const setVal = (id, val) => {
+                const el = document.getElementById(id);
+                if (el && val !== undefined && val !== null) {
+                    el.value = val;
+                }
+            };
+
+            setVal('setupMinRating', prefs.minRating);
+            setVal('setupSpinMode', prefs.spinMode);
+            setVal('setupTransport', prefs.transport);
+            setVal('setupMaxTime', prefs.maxTime);
+            setVal('setupPriceLevel', prefs.priceLevel);
+            setVal('setupResultCount', prefs.resultCount);
+            
+        } catch (e) { console.error("Error parsing general prefs", e); }
+    }
+    // 若沒有 LocalStorage 紀錄，則保留 HTML 中的 `selected` 預設值
+}
+
+// ================== 儲存與重設 ==================
 
 function saveAndStart() {
     const inputKey = document.getElementById('userApiKey').value.trim();
     if (inputKey.length < 20) return alert("API Key 格式不正確");
     
-    // 儲存一般偏好
-    const spinModeEl = document.getElementById('setupSpinMode');
-    const spinModeVal = spinModeEl ? spinModeEl.value : 'repeat';
-
+    // 1. 蒐集一般偏好設定
     const userPrefs = {
         minRating: document.getElementById('setupMinRating').value,
         transport: document.getElementById('setupTransport').value,
         maxTime: document.getElementById('setupMaxTime').value,
         priceLevel: document.getElementById('setupPriceLevel').value,
         resultCount: document.getElementById('setupResultCount').value,
-        spinMode: spinModeVal
+        spinMode: document.getElementById('setupSpinMode') ? document.getElementById('setupSpinMode').value : 'repeat'
     };
     
-    // 儲存自訂關鍵字
+    // 2. 蒐集自訂關鍵字
     const customKw = {};
     const mapping = {
         'kw_breakfast': 'breakfast',
@@ -274,13 +305,12 @@ function saveAndStart() {
         if (input && input.value.trim() !== "") {
             customKw[key] = input.value.trim();
         } else {
-            // 如果使用者清空，則使用預設值，並更新 input 顯示
+            // 使用者若清空，存檔時視為使用預設值
             customKw[key] = defaultKeywordDict[key];
-            if(input) input.value = defaultKeywordDict[key];
         }
     }
     
-    // 更新全域變數並存入 LS
+    // 更新變數並寫入 Storage
     activeKeywordDict = customKw;
     localStorage.setItem('food_wheel_custom_keywords', JSON.stringify(customKw));
     localStorage.setItem('food_wheel_api_key', inputKey);
@@ -296,14 +326,16 @@ function resetApiKey() {
     }
 }
 
+// 點擊「⚙️ 偏好設定」時觸發
 function editPreferences() {
     document.getElementById('app-screen').style.display = 'none';
     document.getElementById('setup-screen').style.display = 'block';
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if(savedKey) document.getElementById('userApiKey').value = savedKey;
     
-    // 進入設定頁面時，重新將目前的關鍵字填入輸入框
+    // 重新載入設定值到輸入框 (確保顯示的是當前設定，而非網頁預設)
     populateSetupKeywords();
+    populateSetupGeneralPrefs(); // 新增：也要回填一般設定
 
     const prefsBox = document.querySelector('.preferences-box');
     if(prefsBox) prefsBox.scrollIntoView({ behavior: 'smooth' });
@@ -328,13 +360,14 @@ function loadGoogleMapsScript(apiKey) {
 }
 
 function initApp() {
-    applyPreferences();
+    applyPreferencesToApp(); // 將設定套用到主畫面的控制項
     autoSelectMealType();
     initLocation();
     resetGame(true);
 }
 
-function applyPreferences() {
+// 將 LocalStorage 設定套用到「主畫面 (App Screen)」的控制項
+function applyPreferencesToApp() {
     const prefsJson = localStorage.getItem('food_wheel_prefs');
     if (prefsJson) {
         try {
@@ -344,7 +377,6 @@ function applyPreferences() {
             if(prefs.maxTime) document.getElementById('maxTime').value = prefs.maxTime;
             if(prefs.priceLevel) document.getElementById('priceLevel').value = prefs.priceLevel;
             if(prefs.resultCount) document.getElementById('resultCount').value = prefs.resultCount;
-            // 套用到主畫面的選單
             if(prefs.spinMode && document.getElementById('spinMode')) {
                 document.getElementById('spinMode').value = prefs.spinMode;
             }
@@ -373,7 +405,7 @@ function autoSelectMealType() {
 function updateKeywords() {
     const type = document.getElementById('mealType').value;
     const input = document.getElementById('keywordInput');
-    // 使用 activeKeywordDict (包含使用者自訂值) 取代原本寫死的 dict
+    // 使用 activeKeywordDict (已處理過空值回退邏輯)
     if (activeKeywordDict[type]) {
         input.value = activeKeywordDict[type];
     }
@@ -735,19 +767,17 @@ function drawWheel() {
     });
 }
 
-// 【核心修正】按鈕點擊事件：正確讀取 spinMode
+// 按鈕點擊事件：正確讀取 spinMode
 document.getElementById('spinBtn').onclick = () => {
     try {
         if (places.length === 0) return;
         
-        // 1. 【關鍵修正】優先讀取主畫面上的 spinMode 設定
         let spinMode = 'repeat';
-        const spinModeEl = document.getElementById('spinMode'); // 改為 'spinMode'
+        const spinModeEl = document.getElementById('spinMode'); 
         
         if (spinModeEl) {
             spinMode = spinModeEl.value;
         } else {
-            // 如果畫面沒載入，才從偏好讀取 (Fallback)
             const prefs = JSON.parse(localStorage.getItem('food_wheel_prefs') || '{}');
             if(prefs.spinMode) spinMode = prefs.spinMode;
         }
@@ -784,7 +814,6 @@ document.getElementById('spinBtn').onclick = () => {
                 updateWinnerStatus(winner);
                 updateHitCountUI(winner.place_id);
 
-                // 使用開頭鎖定的 spinMode 變數判斷
                 if (spinMode === 'eliminate') {
                     eliminatedIds.add(winner.place_id); 
                     
