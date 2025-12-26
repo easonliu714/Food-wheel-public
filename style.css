@@ -29,7 +29,7 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .pref-item label { font-size: 0.85rem; font-weight: bold; color: #555; margin-bottom: 5px; }
 .pref-item select { padding: 8px; border-radius: 5px; border: 1px solid #ddd; width: 100%; box-sizing: border-box; }
 
-/* 新增：設定頁面的輸入框樣式 */
+/* 設定頁面的輸入框樣式 */
 .setup-input { padding: 8px; border-radius: 5px; border: 1px solid #ddd; width: 100%; box-sizing: border-box; font-size: 0.9rem; background: #fafafa; }
 .setup-input:focus { border-color: #3498db; outline: none; background: #fff; }
 .pref-item.full-width { grid-column: 1 / -1; }
@@ -66,26 +66,23 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
     justify-content: space-between; 
     align-items: center; 
     margin-bottom: 15px; 
-    flex-wrap: nowrap; /* 強制不換行 */
+    flex-wrap: nowrap;
 }
 
 .header-bar h1 { 
     margin: 0; 
     line-height: 1.2;
     white-space: nowrap; 
-    flex-shrink: 1; /* 空間不足時，標題可以被壓縮 */
+    flex-shrink: 1; 
     overflow: hidden; 
     text-overflow: ellipsis;
-    
-    /* 【關鍵修改】流體排版：最小 1rem，最大 1.5rem，中間依照視窗寬度的 4% 自動調整 */
     font-size: clamp(1rem, 4vw, 1.5rem); 
 }
 
-/* Header 按鈕群組 */
 .header-actions { 
     display: flex; 
     gap: 8px; 
-    flex-shrink: 0; /* 按鈕維持原大小，不被壓縮 */
+    flex-shrink: 0; 
 }
 
 .header-btn { 
@@ -103,23 +100,11 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .header-btn.key-btn { border-color: #e74c3c; color: #e74c3c; }
 .header-btn.key-btn:hover { background: #fdedec; }
 
-/* 手機版微調 */
 @media (max-width: 600px) {
-    .header-bar {
-        gap: 5px; 
-    }
-    /* 這裡不需要再寫死 font-size 了，因為上面的 clamp() 會自動處理 */
-    
-    .header-actions {
-        gap: 4px;
-    }
-    .header-btn {
-        padding: 4px 8px;
-        font-size: 0.75rem;
-    }
-    .container {
-        padding: 10px;
-    }
+    .header-bar { gap: 5px; }
+    .header-actions { gap: 4px; }
+    .header-btn { padding: 4px 8px; font-size: 0.75rem; }
+    .container { padding: 10px; }
 }
 
 /* 地點與控制區 */
@@ -177,7 +162,6 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 #resultsTable tr.active-winner { background-color: #d5f5e3; font-weight: bold; } 
 #resultsTable tr.eliminated { color: #aaa; text-decoration: line-through; background-color: #fcfcfc; } 
 
-/* 列表中的標籤 */
 .personal-tag {
     display: inline-block;
     font-size: 0.75rem;
@@ -189,7 +173,6 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .personal-tag.like { background: #e8f8f5; color: #27ae60; border: 1px solid #27ae60; }
 .personal-tag.dislike { background: #fdedec; color: #c0392b; border: 1px solid #c0392b; }
 
-/* 列表中的店家連結樣式 */
 .store-link {
     color: #3498db;
     text-decoration: none;
@@ -209,15 +192,13 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
     order: 0; /* 手機上輪盤優先顯示 */
 }
 
-/* 地雷濾除開關樣式 */
 .filter-box { margin-bottom: 10px; font-size: 0.9rem; color: #555; background: #fff; padding: 8px; border-radius: 20px; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 .filter-box input { margin-right: 5px; vertical-align: middle; }
 .filter-box label { vertical-align: middle; cursor: pointer; font-weight: bold; }
 
-/* 手機版：列表排在輪盤下面 */
 @media (min-width: 768px) {
-    .list-panel { order: 0; } /* 電腦版列表在左 */
-    .wheel-section { order: 1; } /* 電腦版輪盤在右 */
+    .list-panel { order: 0; }
+    .wheel-section { order: 1; }
 }
 
 .wheel-container { position: relative; margin: 0 auto 20px auto; width: 300px; height: 300px; }
@@ -235,7 +216,6 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 
 #result { padding: 20px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); min-height: 100px; }
 
-/* 操作按鈕列 */
 .action-row {
     display: flex;
     justify-content: center;
@@ -268,7 +248,5 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 }
 
 .rate-btn:hover { filter: brightness(0.95); }
-
-/* 評價按鈕選中狀態 */
 .rate-btn.like.active { background: #27ae60; color: white; border-color: #27ae60; }
 .rate-btn.dislike.active { background: #c0392b; color: white; border-color: #c0392b; }
