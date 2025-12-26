@@ -26,6 +26,18 @@
             <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">設定後，每次開啟網頁都會自動套用這些條件。</p>
             
             <div class="pref-grid">
+                <div class="pref-item full-width">
+                    <label>🔎 預設搜尋策略</label>
+                    <select id="setupSearchMode">
+                        <option value="nearby" selected>📍 距離優先 (找最近)</option>
+                        <option value="famous">🌟 熱門優先 (找好店)</option>
+                    </select>
+                    <p style="font-size: 0.8rem; color: #888; margin-top: 5px;">
+                        <strong>距離優先：</strong>嚴格由近到遠搜尋，適合時間緊迫、想找最近的店。<br>
+                        <strong>熱門優先：</strong>在範圍內搜尋評價較高與知名的店，適合美食探險。
+                    </p>
+                </div>
+
                 <div class="pref-item">
                     <label>🎖️ 最低星評</label>
                     <select id="setupMinRating">
@@ -46,8 +58,8 @@
                 <div class="pref-item">
                     <label>🏃‍♂️ 交通方式</label>
                     <select id="setupTransport">
-                        <option value="WALKING" selected>走路 🚶🚴‍♂️</option>
-                        <option value="DRIVING">機車/開車 🛵🚗</option>
+                        <option value="WALKING" selected>走路/單車 🚶🚴‍♂️ (時速20km)</option>
+                        <option value="DRIVING">機車/開車 🛵🚗 (時速60km)</option>
                     </select>
                 </div>
                 <div class="pref-item">
@@ -159,6 +171,14 @@
 
         <div class="controls">
             <div class="setting-row">
+                <label for="searchMode">🔎 模式：</label>
+                <select id="searchMode">
+                    <option value="nearby" selected>📍 距離優先 (找最近)</option>
+                    <option value="famous">🌟 熱門優先 (找好店)</option>
+                </select>
+            </div>
+
+            <div class="setting-row">
                 <label for="mealType">📑 類別：</label>
                 <select id="mealType" onchange="updateKeywords()">
                     <option value="breakfast">🍔🥪☕ 早餐</option>
@@ -204,8 +224,8 @@
             <div class="setting-row">
                 <label for="transportMode">🏃‍♂️ 交通：</label>
                 <select id="transportMode">
-                    <option value="WALKING" selected>走路 🚶🚴‍♂️ </option>
-                    <option value="DRIVING">機車/開車 🛵🚗 </option>
+                    <option value="WALKING" selected>🚶‍♂️🚴‍♂️ 走路/單車 (20km/h)</option>
+                    <option value="DRIVING">🛵🚗 機車/開車 (60km/h)</option>
                 </select>
             </div>
 
