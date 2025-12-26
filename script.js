@@ -190,14 +190,21 @@ window.onload = () => {
     }
 };
 
-// 讀取使用者自訂關鍵字
+// 讀取使用者自訂關鍵字 (新增邏輯：若存檔中有空值，自動回填預設值)
 function loadUserKeywords() {
     const savedKw = localStorage.getItem('food_wheel_custom_keywords');
     if (savedKw) {
         try {
             const parsed = JSON.parse(savedKw);
-            // 合併使用者設定與預設值 (確保欄位完整)
-            activeKeywordDict = { ...defaultKeywordDict, ...parsed };
+            activeKeywordDict = {};
+            // 逐一檢查每個類別，若使用者存檔為空，則強制使用預設值
+            for (const key in defaultKeywordDict) {
+                if (parsed[key] && parsed[key].trim() !== "") {
+                    activeKeywordDict[key] = parsed[key];
+                } else {
+                    activeKeywordDict[key] = defaultKeywordDict[key];
+                }
+            }
         } catch (e) {
             console.error("載入關鍵字錯誤，使用預設值", e);
             activeKeywordDict = { ...defaultKeywordDict };
@@ -225,7 +232,8 @@ function populateSetupKeywords() {
     for (const [id, key] of Object.entries(mapping)) {
         const input = document.getElementById(id);
         if (input) {
-            input.value = activeKeywordDict[key] || "";
+            // 雙重保險：如果 activeKeywordDict[key] 意外為空，直接顯示預設值
+            input.value = activeKeywordDict[key] || defaultKeywordDict[key];
         }
     }
 }
@@ -266,8 +274,9 @@ function saveAndStart() {
         if (input && input.value.trim() !== "") {
             customKw[key] = input.value.trim();
         } else {
-            // 如果使用者清空，則使用預設值
+            // 如果使用者清空，則使用預設值，並更新 input 顯示
             customKw[key] = defaultKeywordDict[key];
+            if(input) input.value = defaultKeywordDict[key];
         }
     }
     
