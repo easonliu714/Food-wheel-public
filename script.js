@@ -11,8 +11,8 @@ let userCoordinates = null;
 let canvas = null;
 let ctx = null;
 
-// 關鍵字字典
-const keywordDict = {
+// 預設關鍵字字典 (Fallback值)
+const defaultKeywordDict = {
     breakfast: "早餐 早午餐",
     lunch: "餐廳 小吃 午餐 異國料理",
     afternoon_tea: "飲料 甜點 咖啡",
@@ -23,6 +23,9 @@ const keywordDict = {
     dessert: "冰品 豆花 甜點 蛋糕",
     all: "美食 餐廳 小吃 夜市 料理 吃到飽" 
 };
+
+// 實際運作時使用的關鍵字字典 (會優先讀取使用者設定)
+let activeKeywordDict = { ...defaultKeywordDict };
 
 // ================== 0. 教學內容 ==================
 const commonApiList = `
@@ -159,6 +162,9 @@ window.onload = () => {
         try { userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
     }
 
+    // 載入並初始化關鍵字 (必須在 initApp 之前)
+    loadUserKeywords();
+
     // 載入 API Key
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if (savedKey) {
@@ -168,6 +174,10 @@ window.onload = () => {
         const appScreen = document.getElementById('app-screen');
         if(setupScreen) setupScreen.style.display = 'block';
         if(appScreen) appScreen.style.display = 'none';
+        
+        // 填入偏好設定頁面的關鍵字預設值
+        populateSetupKeywords(); 
+        
         showGuide('desktop');
     }
 
@@ -180,11 +190,51 @@ window.onload = () => {
     }
 };
 
+// 讀取使用者自訂關鍵字
+function loadUserKeywords() {
+    const savedKw = localStorage.getItem('food_wheel_custom_keywords');
+    if (savedKw) {
+        try {
+            const parsed = JSON.parse(savedKw);
+            // 合併使用者設定與預設值 (確保欄位完整)
+            activeKeywordDict = { ...defaultKeywordDict, ...parsed };
+        } catch (e) {
+            console.error("載入關鍵字錯誤，使用預設值", e);
+            activeKeywordDict = { ...defaultKeywordDict };
+        }
+    } else {
+        activeKeywordDict = { ...defaultKeywordDict };
+    }
+}
+
+// 將關鍵字填入設定頁面的輸入框
+function populateSetupKeywords() {
+    // 定義欄位 ID 對應的 Key
+    const mapping = {
+        'kw_breakfast': 'breakfast',
+        'kw_lunch': 'lunch',
+        'kw_afternoon_tea': 'afternoon_tea',
+        'kw_dinner': 'dinner',
+        'kw_late_night': 'late_night',
+        'kw_noodles_rice': 'noodles_rice',
+        'kw_western_steak': 'western_steak',
+        'kw_dessert': 'dessert',
+        'kw_all': 'all'
+    };
+    
+    for (const [id, key] of Object.entries(mapping)) {
+        const input = document.getElementById(id);
+        if (input) {
+            input.value = activeKeywordDict[key] || "";
+        }
+    }
+}
+
 function saveAndStart() {
     const inputKey = document.getElementById('userApiKey').value.trim();
     if (inputKey.length < 20) return alert("API Key 格式不正確");
     
-    // 儲存偏好
+    // 儲存一般偏好
     const spinModeEl = document.getElementById('setupSpinMode');
     const spinModeVal = spinModeEl ? spinModeEl.value : 'repeat';
 
@@ -197,13 +247,41 @@ function saveAndStart() {
         spinMode: spinModeVal
     };
     
+    // 儲存自訂關鍵字
+    const customKw = {};
+    const mapping = {
+        'kw_breakfast': 'breakfast',
+        'kw_lunch': 'lunch',
+        'kw_afternoon_tea': 'afternoon_tea',
+        'kw_dinner': 'dinner',
+        'kw_late_night': 'late_night',
+        'kw_noodles_rice': 'noodles_rice',
+        'kw_western_steak': 'western_steak',
+        'kw_dessert': 'dessert',
+        'kw_all': 'all'
+    };
+    
+    for (const [id, key] of Object.entries(mapping)) {
+        const input = document.getElementById(id);
+        if (input && input.value.trim() !== "") {
+            customKw[key] = input.value.trim();
+        } else {
+            // 如果使用者清空，則使用預設值
+            customKw[key] = defaultKeywordDict[key];
+        }
+    }
+    
+    // 更新全域變數並存入 LS
+    activeKeywordDict = customKw;
+    localStorage.setItem('food_wheel_custom_keywords', JSON.stringify(customKw));
     localStorage.setItem('food_wheel_api_key', inputKey);
     localStorage.setItem('food_wheel_prefs', JSON.stringify(userPrefs));
+    
     loadGoogleMapsScript(inputKey);
 }
 
 function resetApiKey() {
-    if(confirm("確定要重設 API Key 嗎？\n(您的偏好設定與評價紀錄將會保留)")) {
+    if(confirm("確定要重設 API Key 嗎？\n(您的偏好設定、自訂關鍵字與評價紀錄將會保留)")) {
         localStorage.removeItem('food_wheel_api_key');
         location.reload(); 
     }
@@ -214,6 +292,10 @@ function editPreferences() {
     document.getElementById('setup-screen').style.display = 'block';
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if(savedKey) document.getElementById('userApiKey').value = savedKey;
+    
+    // 進入設定頁面時，重新將目前的關鍵字填入輸入框
+    populateSetupKeywords();
+
     const prefsBox = document.querySelector('.preferences-box');
     if(prefsBox) prefsBox.scrollIntoView({ behavior: 'smooth' });
 }
@@ -282,8 +364,9 @@ function autoSelectMealType() {
 function updateKeywords() {
     const type = document.getElementById('mealType').value;
     const input = document.getElementById('keywordInput');
-    if (keywordDict[type]) {
-        input.value = keywordDict[type];
+    // 使用 activeKeywordDict (包含使用者自訂值) 取代原本寫死的 dict
+    if (activeKeywordDict[type]) {
+        input.value = activeKeywordDict[type];
     }
 }
 
@@ -889,5 +972,6 @@ window.handleSearch = handleSearch;
 window.initLocation = initLocation;
 window.showGuide = showGuide;
 window.saveAndStart = saveAndStart;
-window.clearKey = clearKey;
 window.updateKeywords = updateKeywords;
+
+}
