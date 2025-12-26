@@ -63,7 +63,7 @@ const guideData = {
             },
             {
                 title: "5. 取得 API Key",
-                desc: "左側選單(☰)前往「憑證 (Credentials)」，點擊「建立憑證」>「API 金鑰」。複製該金鑰並貼到下方的輸入框。",
+                desc: "左側選單前往「憑證 (Credentials)」，點擊「建立憑證」>「API 金鑰」。複製該金鑰並貼到下方的輸入框。",
                 img: './images/desktop_5.jpg'
             }
         ]
@@ -123,7 +123,7 @@ const guideData = {
             },
             {
                 title: "5. 取得 Key",
-                desc: "選單(☰) > 「API 和服務（APIs & Services）」 > 「憑證 (Credentials)」 > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
+                desc: "選單 > 「API 和服務（APIs & Services）」 > 「憑證 (Credentials)」 > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
                 img: './images/ios_5.jpg'
             }
         ]
@@ -619,8 +619,7 @@ function processResults(origin, results, maxLinearDist) {
                 const loc = p.geometry.location;
                 const distanceMeters = google.maps.geometry.spherical.computeDistanceBetween(origin, loc);
                 
-                // 使用 (速度 x 時間 x 1.5) 作為絕對門檻
-                // 這能篩掉 Nearby Mode 抓回來的「超遠但距離最近」的結果 (如果有)，以及 Famous Mode 範圍邊緣的結果
+                // 寬容度設定：(速度 x 時間 x 1.5)
                 if (distanceMeters <= maxLinearDist) {
                     // 暫存直線距離供排序參考
                     p.geometryDistance = distanceMeters;
@@ -639,16 +638,29 @@ function processResults(origin, results, maxLinearDist) {
 
     btn.innerText = `計算路程 (過濾前 ${filtered.length} 間)...`;
 
-    // 3. 排序優化 (在送 Distance Matrix 前先挑選最有希望的)
+    // 3. 【關鍵修正】排序與截斷策略 (保障名額)
+    // 為了避免遠方名店擠掉近處小店，我們採用「分層保留」
+    
+    // 計算「近距離保障範圍」 (約為最大直線距離的 1/3，大約是第一層搜尋半徑)
+    const safeZoneDist = maxLinearDist / 3; 
+
     if (searchMode === 'nearby') {
-        // Nearby Mode: 優先選直線距離近的去算路程
+        // Nearby Mode: 優先選直線距離近的
         filtered.sort((a, b) => a.geometryDistance - b.geometryDistance);
     } else {
-        // Famous Mode: 優先選評價好的去算路程
+        // Famous Mode: 混合排序 (保障近距離 + 熱門度)
         filtered.sort((a, b) => {
-            const scoreA = a.rating * Math.log10(a.user_ratings_total + 1);
-            const scoreB = b.rating * Math.log10(b.user_ratings_total + 1);
-            return scoreB - scoreA;
+            const getScore = (place) => {
+                let score = place.rating * Math.log10(place.user_ratings_total + 1);
+                
+                // 【核心修正】若在安全保障範圍內，給予極大加權，確保不會被「遠方高分店」擠出 top 80
+                // 這解決了「15分鐘搜尋結果反而比 5分鐘少」的問題
+                if (place.geometryDistance <= safeZoneDist) {
+                    score *= 3.0; // 強力保障
+                }
+                return score;
+            };
+            return getScore(b) - getScore(a);
         });
     }
 
