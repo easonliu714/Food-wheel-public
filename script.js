@@ -63,7 +63,7 @@ const guideData = {
             },
             {
                 title: "5. 取得 API Key",
-                desc: "左側選單前往「憑證 (Credentials)」，點擊「建立憑證」>「API 金鑰」。複製該金鑰並貼到下方的輸入框。",
+                desc: "左側選單(☰)選「憑證 (Credentials)」，點擊「建立憑證」>「API 金鑰」。複製該金鑰並貼到下方的輸入框。",
                 img: './images/desktop_5.jpg'
             }
         ]
@@ -113,7 +113,7 @@ const guideData = {
             },
             {
                 title: "3. 設定 Billing",
-                desc: "左側選單 (☰) > 「帳單 (Billing)」>「付款方式」。依指示綁定信用卡 (享每月 $200 免費額度)。",
+                desc: "左側選單(☰) > 「帳單 (Billing)」>「付款方式」。依指示綁定信用卡 (享每月 $200 免費額度)。",
                 img: './images/ios_3.jpg'
             },
             {
@@ -123,7 +123,7 @@ const guideData = {
             },
             {
                 title: "5. 取得 Key",
-                desc: "選單 > 「API 和服務（APIs & Services）」 > 「憑證 (Credentials)」 > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
+                desc: "選單(☰) > 「API 和服務（APIs & Services）」 > 「憑證 (Credentials)」 > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
                 img: './images/ios_5.jpg'
             }
         ]
@@ -250,6 +250,7 @@ function populateSetupGeneralPrefs() {
                 }
             };
 
+            setVal('setupSearchMode', prefs.searchMode); // 新增搜尋模式
             setVal('setupMinRating', prefs.minRating);
             setVal('setupSpinMode', prefs.spinMode);
             setVal('setupTransport', prefs.transport);
@@ -268,6 +269,7 @@ function saveAndStart() {
     if (inputKey.length < 20) return alert("API Key 格式不正確");
     
     const userPrefs = {
+        searchMode: document.getElementById('setupSearchMode').value, // 新增
         minRating: document.getElementById('setupMinRating').value,
         transport: document.getElementById('setupTransport').value,
         maxTime: document.getElementById('setupMaxTime').value,
@@ -356,6 +358,8 @@ function applyPreferencesToApp() {
     if (prefsJson) {
         try {
             const prefs = JSON.parse(prefsJson);
+            // 套用搜尋模式到主畫面
+            if(prefs.searchMode) document.getElementById('searchMode').value = prefs.searchMode;
             if(prefs.minRating) document.getElementById('minRating').value = prefs.minRating;
             if(prefs.transport) document.getElementById('transportMode').value = prefs.transport;
             if(prefs.maxTime) document.getElementById('maxTime').value = prefs.maxTime;
@@ -460,65 +464,63 @@ function handleSearch() {
     });
 }
 
-// 【核心修正】全方位深層搜尋策略 (Deep Search Strategy)
+// 【核心修正】雙模式搜尋策略 (Nearby vs Famous)
 function startSearch(location, keywordsRaw) {
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
     const transportMode = document.getElementById('transportMode').value;
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
+    const searchMode = document.getElementById('searchMode').value; // 'nearby' 或 'famous'
     
-    // 1. 關鍵字擴充：單詞 + 組合詞
+    // 1. 關鍵字策略：拆分 + 原句 (平行搜尋)
     const splitKeywords = keywordsRaw.split(/\s+/).filter(k => k.length > 0);
     let searchQueries = [...splitKeywords];
     if (splitKeywords.length > 1) {
         searchQueries.push(keywordsRaw);
     }
 
-    // 2. 距離同心圓策略：近 + 中 + 遠
-    // 計算最大半徑
-    let maxRadius = 1000; 
+    // 2. 速度定義與半徑/幾何過濾距離計算
+    let speedMetersPerMin = 0;
     if (transportMode === 'DRIVING') {
-        maxRadius = maxTime * 400; // 400m/min
+        speedMetersPerMin = 1000; // 60 km/h = 1000 m/min
     } else {
-        maxRadius = maxTime * 80;  // 80m/min
+        speedMetersPerMin = 333.33; // 20 km/h = ~333 m/min (走路/單車)
     }
-    // 上下限防呆
-    if (transportMode === 'DRIVING' && maxRadius > 15000) maxRadius = 15000;
-    if (transportMode === 'WALKING' && maxRadius > 5000) maxRadius = 5000;
-    if (maxRadius < 500) maxRadius = 500;
 
-    let radiiLayers = [];
-    radiiLayers.push(800); // 基礎層 (近距離)
-    
-    if (maxRadius > 1200) {
-        radiiLayers.push(Math.floor(maxRadius / 2)); // 中間層
-        radiiLayers.push(maxRadius); // 最外層
-    } else if (maxRadius > 800) {
-        radiiLayers.push(maxRadius);
-    }
-    // 去除重複的距離層 (例如算出來中間層跟外層差不多)
-    radiiLayers = [...new Set(radiiLayers)].sort((a,b)=>a-b);
+    // 依據時間計算理論搜尋半徑 (Radius) - 用於 API 參數 (僅 Famous 模式)
+    const theoreticalRadius = speedMetersPerMin * maxTime;
+
+    // 計算最大直線距離過濾門檻 (Max Linear Distance) - 用於後端 geometry 過濾
+    // 規則：(速度 * 時間) * 1.5 倍
+    const maxLinearDist = theoreticalRadius * 1.5;
 
     const btn = document.querySelector('.search-btn');
-    const totalRequestsEstimate = searchQueries.length * radiiLayers.length;
-    btn.innerText = `深層搜尋中 (分頁抓取)...`;
+    let statusText = (searchMode === 'nearby') 
+        ? `📍 距離優先搜尋 (抓取最近 60 筆)...` 
+        : `🌟 熱門優先搜尋 (半徑 ${(theoreticalRadius/1000).toFixed(1)}km)...`;
+    btn.innerText = statusText;
 
     // 3. 執行多重非同步搜尋 (含分頁)
     let promises = [];
 
     searchQueries.forEach(keyword => {
-        radiiLayers.forEach(radius => {
-            const request = {
-                location: location,
-                radius: radius,
-                keyword: keyword,
-                rankBy: google.maps.places.RankBy.PROMINENCE // 強制使用關聯性排序
-            };
-            if (priceLevel !== -1) request.maxPrice = priceLevel;
+        let request = {
+            location: location,
+            keyword: keyword
+        };
+        if (priceLevel !== -1) request.maxPrice = priceLevel;
 
-            // 呼叫支援分頁的函式
-            promises.push(fetchPlacesWithPagination(service, request));
-        });
+        if (searchMode === 'nearby') {
+            // Nearby Mode: 距離優先，不可帶 radius
+            request.rankBy = google.maps.places.RankBy.DISTANCE;
+        } else {
+            // Famous Mode: 知名度優先 (預設)，必須帶 radius
+            request.rankBy = google.maps.places.RankBy.PROMINENCE;
+            request.radius = theoreticalRadius; // 使用計算出的理論半徑
+        }
+
+        // 呼叫支援分頁的函式 (強制抓滿 3 頁)
+        promises.push(fetchPlacesWithPagination(service, request));
     });
 
     // 4. 合併結果
@@ -531,7 +533,7 @@ function startSearch(location, keywordsRaw) {
             btn.disabled = false;
             return;
         }
-        processResults(location, combinedResults, maxRadius);
+        processResults(location, combinedResults, maxLinearDist);
     }).catch(err => {
         console.error(err);
         alert("搜尋錯誤");
@@ -549,7 +551,7 @@ function fetchPlacesWithPagination(service, request) {
             if (status === google.maps.places.PlacesServiceStatus.OK && results) {
                 allResults = allResults.concat(results);
                 
-                // 檢查是否有下一頁 (且目前累積數量不超過 60，避免無限迴圈或過度消耗)
+                // 檢查是否有下一頁 (且目前累積數量不超過 60)
                 if (pagination && pagination.hasNextPage && allResults.length < 60) {
                     // Google API 要求：next_page_token 出現後，必須等待約 2 秒才能使用
                     setTimeout(() => {
@@ -565,28 +567,33 @@ function fetchPlacesWithPagination(service, request) {
     });
 }
 
-function processResults(origin, results, searchRadiusLimit) {
+function processResults(origin, results, maxLinearDist) {
     const btn = document.querySelector('.search-btn');
     const userMaxCount = parseInt(document.getElementById('resultCount').value, 10);
     const transportMode = document.getElementById('transportMode').value;
     const minRating = parseFloat(document.getElementById('minRating').value);
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
+    const searchMode = document.getElementById('searchMode').value;
 
     // 1. 去除重複 (Deduplication)
     const uniqueIds = new Set();
     let filtered = [];
     
     results.forEach(p => {
+        // 基本過濾：星等 & 評論數
         if (p.rating && p.rating >= minRating && p.user_ratings_total > 0) {
             if (!uniqueIds.has(p.place_id)) {
                 uniqueIds.add(p.place_id);
                 
-                // 2. 初步幾何距離過濾 (Geometry Filter)
+                // 2. 幾何直線距離過濾 (Geometry Filter) - 節省 API Quota
                 const loc = p.geometry.location;
                 const distanceMeters = google.maps.geometry.spherical.computeDistanceBetween(origin, loc);
                 
-                // 寬容度設定：直線距離不要超過「搜尋半徑的 1.3 倍」
-                if (distanceMeters <= searchRadiusLimit * 1.3) {
+                // 使用 (速度 x 時間 x 1.5) 作為絕對門檻
+                // 這能篩掉 Nearby Mode 抓回來的「超遠但距離最近」的結果 (如果有)，以及 Famous Mode 範圍邊緣的結果
+                if (distanceMeters <= maxLinearDist) {
+                    // 暫存直線距離供排序參考
+                    p.geometryDistance = distanceMeters;
                     filtered.push(p);
                 }
             }
@@ -594,7 +601,7 @@ function processResults(origin, results, searchRadiusLimit) {
     });
 
     if (filtered.length === 0) {
-        alert(`無符合 ${minRating} 星以上的店家`);
+        alert(`無符合 ${minRating} 星以上的店家 (或超出最大直線距離)`);
         btn.innerText = "🔄 開始搜尋店家";
         btn.disabled = false;
         return;
@@ -602,20 +609,25 @@ function processResults(origin, results, searchRadiusLimit) {
 
     btn.innerText = `計算路程 (過濾前 ${filtered.length} 間)...`;
 
-    // 為了避免 Distance Matrix 爆量 (如果抓回 200 間)，我們只取「直線距離最近」或「評價最高」的前 50-80 間去算路程
-    // 這裡採用「加權分數」排序後取前 80 間，確保算路程的都是高品質店家
-    filtered.sort((a, b) => {
-        const scoreA = a.rating * Math.log10(a.user_ratings_total + 1);
-        const scoreB = b.rating * Math.log10(b.user_ratings_total + 1);
-        return scoreB - scoreA;
-    });
-    
-    // 如果數量太多，截斷以節省 API 額度 (Matrix API 很貴)
+    // 3. 排序優化 (在送 Distance Matrix 前先挑選最有希望的)
+    if (searchMode === 'nearby') {
+        // Nearby Mode: 優先選直線距離近的去算路程
+        filtered.sort((a, b) => a.geometryDistance - b.geometryDistance);
+    } else {
+        // Famous Mode: 優先選評價好的去算路程
+        filtered.sort((a, b) => {
+            const scoreA = a.rating * Math.log10(a.user_ratings_total + 1);
+            const scoreB = b.rating * Math.log10(b.user_ratings_total + 1);
+            return scoreB - scoreA;
+        });
+    }
+
+    // 截斷數量，避免 Matrix API 爆量 (取前 80 間最有希望的)
     if (filtered.length > 80) {
         filtered = filtered.slice(0, 80);
     }
 
-    // 3. 批量計算實際路程 (Distance Matrix)
+    // 4. 批量計算實際路程 (Distance Matrix)
     const batchSize = 25;
     const batches = [];
     for (let i = 0; i < filtered.length; i += batchSize) {
@@ -626,22 +638,28 @@ function processResults(origin, results, searchRadiusLimit) {
         .then(resultsArray => {
             let validPlaces = [].concat(...resultsArray);
             
-            // 4. 嚴格過濾實際時間
+            // 5. 嚴格過濾實際時間
             validPlaces = validPlaces.filter(p => p.realDurationMins <= maxTime);
 
             if (validPlaces.length === 0) {
-                alert(`${maxTime} 分鐘內無符合店家`);
+                alert(`${maxTime} 分鐘內無符合店家 (實際路程超時)`);
                 btn.innerText = "🔄 開始搜尋店家";
                 btn.disabled = false;
                 return;
             }
 
-            // 5. 最終排序：再次依照評價與權重排序
-            validPlaces.sort((a, b) => {
-                const scoreA = a.rating * Math.log10(a.user_ratings_total + 1);
-                const scoreB = b.rating * Math.log10(b.user_ratings_total + 1);
-                return scoreB - scoreA;
-            });
+            // 6. 最終顯示排序
+            if (searchMode === 'nearby') {
+                // Nearby Mode: 最終結果依「實際路程時間」排序
+                validPlaces.sort((a, b) => a.realDurationMins - b.realDurationMins);
+            } else {
+                // Famous Mode: 最終結果依「評價分數」排序
+                validPlaces.sort((a, b) => {
+                    const scoreA = a.rating * Math.log10(a.user_ratings_total + 1);
+                    const scoreB = b.rating * Math.log10(b.user_ratings_total + 1);
+                    return scoreB - scoreA;
+                });
+            }
 
             // 截取用戶需要的數量
             allSearchResults = validPlaces.slice(0, userMaxCount); 
@@ -782,7 +800,7 @@ function resetGame(fullReset) {
 }
 
 function setControlsDisabled(disabled) {
-    const ids = ['filterDislike', 'spinMode', 'resultCount', 'mealType', 'geoBtn'];
+    const ids = ['filterDislike', 'spinMode', 'resultCount', 'mealType', 'geoBtn', 'searchMode'];
     ids.forEach(id => {
         const el = document.getElementById(id);
         if(el) el.disabled = disabled;
