@@ -19,6 +19,7 @@ window.onload = () => {
     // 檢查 API Key
     const savedKey = localStorage.getItem('food_wheel_api_key');
     const savedGeminiKey = localStorage.getItem('food_wheel_gemini_key');
+    const savedModel = localStorage.getItem('food_wheel_gemini_model');
     
     if (savedKey) {
         document.getElementById('userApiKey').value = savedKey; // 填入輸入框
@@ -28,6 +29,10 @@ window.onload = () => {
     }
 
     if(savedGeminiKey) document.getElementById('userGeminiKey').value = savedGeminiKey;
+    if(savedModel) {
+        const modelSelect = document.getElementById('setupGeminiModel');
+        if(modelSelect) modelSelect.value = savedModel;
+    }
 
     // 綁定過濾器
     const filterCheckbox = document.getElementById('filterDislike');
@@ -92,11 +97,10 @@ function toggleMapsGuide() {
 function showGuide(platform) {
     const data = guideData[platform];
     const container = document.getElementById('guide-content');
-    container.style.display = 'block'; // 顯示教學區
+    container.style.display = 'block'; 
     
-    // Tab 樣式
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    // 簡單處理 active class，實際應用可用更嚴謹的選取
+    // 簡單處理 active class
     if(platform === 'desktop') document.querySelectorAll('.tab-btn')[0].classList.add('active');
     if(platform === 'android') document.querySelectorAll('.tab-btn')[1].classList.add('active');
     if(platform === 'ios') document.querySelectorAll('.tab-btn')[2].classList.add('active');
@@ -118,9 +122,44 @@ function toggleGeminiGuide() {
     area.style.display = area.style.display === 'none' ? 'block' : 'none';
 }
 
+// 修改：測試 Key 並顯示模型選單
+async function testGeminiKey() {
+    const key = document.getElementById('userGeminiKey').value.trim();
+    if(!key) return alert("請先輸入 API Key");
+    
+    const btn = event.target;
+    const originalText = btn.innerText;
+    btn.innerText = "測試中...";
+    btn.disabled = true;
+    
+    try {
+        // 使用 flash 模型測試最快
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ contents: [{ parts: [{ text: "Hello" }] }] })
+        });
+        
+        if (response.ok) {
+            alert("✅ 金鑰有效！請在下方選擇預設模型。");
+            // 顯示模型選擇區
+            document.getElementById('model-selection-area').style.display = 'block';
+        } else {
+            alert("❌ 金鑰無效或額度已滿 (Error: " + response.status + ")");
+        }
+    } catch(e) {
+        alert("❌ 測試連線失敗: " + e.message);
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
+
 function saveAndStart() {
     const inputKey = document.getElementById('userApiKey').value.trim();
     const geminiKey = document.getElementById('userGeminiKey').value.trim();
+    const geminiModel = document.getElementById('setupGeminiModel').value;
     
     if (inputKey.length < 20) return alert("Google Maps API Key 格式不正確");
     
@@ -147,14 +186,20 @@ function saveAndStart() {
     // 寫入 LocalStorage
     localStorage.setItem('food_wheel_custom_keywords', JSON.stringify(customKw));
     localStorage.setItem('food_wheel_api_key', inputKey);
-    if(geminiKey) localStorage.setItem('food_wheel_gemini_key', geminiKey); 
-    else localStorage.removeItem('food_wheel_gemini_key');
+    
+    if(geminiKey) {
+        localStorage.setItem('food_wheel_gemini_key', geminiKey); 
+        localStorage.setItem('food_wheel_gemini_model', geminiModel); // 儲存模型選擇
+    } else {
+        localStorage.removeItem('food_wheel_gemini_key');
+        localStorage.removeItem('food_wheel_gemini_model');
+    }
+    
     localStorage.setItem('food_wheel_prefs', JSON.stringify(userPrefs));
     
-    // 關鍵修正：如果 API 已經載入，直接切換畫面並初始化；否則載入 Script
+    // 關鍵修正：如果 API 已經載入，直接切換畫面並初始化
     if (typeof google !== 'undefined' && google.maps) {
         showAppScreen();
-        // 重新讀取偏好並套用
         if(typeof applyPreferencesToApp === 'function') applyPreferencesToApp();
     } else {
         loadGoogleMapsScript(inputKey);
@@ -178,8 +223,16 @@ function editPreferences() {
     // 重新填入值
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if(savedKey) document.getElementById('userApiKey').value = savedKey;
+    
     const savedGeminiKey = localStorage.getItem('food_wheel_gemini_key');
-    if(savedGeminiKey) document.getElementById('userGeminiKey').value = savedGeminiKey;
+    if(savedGeminiKey) {
+        document.getElementById('userGeminiKey').value = savedGeminiKey;
+        // 如果有 Key，就直接顯示模型選單
+        document.getElementById('model-selection-area').style.display = 'block';
+        const savedModel = localStorage.getItem('food_wheel_gemini_model');
+        if(savedModel) document.getElementById('setupGeminiModel').value = savedModel;
+    }
+    
     populateSetupKeywords(); 
     populateSetupGeneralPrefs(); 
 }
@@ -188,6 +241,7 @@ function resetApiKey() {
     if(confirm("確定要重設所有資料嗎？")) { 
         localStorage.removeItem('food_wheel_api_key'); 
         localStorage.removeItem('food_wheel_gemini_key');
+        localStorage.removeItem('food_wheel_gemini_model');
         localStorage.removeItem('food_wheel_prefs');
         location.reload(); 
     }
