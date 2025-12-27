@@ -57,12 +57,15 @@ window.analyzeSelectedPhotos = async function() {
     const geminiKey = localStorage.getItem('food_wheel_gemini_key');
     if (!geminiKey) return alert("請先在設定頁面輸入 Google Gemini API Key");
 
+    // 讀取使用者選擇的模型，若無則預設 flash
+    const selectedModel = document.getElementById('geminiModelSelect').value || 'gemini-1.5-flash';
+
     document.getElementById('ai-loading').style.display = 'block';
 
     try {
         const base64Data = window.selectedPhotoData.split(',')[1];
         const mimeType = window.selectedPhotoData.split(';')[0].split(':')[1];
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${geminiKey}`;
         
         const requestBody = {
             contents: [{
@@ -168,7 +171,6 @@ window.drawMenuWheel = function() {
     document.getElementById('addToOrderBtn').style.display = 'none';
 };
 
-// 轉盤按鈕邏輯放在 script.js 或這裡皆可，此處綁定在 window onload 初始化的 listener
 window.addDishToCart = function(dish) {
     if(!dish) dish = window.currentMenuData[0]; 
     window.shoppingCart.push(dish);
