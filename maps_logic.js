@@ -72,7 +72,6 @@ function initLocation() {
     );
 }
 
-// ... (搜尋邏輯保持大部分不變，僅簡化) ...
 function handleSearch() {
     const addrInput = document.getElementById('currentAddress').value;
     const keywordsRaw = document.getElementById('keywordInput').value;
@@ -110,24 +109,33 @@ function startSearch(location, keywordsRaw) {
     const btn = document.querySelector('.search-btn');
     btn.innerText = "搜尋中...";
 
-    // 簡化：不論模式都先抓，後續再排序
     searchQueries.forEach(keyword => {
-        let request = { location: location, radius: 1000, keyword: keyword }; // 預設 1km 掃描
-        if (searchMode === 'nearby') request.rankBy = google.maps.places.RankBy.DISTANCE;
-        else request.radius = 2000; // 熱門找廣一點
+        let request = { location: location, keyword: keyword };
+        
+        if (searchMode === 'nearby') {
+            // !!! 關鍵修復 !!! 
+            // 若 rankBy 為 DISTANCE，Google API 嚴格禁止傳入 'radius'，否則會回傳 INVALID_REQUEST
+            request.rankBy = google.maps.places.RankBy.DISTANCE;
+            // 這裡不設定 radius
+        } else {
+            // 熱門模式 (PROMINENCE) 需要 radius
+            request.radius = 2000; 
+        }
 
         if (priceLevel !== -1) request.maxPrice = priceLevel;
         
-        // 簡單封裝
         promises.push(new Promise(resolve => {
-            service.nearbySearch(request, (results, status) => resolve(status === 'OK' ? results : []));
+            service.nearbySearch(request, (results, status) => {
+                // 即便 ZERO_RESULTS 也視為成功回傳空陣列，避免 Promise.all 失敗
+                resolve((status === 'OK' && results) ? results : []);
+            });
         }));
     });
 
     Promise.all(promises).then(resultsArray => {
         let combinedResults = [].concat(...resultsArray);
         if (combinedResults.length === 0) {
-            alert("附近無店家");
+            alert("附近無符合條件的店家 (API 回傳 0 筆)");
             btn.innerText = "🔄 開始搜尋店家";
             return;
         }
@@ -151,8 +159,14 @@ function processResults(origin, results) {
         }
     });
 
-    // 取前 50 個計算距離 (避免 API 超額)
+    // 取前 50 個計算距離
     if (filtered.length > 50) filtered = filtered.slice(0, 50);
+
+    if (filtered.length === 0) {
+        alert("過濾後無符合條件店家 (可能是評分過濾)");
+        btn.innerText = "🔄 開始搜尋店家";
+        return;
+    }
 
     btn.innerText = "計算路程...";
     
@@ -186,8 +200,14 @@ function processResults(origin, results) {
             else filtered.sort((a,b) => (b.rating * Math.log(b.user_ratings_total)) - (a.rating * Math.log(a.user_ratings_total)));
 
             allSearchResults = filtered.slice(0, userMaxCount);
-            refreshWheelData();
-            btn.innerText = "搜尋完成";
+            
+            if (allSearchResults.length === 0) {
+                 alert("經距離/時間篩選後無店家");
+                 btn.innerText = "🔄 開始搜尋店家";
+            } else {
+                 refreshWheelData();
+                 btn.innerText = "搜尋完成";
+            }
         } else {
             alert("距離計算失敗");
             btn.innerText = "🔄 開始搜尋店家";
