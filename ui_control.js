@@ -28,10 +28,10 @@ window.onload = () => {
         showSetupScreen();
     }
 
-    if(savedGeminiKey) document.getElementById('userGeminiKey').value = savedGeminiKey;
-    if(savedModel) {
-        const modelSelect = document.getElementById('setupGeminiModel');
-        if(modelSelect) modelSelect.value = savedModel;
+    if(savedGeminiKey) {
+        document.getElementById('userGeminiKey').value = savedGeminiKey;
+        // 如果已經有 Key，嘗試直接載入模型列表
+        fetchAndPopulateModels(savedGeminiKey, savedModel);
     }
 
     // 綁定過濾器
@@ -122,6 +122,59 @@ function toggleGeminiGuide() {
     area.style.display = area.style.display === 'none' ? 'block' : 'none';
 }
 
+// 【新增功能】動態抓取可用模型
+async function fetchAndPopulateModels(apiKey, selectedModel = null) {
+    const modelSelect = document.getElementById('setupGeminiModel');
+    if (!modelSelect) return;
+
+    try {
+        // 使用 list models API
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        const data = await response.json();
+
+        if (data.models) {
+            modelSelect.innerHTML = ''; // 清空選項
+            
+            // 過濾出支援 generateContent 的模型 (即聊天/文本生成模型)
+            const chatModels = data.models.filter(m => 
+                m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent")
+            );
+
+            if (chatModels.length === 0) {
+                const opt = document.createElement('option');
+                opt.text = "無可用模型";
+                modelSelect.appendChild(opt);
+                return;
+            }
+
+            chatModels.forEach(model => {
+                const opt = document.createElement('option');
+                // model.name 格式通常為 "models/gemini-1.5-flash"
+                // 我們取最後一段作為乾淨的 ID，但 API 呼叫時建議用全名或去頭
+                // 這裡保留 full name 比較保險，或者去掉 "models/"
+                const value = model.name.replace('models/', '');
+                opt.value = value;
+                opt.text = `${model.displayName} (${value})`;
+                modelSelect.appendChild(opt);
+            });
+
+            document.getElementById('model-selection-area').style.display = 'block';
+
+            // 設定預設選取
+            if (selectedModel) {
+                modelSelect.value = selectedModel;
+            } else {
+                // 智慧預設：優先選 flash-001 或 flash
+                const defaultModel = chatModels.find(m => m.name.includes('flash')) || chatModels[0];
+                modelSelect.value = defaultModel.name.replace('models/', '');
+            }
+        }
+    } catch (e) {
+        console.error("無法取得模型列表", e);
+        // 若失敗，保留原本的 hardcode 選項當 fallback，或顯示錯誤
+    }
+}
+
 // 修改：測試 Key 並顯示模型選單
 async function testGeminiKey() {
     const key = document.getElementById('userGeminiKey').value.trim();
@@ -133,7 +186,7 @@ async function testGeminiKey() {
     btn.disabled = true;
     
     try {
-        // 使用 flash 模型測試最快
+        // 先測試一個簡單請求
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
         const response = await fetch(API_URL, {
             method: 'POST',
@@ -142,9 +195,9 @@ async function testGeminiKey() {
         });
         
         if (response.ok) {
-            alert("✅ 金鑰有效！請在下方選擇預設模型。");
-            // 顯示模型選擇區
-            document.getElementById('model-selection-area').style.display = 'block';
+            alert("✅ 金鑰有效！正在讀取可用模型列表...");
+            // 測試成功，抓取模型清單
+            await fetchAndPopulateModels(key);
         } else {
             alert("❌ 金鑰無效或額度已滿 (Error: " + response.status + ")");
         }
@@ -227,10 +280,9 @@ function editPreferences() {
     const savedGeminiKey = localStorage.getItem('food_wheel_gemini_key');
     if(savedGeminiKey) {
         document.getElementById('userGeminiKey').value = savedGeminiKey;
-        // 如果有 Key，就直接顯示模型選單
-        document.getElementById('model-selection-area').style.display = 'block';
         const savedModel = localStorage.getItem('food_wheel_gemini_model');
-        if(savedModel) document.getElementById('setupGeminiModel').value = savedModel;
+        // 進入設定頁時，若有 Key 也嘗試載入模型列表以供修改
+        fetchAndPopulateModels(savedGeminiKey, savedModel);
     }
     
     populateSetupKeywords(); 
