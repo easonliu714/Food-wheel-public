@@ -17,7 +17,11 @@ function openAiMenuSelector() {
     document.getElementById('menu-screen').style.display = 'block';
     document.getElementById('menuStoreTitle').innerText = `菜單：${currentStoreForMenu.name}`;
     
-    // 重置
+    // 顯示目前設定的模型
+    const savedModel = localStorage.getItem('food_wheel_gemini_model') || 'gemini-flash-latest';
+    document.getElementById('modelNameLabel').innerText = savedModel;
+
+    // 重置介面
     document.getElementById('ai-step-1').style.display = 'block';
     document.getElementById('ai-step-2').style.display = 'none';
     document.getElementById('photo-preview-area').innerHTML = '';
@@ -97,43 +101,13 @@ function updatePreviewUI(base64, index) {
 }
 
 function removeImage(el, index) {
-    // 簡單移除 DOM，資料陣列較難同步移除，這邊做視覺移除即可，
-    // 實際送出時可能會有冗餘，但為求簡單暫不重構 Index
     el.parentElement.remove();
-    // 標記為 null
     selectedImages[index] = null;
     
-    // 檢查是否還有有效圖片
     const hasValid = selectedImages.some(img => img !== null);
     if (!hasValid) {
         document.getElementById('btnAnalyzeMenu').disabled = true;
         document.getElementById('btnAnalyzeMenu').style.opacity = '0.5';
-    }
-}
-
-// 測試 Key
-async function testGeminiKey() {
-    const key = document.getElementById('userGeminiKey').value.trim();
-    if(!key) return alert("請輸入 Key");
-    
-    const btn = event.target;
-    const originalText = btn.innerText;
-    btn.innerText = "測試中...";
-    
-    try {
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ contents: [{ parts: [{ text: "Hello" }] }] })
-        });
-        
-        if (response.ok) alert("✅ Key 有效！");
-        else alert("❌ Key 無效或額度已滿 (Error: " + response.status + ")");
-    } catch(e) {
-        alert("❌ 測試失敗: " + e.message);
-    } finally {
-        btn.innerText = originalText;
     }
 }
 
@@ -142,16 +116,17 @@ async function analyzeSelectedPhotos() {
     if (validImages.length === 0) return;
     
     const geminiKey = localStorage.getItem('food_wheel_gemini_key');
-    const model = document.getElementById('geminiModelSelect').value;
+    // 優先使用儲存的模型，若無則預設 flash-latest
+    const model = localStorage.getItem('food_wheel_gemini_model') || 'gemini-1.5-flash-latest';
     
     document.getElementById('ai-loading').style.display = 'block';
-    document.getElementById('ai-status-text').innerText = "AI 正在分析圖片中...";
+    document.getElementById('ai-status-text').innerText = `AI (${model}) 正在分析圖片中...`;
 
     try {
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
         
-        // 構建 Payload (多圖)
-        const parts = [{ text: "你是一個菜單讀取機器人。請分析這些圖片，找出所有的菜色名稱與價格。對於手寫菜單，請仔細辨識品項與對應價格。請**嚴格**只回傳一個 JSON 陣列，格式為：[{\"category\": \"類別名稱\", \"name\": \"菜名\", \"price\": 數字價格}], 若無類別則歸類為'主餐'。不要包含 Markdown 標記。" }];
+        // 構建 Payload
+        const parts = [{ text: "你是一個菜單讀取機器人。請分析這些圖片，找出所有的菜色名稱與價格。對於手寫菜單，請仔細辨識品項與對應價格。請**嚴格**只回傳一個 JSON 陣列，格式為：[{\"category\": \"類別名稱\", \"name\": \"菜名\", \"price\": 數字價格}], 若無類別則歸類為'主餐'。不要包含 Markdown 標記，直接回傳 JSON 字串。" }];
         
         validImages.forEach(img => {
             parts.push({
@@ -172,11 +147,13 @@ async function analyzeSelectedPhotos() {
         
         if (data.candidates && data.candidates[0].content) {
             let text = data.candidates[0].content.parts[0].text;
+            // 清理 Markdown
             text = text.replace(/```json/g, '').replace(/```/g, '').trim();
             const menuJson = JSON.parse(text);
             initAiMenuSystem(menuJson);
         } else {
-            throw new Error("AI 回傳結構異常");
+            console.error("AI Response Error:", data);
+            throw new Error("AI 回傳結構異常，可能被安全性攔截");
         }
     } catch (e) {
         console.error(e);
@@ -188,6 +165,7 @@ async function analyzeSelectedPhotos() {
 function initAiMenuSystem(menuData) {
     fullMenuData = menuData;
     shoppingCart = [];
+    // 提取不重複類別
     const categories = [...new Set(menuData.map(item => item.category || '主餐'))];
     
     const catSelect = document.getElementById('menuCategorySelect');
@@ -258,6 +236,7 @@ document.getElementById('spinMenuBtn').onclick = () => {
 };
 
 function addDishToCart(dish) {
+    if(!dish) dish = currentMenuData[0]; // Fallback
     shoppingCart.push(dish);
     updateCartUI();
 }
