@@ -25,8 +25,12 @@ window.updateKeywords = function() {
 };
 
 window.initLocation = function() {
-    if (typeof google === 'undefined') { console.warn("Maps API not loaded"); return; }
+    if (typeof google === 'undefined') {
+        console.warn("Google Maps API not loaded yet.");
+        return;
+    }
     const addrInput = document.getElementById('currentAddress');
+    
     if(addrInput) addrInput.value = "定位中...";
 
     if (!navigator.geolocation) return alert("瀏覽器不支援定位");
@@ -39,37 +43,45 @@ window.initLocation = function() {
                 if (status === "OK" && results[0]) {
                     if(addrInput) addrInput.value = results[0].formatted_address.replace(/^\d+\s*/, '').replace(/^台灣/, '');
                 } else {
+                    console.error("Geocode failed: " + status);
                     if(addrInput) addrInput.value = `${window.userCoordinates.lat.toFixed(5)}, ${window.userCoordinates.lng.toFixed(5)}`;
                 }
             });
         },
-        (error) => { if(addrInput) { addrInput.value = ""; addrInput.placeholder = "無法定位，請手動輸入"; } },
+        (error) => { 
+            console.error("Geolocation error:", error);
+            if(addrInput) { addrInput.value = ""; addrInput.placeholder = "無法定位，請手動輸入"; } 
+            alert("無法獲取您的位置，請手動輸入地址。");
+        },
         { enableHighAccuracy: true }
     );
 };
 
 window.handleSearch = function() {
-    if (typeof google === 'undefined' || !google.maps) return alert("Google Maps API 尚未載入");
+    console.log("handleSearch triggered");
+    
+    if (typeof google === 'undefined' || !google.maps) {
+        alert("Google Maps API 尚未載入完成，請檢查網路或 API Key 設定。");
+        return;
+    }
 
     const addrInput = document.getElementById('currentAddress').value;
     const keywordsRaw = document.getElementById('keywordInput').value;
     const spinBtn = document.getElementById('spinBtn');
     const searchBtn = document.querySelector('.search-btn');
 
-    if (!addrInput || addrInput === "定位中...") return alert("請輸入地址");
+    if (!addrInput || addrInput === "定位中...") return alert("請輸入有效地址或等待定位完成");
     if (!keywordsRaw.trim()) return alert("請輸入關鍵字");
 
     window.resetGame(false); 
 
-    // 鎖定按鈕
     if(spinBtn) {
         spinBtn.disabled = true;
         spinBtn.innerText = "資料載入中...";
         spinBtn.style.opacity = "0.5";
         spinBtn.style.cursor = "not-allowed";
     }
-    
-    // 更新搜尋按鈕狀態
+
     searchBtn.innerText = "🔍 解析地址中...";
     searchBtn.disabled = true;
 
@@ -77,14 +89,17 @@ window.handleSearch = function() {
     geocoder.geocode({ address: addrInput }, (results, status) => {
         if (status === "OK" && results[0]) {
             window.userCoordinates = results[0].geometry.location;
+            
             const detailDisplay = document.getElementById('detailedAddressDisplay');
             if (detailDisplay) {
                 detailDisplay.style.display = 'block';
                 detailDisplay.innerText = `🎯 已定位至：${results[0].formatted_address}`;
             }
+            
             window.startSearch(window.userCoordinates, keywordsRaw);
         } else {
-            alert("無法解析此地址");
+            console.error("Geocode error:", status);
+            alert("無法解析此地址，錯誤代碼：" + status);
             searchBtn.innerText = "🔄 開始搜尋店家";
             searchBtn.disabled = false;
         }
@@ -92,8 +107,10 @@ window.handleSearch = function() {
 };
 
 window.startSearch = function(location, keywordsRaw) {
+    console.log("startSearch...", location, keywordsRaw);
+    
     const btn = document.querySelector('.search-btn');
-    btn.innerText = "☁️ 正在搜尋周邊店家..."; // 更新狀態
+    btn.innerText = "☁️ 正在搜尋周邊店家...";
 
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
@@ -109,9 +126,11 @@ window.startSearch = function(location, keywordsRaw) {
     const maxTheoreticalRadius = speedMetersPerMin * maxTime;
     const maxLinearDist = maxTheoreticalRadius * 1.5;
 
+    let statusText = "";
     let promises = [];
 
     if (searchMode === 'nearby') {
+        statusText = `📍 距離優先：搜尋 ${searchQueries.length} 組關鍵字...`;
         searchQueries.forEach(keyword => {
             let request = { location: location, rankBy: google.maps.places.RankBy.DISTANCE, keyword: keyword };
             if (priceLevel !== -1) request.maxPrice = priceLevel;
@@ -122,6 +141,7 @@ window.startSearch = function(location, keywordsRaw) {
         for (let t = 5; t <= maxTime; t += 5) steps.push(t);
         if (maxTime % 5 !== 0) steps.push(maxTime);
         steps = [...new Set(steps)].sort((a,b)=>a-b);
+        statusText = `🌟 熱門優先：分段掃描 (${steps.join(',')}分)...`;
 
         searchQueries.forEach(keyword => {
             steps.forEach(stepTime => {
@@ -134,18 +154,22 @@ window.startSearch = function(location, keywordsRaw) {
         });
     }
 
+    btn.innerText = statusText;
+
     Promise.all(promises).then(resultsArray => {
         let combinedResults = [].concat(...resultsArray);
+        console.log("Total raw results:", combinedResults.length);
+        
         if (combinedResults.length === 0) {
-            alert("API 回傳 0 筆資料，請檢查關鍵字");
+            alert("API 回傳 0 筆資料，請檢查關鍵字或放寬條件。");
             btn.innerText = "🔄 開始搜尋店家";
             btn.disabled = false;
             return;
         }
         window.processResults(location, combinedResults, maxLinearDist);
     }).catch(err => {
-        console.error(err);
-        alert("搜尋錯誤");
+        console.error("Search Promise Error:", err);
+        alert("搜尋過程發生錯誤 (詳見 Console)");
         btn.innerText = "🔄 開始搜尋店家";
         btn.disabled = false;
     });
@@ -156,6 +180,7 @@ window.fetchPlacesWithPagination = function(service, request, maxPages = 3) {
         let allResults = [];
         let pageCount = 0;
         service.nearbySearch(request, (results, status, pagination) => {
+            console.log(`NearbySearch Status: ${status}, Results: ${results ? results.length : 0}`);
             if ((status === google.maps.places.PlacesServiceStatus.OK || status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) && results) {
                 allResults = allResults.concat(results);
                 pageCount++;
@@ -165,6 +190,9 @@ window.fetchPlacesWithPagination = function(service, request, maxPages = 3) {
                     resolve(allResults);
                 }
             } else {
+                if (status !== 'ZERO_RESULTS') {
+                    console.warn(`Places API Warning: ${status}`);
+                }
                 resolve(allResults);
             }
         });
@@ -182,6 +210,7 @@ window.processResults = function(origin, results, maxLinearDist) {
     const uniqueIds = new Set();
     let filtered = [];
     
+    // 1. 初步過濾 (去重、星等、幾何距離)
     results.forEach(p => {
         if (p.rating && p.rating >= minRating && p.user_ratings_total > 0) {
             if (!uniqueIds.has(p.place_id)) {
@@ -197,19 +226,21 @@ window.processResults = function(origin, results, maxLinearDist) {
     });
 
     if (filtered.length === 0) {
-        alert(`無符合 ${minRating} 星以上的店家`);
+        alert(`無符合 ${minRating} 星以上的店家 (或超出幾何距離範圍)`);
         btn.innerText = "🔄 開始搜尋店家";
         btn.disabled = false;
         return;
     }
 
-    // 更新狀態：計算路程中
-    btn.innerText = `🚚 計算 ${Math.min(filtered.length, 80)} 筆路程中...`;
+    btn.innerText = `🚚 計算 ${Math.min(filtered.length, 60)} 筆路程中...`;
 
+    // 2. 排序與截斷 (為了 Distance Matrix API 限額)
     const safeZoneDist = maxLinearDist / 3; 
+    
     if (searchMode === 'nearby') {
         filtered.sort((a, b) => a.geometryDistance - b.geometryDistance);
     } else {
+        // 熱門優先：保障近距離，其餘按評分
         filtered.sort((a, b) => {
             const getScore = (place) => {
                 let score = place.rating * Math.log10(place.user_ratings_total + 1);
@@ -220,26 +251,33 @@ window.processResults = function(origin, results, maxLinearDist) {
         });
     }
 
-    if (filtered.length > 80) filtered = filtered.slice(0, 80);
+    // 限制最多 60 筆送去計算距離 (Google 建議每次 25，這裡會分批)
+    if (filtered.length > 60) filtered = filtered.slice(0, 60);
 
+    // 3. 準備批次請求 (每批 25 個)
     const batchSize = 25;
     const batches = [];
     for (let i = 0; i < filtered.length; i += batchSize) {
         batches.push(filtered.slice(i, i + batchSize));
     }
 
+    // 4. 執行 Distance Matrix
     Promise.all(batches.map(batch => window.getDistances(origin, batch, transportMode)))
         .then(resultsArray => {
+            // --- 成功路徑 ---
             let validPlaces = [].concat(...resultsArray);
+            
+            // 時間過濾
             validPlaces = validPlaces.filter(p => p.realDurationMins <= maxTime);
 
             if (validPlaces.length === 0) {
-                alert(`${maxTime} 分鐘內無符合店家`);
+                alert(`所有店家皆超過 ${maxTime} 分鐘路程 (或塞車嚴重)`);
                 btn.innerText = "🔄 開始搜尋店家";
                 btn.disabled = false;
                 return;
             }
 
+            // 最終排序
             if (searchMode === 'nearby') {
                 validPlaces.sort((a, b) => a.realDurationMins - b.realDurationMins);
             } else {
@@ -250,23 +288,54 @@ window.processResults = function(origin, results, maxLinearDist) {
                 });
             }
 
-            window.allSearchResults = validPlaces.slice(0, userMaxCount); 
-            window.eliminatedIds.clear(); 
-            window.hitCounts = {}; // 重置計數
-            window.allSearchResults.forEach(p => window.hitCounts[p.place_id] = 0);
-
-            window.refreshWheelData(); 
-            
-            btn.innerText = `搜尋完成 (共 ${window.places.length} 間)`;
-            btn.disabled = false;
+            finalizeSearch(validPlaces, userMaxCount, btn);
         })
         .catch(err => {
-            console.error(err);
-            alert("路程計算失敗");
-            btn.innerText = "🔄 開始搜尋店家";
-            btn.disabled = false;
+            // --- 失敗路徑 (Fail-safe) ---
+            console.error("Distance Matrix Failed:", err);
+            
+            // 降級處理：如果路程計算失敗，改用直線距離 (Geometry Distance)
+            if (confirm("路程計算失敗 (可能是 API 額度問題)。\n是否改用「直線距離」顯示結果？")) {
+                // 使用 filtered (已包含 geometryDistance) 作為結果
+                let fallbackPlaces = filtered.map(p => {
+                    // 模擬路程時間 (以直線距離推算)
+                    let speed = (transportMode === 'DRIVING') ? 600 : 80; // m/min (稍微保守一點)
+                    p.realDurationMins = Math.ceil(p.geometryDistance / speed);
+                    p.realDistanceText = (p.geometryDistance / 1000).toFixed(1) + " km (直線)";
+                    p.realDurationText = "~" + p.realDurationMins + " 分 (估計)";
+                    return p;
+                });
+                
+                // 再次進行時間過濾
+                fallbackPlaces = fallbackPlaces.filter(p => p.realDurationMins <= maxTime);
+                
+                if (fallbackPlaces.length === 0) {
+                    alert("即便用直線距離估算，也無符合店家。");
+                    btn.innerText = "🔄 開始搜尋店家";
+                    btn.disabled = false;
+                    return;
+                }
+                
+                finalizeSearch(fallbackPlaces, userMaxCount, btn);
+            } else {
+                btn.innerText = "🔄 開始搜尋店家";
+                btn.disabled = false;
+            }
         });
 };
+
+// 抽離出最終處理函式，供成功或降級使用
+function finalizeSearch(validPlaces, userMaxCount, btn) {
+    window.allSearchResults = validPlaces.slice(0, userMaxCount); 
+    window.eliminatedIds.clear(); 
+    window.hitCounts = {};
+    window.allSearchResults.forEach(p => window.hitCounts[p.place_id] = 0);
+
+    window.refreshWheelData(); 
+    
+    btn.innerText = `搜尋完成 (共 ${window.places.length} 間)`;
+    btn.disabled = false;
+}
 
 window.refreshWheelData = function() {
     const filterDislikeEl = document.getElementById('filterDislike');
@@ -289,9 +358,10 @@ window.refreshWheelData = function() {
 };
 
 window.getDistances = function(origin, destinations, mode) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => { // 加入 reject
         const service = new google.maps.DistanceMatrixService();
         const destLocs = destinations.map(d => d.geometry.location);
+        
         service.getDistanceMatrix({
             origins: [origin],
             destinations: destLocs,
@@ -312,7 +382,16 @@ window.getDistances = function(origin, destinations, mode) {
                     }
                 }
                 resolve(processed);
-            } else { resolve([]); }
+            } else { 
+                // 回報具體錯誤
+                console.warn(`Distance Matrix Error: ${status}`);
+                // 如果是 OVER_QUERY_LIMIT，我們應該 reject 讓外層處理
+                if (status === 'OVER_QUERY_LIMIT' || status === 'REQUEST_DENIED' || status === 'UNKNOWN_ERROR') {
+                    reject(status);
+                } else {
+                    resolve([]); // 其他輕微錯誤當作沒結果
+                }
+            }
         });
     });
 };
