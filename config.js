@@ -1,6 +1,6 @@
 // ================== config.js : 全域配置與變數 ==================
 
-// 定義全域變數
+// 定義全域變數 (掛載在 window 上以確保各檔案可存取)
 window.places = []; 
 window.allSearchResults = []; 
 window.hitCounts = {}; 
@@ -38,7 +38,7 @@ window.defaultKeywordDict = {
 
 window.activeKeywordDict = { ...window.defaultKeywordDict };
 
-// 完整教學資料 (含圖片路徑)
+// 教學資料
 window.guideData = {
     desktop: { 
         title: "💻 電腦版申請步驟", 
