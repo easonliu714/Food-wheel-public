@@ -18,16 +18,21 @@ function openAiMenuSelector() {
     document.getElementById('menuStoreTitle').innerText = `菜單：${currentStoreForMenu.name}`;
     
     // 顯示目前設定的模型
-    const savedModel = localStorage.getItem('food_wheel_gemini_model') || 'gemini-flash-latest';
-    document.getElementById('modelNameLabel').innerText = savedModel;
+    const savedModel = localStorage.getItem('food_wheel_gemini_model') || 'gemini-1.5-flash-latest';
+    const label = document.getElementById('modelNameLabel');
+    if(label) label.innerText = savedModel;
 
     // 重置介面
     document.getElementById('ai-step-1').style.display = 'block';
     document.getElementById('ai-step-2').style.display = 'none';
     document.getElementById('photo-preview-area').innerHTML = '';
     selectedImages = [];
-    document.getElementById('btnAnalyzeMenu').disabled = true;
-    document.getElementById('btnAnalyzeMenu').style.opacity = '0.5';
+    
+    const btn = document.getElementById('btnAnalyzeMenu');
+    if(btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+    }
 }
 
 function closeMenuSystem() {
@@ -72,7 +77,7 @@ function processImage(file) {
             // 轉為 JPEG 且品質 0.8
             const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
             
-            // 加入列表
+            // 加入列表 (只取 base64 字串部分)
             selectedImages.push({
                 data: compressedBase64.split(',')[1],
                 mime: 'image/jpeg'
@@ -82,8 +87,10 @@ function processImage(file) {
             updatePreviewUI(compressedBase64, selectedImages.length - 1);
             
             const btn = document.getElementById('btnAnalyzeMenu');
-            btn.disabled = false;
-            btn.style.opacity = '1';
+            if(btn) {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
         };
     };
     reader.readAsDataURL(file);
@@ -105,9 +112,10 @@ function removeImage(el, index) {
     selectedImages[index] = null;
     
     const hasValid = selectedImages.some(img => img !== null);
-    if (!hasValid) {
-        document.getElementById('btnAnalyzeMenu').disabled = true;
-        document.getElementById('btnAnalyzeMenu').style.opacity = '0.5';
+    const btn = document.getElementById('btnAnalyzeMenu');
+    if (!hasValid && btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
     }
 }
 
@@ -116,11 +124,12 @@ async function analyzeSelectedPhotos() {
     if (validImages.length === 0) return;
     
     const geminiKey = localStorage.getItem('food_wheel_gemini_key');
-    // 優先使用儲存的模型，若無則預設 flash-latest
+    // 優先使用儲存的模型，若無則預設
     const model = localStorage.getItem('food_wheel_gemini_model') || 'gemini-1.5-flash-latest';
     
     document.getElementById('ai-loading').style.display = 'block';
-    document.getElementById('ai-status-text').innerText = `AI (${model}) 正在分析圖片中...`;
+    const statusText = document.getElementById('ai-status-text');
+    if(statusText) statusText.innerText = `AI (${model}) 正在分析圖片中...`;
 
     try {
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
