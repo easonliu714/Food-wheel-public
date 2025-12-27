@@ -10,18 +10,31 @@
 
     <div id="setup-screen" class="container setup-container">
         <h1>🍴 今天吃什麼？<span class="badge">公開版</span></h1>
-        <p class="intro-text">本工具採用 <strong>Bring Your Own Key</strong> 模式。請輸入您的 Google Maps API Key 即可免費使用。<br>初次使用者請選擇您的裝置，查看申請教學：</p>
+        <p class="intro-text">本工具採用 <strong>Bring Your Own Key</strong> 模式。請輸入您的 Google Maps API Key 即可免費使用。</p>
         
         <div class="platform-tabs">
-            <button class="tab-btn active" onclick="showGuide('desktop')">💻 電腦版 (推薦)</button>
-            <button class="tab-btn" onclick="showGuide('android')">🤖 Android</button>
-            <button class="tab-btn" onclick="showGuide('ios')">🍎 iOS (iPhone)</button>
+            <button class="tab-btn active" onclick="showGuide('desktop')">💻 電腦版教學</button>
+            <button class="tab-btn" onclick="showGuide('android')">🤖 Android 教學</button>
+            <button class="tab-btn" onclick="showGuide('ios')">🍎 iOS 教學</button>
         </div>
 
-        <div id="guide-content" class="tutorial-box">
-            </div>
+        <details id="guide-details" open>
+            <summary class="guide-summary">📖 點擊查看/隱藏 詳細申請步驟</summary>
+            <div id="guide-content" class="tutorial-box">
+                </div>
+        </details>
 
-        <div class="preferences-box" style="border-left-color: #9b59b6;">
+        <div class="key-input-area">
+            <label for="userApiKey">請在此貼上 Google Maps API Key：</label>
+            <input type="text" id="userApiKey" placeholder="AIzaSy..." autocomplete="off">
+            
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button onclick="validateAndSaveKey()" class="start-btn" style="background: #3498db; flex: 1;">🔍 驗證並儲存</button>
+            </div>
+            <p class="privacy-note">🔒 您的 Key 僅儲存於瀏覽器 (LocalStorage)，不會上傳至伺服器。</p>
+        </div>
+
+        <div class="preferences-box" style="border-left-color: #9b59b6; margin-top: 20px;">
             <h3>✨ AI 智能菜單設定 (選填)</h3>
             <p style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">啟用此功能可透過 AI 辨識菜單圖片，自動生成點餐轉盤。</p>
             <label style="font-weight: bold;">Google AI Studio API Key：</label>
@@ -32,7 +45,7 @@
                     <ol style="margin-left: 20px; padding-left: 0;">
                         <li>前往 <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #9b59b6; font-weight: bold;">Google AI Studio</a>。</li>
                         <li>點擊左上角的 <strong>"Get API key"</strong> > <strong>"Create API key"</strong>。</li>
-                        <li>複製生成的 Key (以 <code>AIza</code> 開頭) 並貼上。</li>
+                        <li>複製生成的 Key 並貼上。</li>
                     </ol>
                 </div>
             </details>
@@ -48,16 +61,16 @@
                         <option value="famous">🌟 熱門優先 (找好店)</option>
                     </select>
                     <p style="font-size: 0.8rem; color: #888; margin-top: 5px;">
-                        <strong>距離優先：</strong>嚴格由近到遠，適合時間緊迫。<br>
+                        <strong>距離優先：</strong>嚴格由近到遠搜尋，適合時間緊迫。<br>
                         <strong>熱門優先：</strong>分段掃描範圍內評價較高與知名的店，適合探險。
                     </p>
                 </div>
-                <div class="pref-item"><label>🎖️ 最低星評</label><select id="setupMinRating"><option value="0">⚪ 不限</option><option value="3.0" selected>3.0+</option><option value="3.5">3.5+</option><option value="4.0">4.0+</option><option value="4.5">4.5+</option></select></div>
-                <div class="pref-item"><label>🎡 轉盤模式</label><select id="setupSpinMode"><option value="repeat" selected>🔁 重複抽取</option><option value="eliminate">❌ 淘汰制</option></select></div>
-                <div class="pref-item"><label>🏃‍♂️ 交通方式</label><select id="setupTransport"><option value="WALKING" selected>走路 (20km/h)</option><option value="DRIVING">開車 (60km/h)</option></select></div>
-                <div class="pref-item"><label>⏱️ 路程時間</label><select id="setupMaxTime"><option value="5">5 分鐘</option><option value="10" selected>10 分鐘</option><option value="15">15 分鐘</option><option value="20">20 分鐘</option><option value="30">30 分鐘</option></select></div>
-                <div class="pref-item"><label>💸 預算上限</label><select id="setupPriceLevel"><option value="-1" selected>不限</option><option value="1">$200↓</option><option value="2">$800↓</option><option value="3">$2000↓</option><option value="4">奢華</option></select></div>
-                <div class="pref-item"><label>🔢 店家數量</label><select id="setupResultCount"><option value="10">10 家</option><option value="20" selected>20 家</option><option value="30">30 家</option><option value="40">40 家</option><option value="50">50 家</option><option value="60">60 家</option></select></div>
+                <div class="pref-item"><label>🎖️ 最低星評</label><select id="setupMinRating"><option value="0">⚪ 不限</option><option value="3.0" selected>⭐⭐⭐ 3.0 以上</option><option value="3.5">⭐⭐⭐☆ 3.5 以上</option><option value="4.0">⭐⭐⭐⭐ 4.0 以上</option><option value="4.5">⭐⭐⭐⭐☆ 4.5 以上</option></select></div>
+                <div class="pref-item"><label>🎡 轉盤模式</label><select id="setupSpinMode"><option value="repeat" selected>🔁 重複抽取 (不移除)</option><option value="eliminate">❌ 淘汰制 (抽出後移除)</option></select></div>
+                <div class="pref-item"><label>🏃‍♂️ 交通方式</label><select id="setupTransport"><option value="WALKING" selected>走路/單車 🚶🚴‍♂️ (時速20km)</option><option value="DRIVING">機車/開車 🛵🚗 (時速60km)</option></select></div>
+                <div class="pref-item"><label>⏱️ 路程時間</label><select id="setupMaxTime"><option value="5">🕐 5 分鐘內</option><option value="10" selected>🕑 10 分鐘內</option><option value="15">🕒 15 分鐘內</option><option value="20">🕓 20 分鐘內</option><option value="30">🕕 30 分鐘內</option></select></div>
+                <div class="pref-item"><label>💸 預算上限</label><select id="setupPriceLevel"><option value="-1" selected>不限</option><option value="1">💲 $200 以下 (便宜)</option><option value="2">💲💲 $800 以下 (中價位)</option><option value="3">💲💲💲 $2000 以下 (高價位)</option><option value="4">💲💲💲💲 奢華上限</option></select></div>
+                <div class="pref-item"><label>🔢 店家數量</label><select id="setupResultCount"><option value="10">🏕️ 10 家</option><option value="20" selected>🏡 20 家</option><option value="30">🏘️ 30 家</option><option value="40">🏢 40 家</option><option value="50">🌇 50 家</option><option value="60">🗺️ 60 家 (Google極限)</option></select></div>
             </div>
             
             <hr style="border:0; border-top:1px dashed #ddd; margin: 20px 0;">
@@ -73,17 +86,6 @@
                 <div class="pref-item full-width"><label>🍧 甜點 / 冰品</label><input type="text" id="kw_dessert" class="setup-input"></div>
                 <div class="pref-item full-width"><label>🌏 所有美食 (不限)</label><input type="text" id="kw_all" class="setup-input"></div>
             </div>
-        </div>
-
-        <div class="key-input-area">
-            <label for="userApiKey">申請完成後，請在此貼上 Google Maps API Key：</label>
-            <input type="text" id="userApiKey" placeholder="AIzaSy..." autocomplete="off">
-            
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button onclick="validateAndSaveKey()" class="start-btn" style="background: #3498db; flex: 1;">🔍 驗證並儲存</button>
-            </div>
-            
-            <p class="privacy-note">🔒 您的 Key 與偏好設定僅儲存於瀏覽器 (LocalStorage)。</p>
         </div>
     </div>
     
@@ -113,18 +115,18 @@
                 <div class="setting-row">
                     <label for="searchMode">🔎 模式：</label>
                     <select id="searchMode">
-                        <option value="nearby">📍 距離優先 (找最近)</option>
+                        <option value="nearby" selected>📍 距離優先 (找最近)</option>
                         <option value="famous">🌟 熱門優先 (找好店)</option>
                     </select>
                 </div>
-                <div class="setting-row"><label>📑 類別：</label><select id="mealType" onchange="updateKeywords()"><option value="breakfast">🍔 早餐</option><option value="lunch">🍱 午餐</option><option value="afternoon_tea">🧋 下午茶</option><option value="dinner">🍲 晚餐</option><option value="late_night">🍻 宵夜</option><option value="noodles_rice">🍜 麵飯</option><option value="western_steak">🍽️ 西式</option><option value="dessert">🍧 甜點</option><option value="all">🌏 不限</option></select></div>
-                <div class="setting-row"><label>💸 預算：</label><select id="priceLevel"><option value="-1">不限</option><option value="1">$200↓</option><option value="2">$800↓</option><option value="3">$2000↓</option><option value="4">奢華</option></select></div>
+                <div class="setting-row"><label>📑 類別：</label><select id="mealType" onchange="updateKeywords()"><option value="breakfast">🍔🥪☕ 早餐</option><option value="lunch">🍱🍕🍣 午餐</option><option value="afternoon_tea">🧋🥞🍮 下午茶飲</option><option value="dinner">🍲🥗🌭 晚餐</option><option value="late_night">🍻🫕 宵夜</option><option value="noodles_rice">🍜🍛 麵飯/小吃</option><option value="western_steak">🍽️🍔 排餐/西式</option><option value="dessert">🍧🍰 甜點冰品</option><option value="all">🌏 不限制</option></select></div>
+                <div class="setting-row"><label>💸 預算：</label><select id="priceLevel"><option value="-1" selected>不限</option><option value="1">💲 $200 以下</option><option value="2">💲💲 $800 以下</option><option value="3">💲💲💲 $2000 以下</option><option value="4">💲💲💲💲 奢華</option></select></div>
                 <div class="setting-row" style="flex-direction: column; align-items: flex-start;"><label style="margin-bottom: 5px;">🔎 關鍵字：</label><input type="text" id="keywordInput" class="full-width-input" value=""></div>
-                <div class="setting-row"><label>🎖️ 星評：</label><select id="minRating"><option value="0">不限</option><option value="3.0">3.0+</option><option value="3.5">3.5+</option><option value="4.0">4.0+</option><option value="4.5">4.5+</option></select></div>
-                <div class="setting-row"><label>🏃‍♂️ 交通：</label><select id="transportMode"><option value="WALKING">走路</option><option value="DRIVING">開車</option></select></div>
-                <div class="setting-row"><label>⏱️ 時間：</label><select id="maxTime"><option value="5">5分</option><option value="10">10分</option><option value="15">15分</option><option value="20">20分</option><option value="30">30分</option></select></div>
-                <div class="setting-row"><label>🔢 數量：</label><select id="resultCount"><option value="10">10</option><option value="20">20</option><option value="30">30</option><option value="40">40</option><option value="50">50</option><option value="60">60</option></select></div>
-                <div class="setting-row"><label>🎡 模式：</label><select id="spinMode"><option value="repeat">🔁 重複</option><option value="eliminate">❌ 淘汰</option></select></div>
+                <div class="setting-row"><label>🎖️ 星評：</label><select id="minRating"><option value="0">⚪ 不限</option><option value="3.0" selected>⭐⭐⭐ 3.0+</option><option value="3.5">⭐⭐⭐☆ 3.5+</option><option value="4.0">⭐⭐⭐⭐ 4.0+</option><option value="4.5">⭐⭐⭐⭐☆ 4.5+</option></select></div>
+                <div class="setting-row"><label>🏃‍♂️ 交通：</label><select id="transportMode"><option value="WALKING" selected>走路/單車 🚶</option><option value="DRIVING">機車/開車 🛵</option></select></div>
+                <div class="setting-row"><label>⏱️ 時間：</label><select id="maxTime"><option value="5">🕐 5 分鐘</option><option value="10" selected>🕑 10 分鐘</option><option value="15">🕒 15 分鐘</option><option value="20">🕓 20 分鐘</option><option value="30">🕕 30 分鐘</option></select></div>
+                <div class="setting-row"><label>🔢 數量：</label><select id="resultCount"><option value="10">🏕️ 10</option><option value="20" selected>🏡 20</option><option value="30">🏘️ 30</option><option value="40">🏢 40</option><option value="50">🌇 50</option><option value="60">🗺️ 60</option></select></div>
+                <div class="setting-row"><label>🎡 模式：</label><select id="spinMode"><option value="repeat" selected>🔁 重複抽取</option><option value="eliminate">❌ 淘汰制</option></select></div>
                 <button onclick="handleSearch()" class="search-btn">🔄 開始搜尋店家</button>
             </div>
 
@@ -141,7 +143,7 @@
                 
                 <div class="wheel-section">
                     <div class="filter-box">
-                        <input type="checkbox" id="filterDislike"><label for="filterDislike">🛡️ 濾除踩雷</label>
+                        <input type="checkbox" id="filterDislike"><label for="filterDislike">🛡️ 濾除踩雷商家</label>
                     </div>
                     <div class="wheel-container">
                         <canvas id="wheel" width="400" height="400"></canvas>
@@ -164,7 +166,7 @@
 
                         <div id="external-links" style="margin-top: 15px; display: flex; flex-direction: column; gap: 8px;">
                             <a id="navLink" href="#" target="_blank" class="nav-btn" style="display:none; background: #e67e22;">📍 導航前往</a>
-                            <a id="webLink" href="#" target="_blank" class="nav-btn" style="display:none; background: #3498db;">🌐 官方網站</a>
+                            <a id="webLink" href="#" target="_blank" class="nav-btn" style="display:none; background: #3498db;">🌐 官方網站 / 訂餐</a>
                             <a id="menuPhotoLink" href="#" target="_blank" class="nav-btn" style="display:none; background: #9b59b6;">🖼️ 查看菜單圖片</a>
                             <button id="btnAiMenu" onclick="openAiMenuSelector()" class="nav-btn" style="display:none; background: linear-gradient(45deg, #8e44ad, #c0392b);">✨ AI 讀取菜單 (Beta)</button>
                         </div>
@@ -175,11 +177,12 @@
 
         <div id="menu-screen" style="display: none;">
             <div class="header-bar">
-                <button onclick="closeMenuSystem()" class="header-btn">⬅️ 返回</button>
+                <button onclick="closeMenuSystem()" class="header-btn">⬅️ 返回店家</button>
                 <h1 id="menuStoreTitle" style="font-size: 1.2rem;">AI 智能菜單</h1>
             </div>
             <div id="ai-step-1" class="menu-layout">
                 <h3>📷 選擇或上傳菜單圖片</h3>
+                <p style="font-size:0.9rem; color:#666;">請上傳菜單截圖或照片供 AI 解析。</p>
                 <div class="upload-area">
                     <label for="menuFileUpload" class="upload-btn">📤 上傳/拍攝 圖片</label>
                     <input type="file" id="menuFileUpload" accept="image/*" style="display:none;" onchange="handleFileUpload(this)">
