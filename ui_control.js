@@ -1,5 +1,21 @@
 // ================== ui_control.js : 介面控制與 API 驗證 ==================
 
+// 【重要】載入使用者自訂關鍵字 (防止初始化崩潰)
+window.loadUserKeywords = function() {
+    const savedKw = localStorage.getItem('food_wheel_custom_keywords');
+    if (savedKw) {
+        try { 
+            window.activeKeywordDict = { ...window.defaultKeywordDict, ...JSON.parse(savedKw) }; 
+        } catch (e) { 
+            console.error("關鍵字載入失敗，重置為預設值", e);
+            window.activeKeywordDict = { ...window.defaultKeywordDict }; 
+        }
+    } else {
+        window.activeKeywordDict = { ...window.defaultKeywordDict };
+    }
+    console.log("Keywords Loaded:", window.activeKeywordDict);
+};
+
 // 顯示教學內容 (含圖片)
 window.showGuide = function(platform) {
     const container = document.getElementById('guide-content');
@@ -249,29 +265,13 @@ window.validateAndSaveKey = async function() {
     document.head.appendChild(script);
 };
 
-// 【修復】補回遺失的 loadUserKeywords 函式
-window.loadUserKeywords = function() {
-    const savedKw = localStorage.getItem('food_wheel_custom_keywords');
-    if (savedKw) {
-        try { 
-            window.activeKeywordDict = { ...window.defaultKeywordDict, ...JSON.parse(savedKw) }; 
-        } catch (e) { 
-            console.error("關鍵字載入失敗，重置為預設值", e);
-            window.activeKeywordDict = { ...window.defaultKeywordDict }; 
-        }
-    } else {
-        window.activeKeywordDict = { ...window.defaultKeywordDict };
-    }
-    console.log("Keywords Loaded:", window.activeKeywordDict);
-};
-
 window.saveAndStart = function(skipLoad = false) {
     console.log("Saving settings...");
     const inputKey = document.getElementById('userApiKey').value.trim();
     const geminiKeyEl = document.getElementById('userGeminiKey');
     const geminiKey = geminiKeyEl ? geminiKeyEl.value.trim() : "";
     
-    // 【修正】增加防呆，避免元素找不到導致報錯
+    // 增加防呆，避免元素找不到導致報錯
     const getVal = (id) => {
         const el = document.getElementById(id);
         return el ? el.value : "";
@@ -379,7 +379,6 @@ window.applyPreferencesToApp = function() {
     }
 };
 
-// 確保 resetGame 函式定義
 window.resetGame = function(fullReset) {
     window.currentRotation = 0; 
     window.canvas.style.transform = `rotate(0deg)`;
@@ -393,7 +392,7 @@ window.resetGame = function(fullReset) {
         if(el) el.innerText = "";
     });
     
-    // === 【修正】重置時隱藏所有按鈕 ===
+    // 重置時隱藏所有按鈕
     ['navLink', 'webLink', 'menuPhotoLink', 'btnAiMenu'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.style.display = 'none';
@@ -407,7 +406,12 @@ window.resetGame = function(fullReset) {
         window.places = [];
         window.allSearchResults = [];
         window.eliminatedIds.clear();
+        window.hitCounts = {};
         if(window.ctx) window.ctx.clearRect(0, 0, 400, 400);
         window.enableSpinButton(0);
+        
+        // 【關鍵修正】清空列表
+        const tbody = document.querySelector('#resultsTable tbody');
+        if(tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#999;">尚未搜尋...</td></tr>';
     }
 };
