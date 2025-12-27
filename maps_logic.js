@@ -1,8 +1,5 @@
 // ================== maps_logic.js : Google Maps 核心邏輯 ==================
 
-// 修正：將 window.handleSearch 的定義移到前面或確保已載入
-// 修正：詳細地址顯示問題 (CSS display block)
-
 window.autoSelectMealType = function() {
     const hour = new Date().getHours();
     let type = 'lunch';
@@ -28,7 +25,10 @@ window.updateKeywords = function() {
 };
 
 window.initLocation = function() {
-    if (typeof google === 'undefined') return;
+    if (typeof google === 'undefined') {
+        console.warn("Google Maps API not loaded yet.");
+        return;
+    }
     const addrInput = document.getElementById('currentAddress');
     
     if(addrInput) addrInput.value = "定位中...";
@@ -43,21 +43,33 @@ window.initLocation = function() {
                 if (status === "OK" && results[0]) {
                     if(addrInput) addrInput.value = results[0].formatted_address.replace(/^\d+\s*/, '').replace(/^台灣/, '');
                 } else {
+                    console.error("Geocode failed: " + status);
                     if(addrInput) addrInput.value = `${window.userCoordinates.lat.toFixed(5)}, ${window.userCoordinates.lng.toFixed(5)}`;
                 }
             });
         },
-        (error) => { if(addrInput) { addrInput.value = ""; addrInput.placeholder = "無法定位，請手動輸入"; } },
+        (error) => { 
+            console.error("Geolocation error:", error);
+            if(addrInput) { addrInput.value = ""; addrInput.placeholder = "無法定位，請手動輸入"; } 
+            alert("無法獲取您的位置，請手動輸入地址。");
+        },
         { enableHighAccuracy: true }
     );
 };
 
 window.handleSearch = function() {
+    console.log("handleSearch triggered");
+    
+    if (typeof google === 'undefined' || !google.maps) {
+        alert("Google Maps API 尚未載入完成，請檢查網路或 API Key 設定。");
+        return;
+    }
+
     const addrInput = document.getElementById('currentAddress').value;
     const keywordsRaw = document.getElementById('keywordInput').value;
     const spinBtn = document.getElementById('spinBtn');
 
-    if (!addrInput) return alert("請輸入地址");
+    if (!addrInput || addrInput === "定位中...") return alert("請輸入有效地址或等待定位完成");
     if (!keywordsRaw.trim()) return alert("請輸入關鍵字");
 
     window.resetGame(false); 
@@ -73,18 +85,12 @@ window.handleSearch = function() {
     btn.innerText = "解析地址中...";
     btn.disabled = true;
 
-    if (typeof google === 'undefined' || !google.maps) {
-        alert("Google Maps API 尚未載入，請重新整理頁面或檢查 API Key");
-        btn.disabled = false;
-        return;
-    }
-
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ address: addrInput }, (results, status) => {
         if (status === "OK" && results[0]) {
             window.userCoordinates = results[0].geometry.location;
+            console.log("Geocode success:", results[0].formatted_address);
             
-            // 修復詳細地址顯示
             const detailDisplay = document.getElementById('detailedAddressDisplay');
             if (detailDisplay) {
                 detailDisplay.style.display = 'block';
@@ -93,7 +99,8 @@ window.handleSearch = function() {
             
             window.startSearch(window.userCoordinates, keywordsRaw);
         } else {
-            alert("找不到此地址，請嘗試輸入更完整的地址 (" + status + ")");
+            console.error("Geocode error:", status);
+            alert("無法解析此地址，錯誤代碼：" + status);
             btn.innerText = "🔄 開始搜尋店家";
             btn.disabled = false;
         }
@@ -101,6 +108,7 @@ window.handleSearch = function() {
 };
 
 window.startSearch = function(location, keywordsRaw) {
+    console.log("startSearch...", location, keywordsRaw);
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
     const transportMode = document.getElementById('transportMode').value;
@@ -148,16 +156,18 @@ window.startSearch = function(location, keywordsRaw) {
 
     Promise.all(promises).then(resultsArray => {
         let combinedResults = [].concat(...resultsArray);
+        console.log("Total raw results:", combinedResults.length);
+        
         if (combinedResults.length === 0) {
-            alert("附近找不到符合條件的店家，請放寬條件");
+            alert("API 回傳 0 筆資料，請檢查關鍵字或放寬條件。");
             btn.innerText = "🔄 開始搜尋店家";
             btn.disabled = false;
             return;
         }
         window.processResults(location, combinedResults, maxLinearDist);
     }).catch(err => {
-        console.error(err);
-        alert("搜尋過程發生錯誤 (請檢查 API Key 額度)");
+        console.error("Search Promise Error:", err);
+        alert("搜尋過程發生錯誤 (詳見 Console)");
         btn.innerText = "🔄 開始搜尋店家";
         btn.disabled = false;
     });
@@ -168,6 +178,7 @@ window.fetchPlacesWithPagination = function(service, request, maxPages = 3) {
         let allResults = [];
         let pageCount = 0;
         service.nearbySearch(request, (results, status, pagination) => {
+            console.log(`NearbySearch Status: ${status}, Results: ${results ? results.length : 0}`);
             if ((status === google.maps.places.PlacesServiceStatus.OK || status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) && results) {
                 allResults = allResults.concat(results);
                 pageCount++;
@@ -177,8 +188,9 @@ window.fetchPlacesWithPagination = function(service, request, maxPages = 3) {
                     resolve(allResults);
                 }
             } else {
-                // 如果是 OVER_QUERY_LIMIT 或其他錯誤，這裡會 resolve 已經抓到的，不讓整個 Promise.all 失敗
-                console.warn("Places Search Status:", status);
+                if (status !== 'ZERO_RESULTS') {
+                    console.warn(`Places API Warning: ${status}`);
+                }
                 resolve(allResults);
             }
         });
@@ -275,7 +287,7 @@ window.processResults = function(origin, results, maxLinearDist) {
         })
         .catch(err => {
             console.error(err);
-            alert("路程計算失敗 (請檢查 Distance Matrix API 是否啟用)");
+            alert("路程計算失敗");
             btn.innerText = "🔄 開始搜尋店家";
             btn.disabled = false;
         });
