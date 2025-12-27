@@ -1,22 +1,22 @@
 // ui_control.js
-// Responsible for DOM operations, page switching, and tutorials
+// 負責 DOM 操作、頁面切換、教學顯示
 
 window.onload = () => {
-    // Canvas Init
+    // Canvas 初始化
     canvas = document.getElementById('wheel');
     if(canvas) ctx = canvas.getContext('2d');
     menuCanvas = document.getElementById('menuWheel');
     if(menuCanvas) menuCtx = menuCanvas.getContext('2d');
 
-    // Load Data
+    // 載入資料
     loadUserRatings();
     loadUserKeywords();
     
-    // UI Init
+    // UI 初始化
     populateSetupKeywords();
     populateSetupGeneralPrefs();
 
-    // Check API Key
+    // 檢查 API Key
     const savedKey = localStorage.getItem('food_wheel_api_key');
     const savedGeminiKey = localStorage.getItem('food_wheel_gemini_key');
     const savedModel = localStorage.getItem('food_wheel_gemini_model');
@@ -119,7 +119,7 @@ function toggleGeminiGuide() {
     area.style.display = area.style.display === 'none' ? 'block' : 'none';
 }
 
-// === NEW FEATURE: Dynamic Model Fetching ===
+// === 新增：動態抓取模型並修正格式 ===
 async function fetchAndPopulateModels(apiKey, selectedModel = null) {
     const modelSelect = document.getElementById('setupGeminiModel');
     if (!modelSelect) return;
@@ -129,9 +129,9 @@ async function fetchAndPopulateModels(apiKey, selectedModel = null) {
         const data = await response.json();
 
         if (data.models) {
-            modelSelect.innerHTML = ''; // Clear options
+            modelSelect.innerHTML = ''; // 清空
             
-            // Filter models that support generateContent
+            // 過濾出支援 generateContent 的模型
             const chatModels = data.models.filter(m => 
                 m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent")
             );
@@ -145,8 +145,7 @@ async function fetchAndPopulateModels(apiKey, selectedModel = null) {
 
             chatModels.forEach(model => {
                 const opt = document.createElement('option');
-                // Value: e.g., "gemini-1.5-flash" (stripping 'models/')
-                // Display: e.g., "Gemini 1.5 Flash (gemini-1.5-flash)"
+                // 關鍵修正：API 回傳 "models/gemini-1.5-flash"，我們去掉 "models/"
                 const value = model.name.replace('models/', '');
                 opt.value = value;
                 opt.text = `${model.displayName} (${value})`;
@@ -158,13 +157,13 @@ async function fetchAndPopulateModels(apiKey, selectedModel = null) {
             if (selectedModel) {
                 modelSelect.value = selectedModel;
             } else {
-                // Smart default: prioritize 'flash'
+                // 智慧預設
                 const defaultModel = chatModels.find(m => m.name.includes('flash')) || chatModels[0];
                 modelSelect.value = defaultModel.name.replace('models/', '');
             }
         }
     } catch (e) {
-        console.error("Failed to fetch models", e);
+        console.error("模型列表抓取失敗", e);
     }
 }
 
