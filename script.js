@@ -7,9 +7,18 @@ let eliminatedIds = new Set(); // 淘汰名單
 let currentRotation = 0;
 let userCoordinates = null; 
 
-// Canvas 相關
 let canvas = null;
 let ctx = null;
+
+// === AI 菜單系統全域變數 ===
+let currentStoreForMenu = null;
+let menuCanvas = null;
+let menuCtx = null;
+let menuRotation = 0;
+let currentMenuData = []; // 當前類別的菜色
+let fullMenuData = []; // AI 解析回來的完整菜單
+let shoppingCart = [];
+let selectedPhotoData = null; // 用戶選中或上傳的圖片 Base64
 
 // 預設關鍵字字典 (系統預設值)
 const defaultKeywordDict = {
@@ -24,10 +33,10 @@ const defaultKeywordDict = {
     all: "美食 餐廳 小吃 夜市 料理 吃到飽" 
 };
 
-// 實際運作時使用的關鍵字字典 (會優先讀取使用者設定)
+// 實際運作時使用的關鍵字字典
 let activeKeywordDict = { ...defaultKeywordDict };
 
-// ================== 0. 教學內容 ==================
+// ================== 0. 教學內容資料庫 ==================
 const commonApiList = `
     <ul class="api-list">
         <li>✅ Maps JavaScript API</li>
@@ -58,7 +67,7 @@ const guideData = {
             },
             {
                 title: "4. 啟用 4 項必要 API",
-                desc: "左側選單(☰) 前往「API 和服務（APIs & Services）」>「啟用 API 和服務」，搜尋並啟用以下 4 個服務：" + commonApiList,
+                desc: "左側選單(☰) 前往「API 和服務」>「啟用 API 和服務」，搜尋並啟用以下 4 個服務：" + commonApiList,
                 img: './images/desktop_4.jpg'
             },
             {
@@ -88,12 +97,12 @@ const guideData = {
             },
             {
                 title: "4. 啟用 4 項 API",
-                desc: "左側選單(☰) 前往「API 和服務（APIs & Services）」>「啟用 API 和服務」。搜尋並啟用以下服務：" + commonApiList,
+                desc: "左側選單(☰) 前往「API 和服務」>「啟用 API 和服務」。搜尋並啟用以下服務：" + commonApiList,
                 img: './images/android_4.jpg'
             },
             {
                 title: "5. 複製金鑰",
-                desc: "選單(☰) > 「API 和服務（APIs & Services）」 > 「憑證 (Credentials)」 > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
+                desc: "選單(☰) > APIs & Services > Credentials > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
                 img: './images/android_5.jpg'
             }
         ]
@@ -118,138 +127,124 @@ const guideData = {
             },
             {
                 title: "4. 啟用 API",
-                desc: "左側選單(☰) 前往「API 和服務（APIs & Services）」>「啟用 API 和服務」。搜尋並啟用：" + commonApiList,
+                desc: "左側選單(☰) 前往「API 和服務」>「啟用 API 和服務」。搜尋並啟用：" + commonApiList,
                 img: './images/ios_4.jpg'
             },
             {
                 title: "5. 取得 Key",
-                desc: "選單(☰) > 「API 和服務（APIs & Services）」 > 「憑證 (Credentials)」 > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
+                desc: "選單 > APIs & Services > Credentials > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
                 img: './images/ios_5.jpg'
             }
         ]
     }
 };
 
+
 function showGuide(platform) {
+    const data = guideData[platform];
     const container = document.getElementById('guide-content');
-    if(!container) return;
     
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     const btns = document.querySelectorAll('.tab-btn');
-    if(platform === 'desktop' && btns[0]) btns[0].classList.add('active');
-    if(platform === 'android' && btns[1]) btns[1].classList.add('active');
-    if(platform === 'ios' && btns[2]) btns[2].classList.add('active');
+    if(platform === 'desktop') btns[0].classList.add('active');
+    if(platform === 'android') btns[1].classList.add('active');
+    if(platform === 'ios') btns[2].classList.add('active');
 
-    const data = guideData[platform];
     let html = `<h3>${data.title}</h3>`;
     data.steps.forEach(step => {
-        let imgHtml = step.img ? `<div class="step-image-container"><img src="${step.img}" alt="${step.title}"></div>` : '';
-        html += `<div class="step-card"><div class="step-header"><div class="step-title">${step.title}</div></div>${imgHtml}<div class="step-content"><p>${step.desc}</p></div></div>`;
+        let imgHtml = '';
+        if (step.img) {
+            imgHtml = `<div class="step-image-container"><img src="${step.img}" alt="${step.title}"></div>`;
+        } else {
+            imgHtml = `<div class="step-image-container"><div class="img-placeholder">（此處可插入 ${platform} 操作截圖：${step.title}）</div></div>`;
+        }
+
+        html += `
+            <div class="step-card">
+                <div class="step-header">
+                    <div class="step-title">${step.title}</div>
+                </div>
+                ${imgHtml}
+                <div class="step-content">
+                    <p>${step.desc}</p>
+                </div>
+            </div>
+        `;
     });
+
     container.innerHTML = html;
 }
 
-// ================== 1. 初始化 ==================
+// ================== 1. 系統初始化與 Key 管理 ==================
 
 window.onload = () => {
-    // 確保 Canvas 載入
+    // 1. 初始化店家轉盤
     canvas = document.getElementById('wheel');
     if(canvas) ctx = canvas.getContext('2d');
 
-    // 載入評價
+    // 2. 初始化菜單轉盤
+    menuCanvas = document.getElementById('menuWheel');
+    if(menuCanvas) menuCtx = menuCanvas.getContext('2d');
+
+    // 載入評價紀錄
     const savedRatings = localStorage.getItem('food_wheel_user_ratings');
     if (savedRatings) {
         try { userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
     }
 
-    // 1. 載入關鍵字邏輯
+    // 載入關鍵字設定
     loadUserKeywords();
 
-    // 載入 API Key
+    // 載入 API Keys
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if (savedKey) {
         loadGoogleMapsScript(savedKey);
     } else {
-        const setupScreen = document.getElementById('setup-screen');
-        const appScreen = document.getElementById('app-screen');
-        if(setupScreen) setupScreen.style.display = 'block';
-        if(appScreen) appScreen.style.display = 'none';
+        // 顯示設定畫面
+        document.getElementById('setup-screen').style.display = 'block';
+        document.getElementById('app-screen').style.display = 'none';
         
-        // 2. 填入設定頁面的輸入框
         populateSetupKeywords(); 
         populateSetupGeneralPrefs();
         
+        // 填入儲存的 Gemini Key (如果有)
+        const geminiKey = localStorage.getItem('food_wheel_gemini_key');
+        if(geminiKey) document.getElementById('userGeminiKey').value = geminiKey;
+
         showGuide('desktop');
     }
 
-    // 綁定過濾器事件
+    // 綁定過濾器
     const filterCheckbox = document.getElementById('filterDislike');
     if (filterCheckbox) {
-        filterCheckbox.addEventListener('change', () => {
-            refreshWheelData(); 
-        });
+        filterCheckbox.addEventListener('change', () => { refreshWheelData(); });
     }
 };
 
-// ================== 設定頁面資料處理 (關鍵字) ==================
+// ================== 設定頁面資料處理 ==================
 
 function loadUserKeywords() {
     const savedKw = localStorage.getItem('food_wheel_custom_keywords');
     if (savedKw) {
-        try {
-            const parsed = JSON.parse(savedKw);
-            activeKeywordDict = {};
-            for (const key in defaultKeywordDict) {
-                if (parsed[key] && parsed[key].trim() !== "") {
-                    activeKeywordDict[key] = parsed[key];
-                } else {
-                    activeKeywordDict[key] = defaultKeywordDict[key];
-                }
-            }
-        } catch (e) {
-            console.error("載入關鍵字錯誤，使用預設值", e);
-            activeKeywordDict = { ...defaultKeywordDict };
-        }
-    } else {
-        activeKeywordDict = { ...defaultKeywordDict };
+        try { activeKeywordDict = { ...defaultKeywordDict, ...JSON.parse(savedKw) }; } 
+        catch (e) { activeKeywordDict = { ...defaultKeywordDict }; }
     }
 }
 
 function populateSetupKeywords() {
-    const mapping = {
-        'kw_breakfast': 'breakfast',
-        'kw_lunch': 'lunch',
-        'kw_afternoon_tea': 'afternoon_tea',
-        'kw_dinner': 'dinner',
-        'kw_late_night': 'late_night',
-        'kw_noodles_rice': 'noodles_rice',
-        'kw_western_steak': 'western_steak',
-        'kw_dessert': 'dessert',
-        'kw_all': 'all'
-    };
-    
+    const mapping = {'kw_breakfast':'breakfast','kw_lunch':'lunch','kw_afternoon_tea':'afternoon_tea','kw_dinner':'dinner','kw_late_night':'late_night','kw_noodles_rice':'noodles_rice','kw_western_steak':'western_steak','kw_dessert':'dessert','kw_all':'all'};
     for (const [id, key] of Object.entries(mapping)) {
         const input = document.getElementById(id);
-        if (input) {
-            input.value = activeKeywordDict[key]; 
-        }
+        if (input) input.value = activeKeywordDict[key];
     }
 }
-
-// ================== 設定頁面資料處理 (一般設定) ==================
 
 function populateSetupGeneralPrefs() {
     const prefsJson = localStorage.getItem('food_wheel_prefs');
     if (prefsJson) {
         try {
             const prefs = JSON.parse(prefsJson);
-            const setVal = (id, val) => {
-                const el = document.getElementById(id);
-                if (el && val !== undefined && val !== null) {
-                    el.value = val;
-                }
-            };
-
+            const setVal = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
             setVal('setupSearchMode', prefs.searchMode);
             setVal('setupMinRating', prefs.minRating);
             setVal('setupSpinMode', prefs.spinMode);
@@ -257,16 +252,15 @@ function populateSetupGeneralPrefs() {
             setVal('setupMaxTime', prefs.maxTime);
             setVal('setupPriceLevel', prefs.priceLevel);
             setVal('setupResultCount', prefs.resultCount);
-            
-        } catch (e) { console.error("Error parsing general prefs", e); }
+        } catch (e) {}
     }
 }
 
-// ================== 儲存與重設 ==================
-
 function saveAndStart() {
     const inputKey = document.getElementById('userApiKey').value.trim();
-    if (inputKey.length < 20) return alert("API Key 格式不正確");
+    const geminiKey = document.getElementById('userGeminiKey').value.trim(); 
+    
+    if (inputKey.length < 20) return alert("Google Maps API Key 格式不正確");
     
     const userPrefs = {
         searchMode: document.getElementById('setupSearchMode').value,
@@ -278,39 +272,26 @@ function saveAndStart() {
         spinMode: document.getElementById('setupSpinMode') ? document.getElementById('setupSpinMode').value : 'repeat'
     };
     
-    const customKw = {};
-    const mapping = {
-        'kw_breakfast': 'breakfast',
-        'kw_lunch': 'lunch',
-        'kw_afternoon_tea': 'afternoon_tea',
-        'kw_dinner': 'dinner',
-        'kw_late_night': 'late_night',
-        'kw_noodles_rice': 'noodles_rice',
-        'kw_western_steak': 'western_steak',
-        'kw_dessert': 'dessert',
-        'kw_all': 'all'
-    };
-    
+    const customKw = {}; 
+    const mapping = {'kw_breakfast':'breakfast','kw_lunch':'lunch','kw_afternoon_tea':'afternoon_tea','kw_dinner':'dinner','kw_late_night':'late_night','kw_noodles_rice':'noodles_rice','kw_western_steak':'western_steak','kw_dessert':'dessert','kw_all':'all'};
     for (const [id, key] of Object.entries(mapping)) {
         const input = document.getElementById(id);
-        if (input && input.value.trim() !== "") {
-            customKw[key] = input.value.trim();
-        } else {
-            customKw[key] = defaultKeywordDict[key];
-        }
+        customKw[key] = (input && input.value.trim() !== "") ? input.value.trim() : defaultKeywordDict[key];
     }
     
     activeKeywordDict = customKw;
     localStorage.setItem('food_wheel_custom_keywords', JSON.stringify(customKw));
     localStorage.setItem('food_wheel_api_key', inputKey);
+    if(geminiKey) localStorage.setItem('food_wheel_gemini_key', geminiKey); 
     localStorage.setItem('food_wheel_prefs', JSON.stringify(userPrefs));
     
     loadGoogleMapsScript(inputKey);
 }
 
 function resetApiKey() {
-    if(confirm("確定要重設 API Key 嗎？\n(您的偏好設定、自訂關鍵字與評價紀錄將會保留)")) {
-        localStorage.removeItem('food_wheel_api_key');
+    if(confirm("確定要重設所有 API Key 嗎？")) { 
+        localStorage.removeItem('food_wheel_api_key'); 
+        localStorage.removeItem('food_wheel_gemini_key');
         location.reload(); 
     }
 }
@@ -320,58 +301,46 @@ function editPreferences() {
     document.getElementById('setup-screen').style.display = 'block';
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if(savedKey) document.getElementById('userApiKey').value = savedKey;
+    const savedGeminiKey = localStorage.getItem('food_wheel_gemini_key');
+    if(savedGeminiKey) document.getElementById('userGeminiKey').value = savedGeminiKey;
     
-    populateSetupKeywords();
-    populateSetupGeneralPrefs(); 
-
-    const prefsBox = document.querySelector('.preferences-box');
-    if(prefsBox) prefsBox.scrollIntoView({ behavior: 'smooth' });
+    populateSetupKeywords(); populateSetupGeneralPrefs(); 
 }
 
 function loadGoogleMapsScript(apiKey) {
+    if (typeof google !== 'undefined') { initApp(); return; } // 防止重複載入
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-        document.getElementById('setup-screen').style.display = 'none';
-        document.getElementById('app-screen').style.display = 'block';
+    script.async = true; script.defer = true;
+    script.onload = () => { 
+        document.getElementById('setup-screen').style.display = 'none'; 
+        document.getElementById('app-screen').style.display = 'block'; 
         initApp(); 
     };
-    script.onerror = () => {
-        alert("API 載入失敗，請檢查 Key");
-        localStorage.removeItem('food_wheel_api_key');
-        location.reload();
-    };
+    script.onerror = () => { alert("Google Maps API 載入失敗"); localStorage.removeItem('food_wheel_api_key'); location.reload(); };
     document.head.appendChild(script);
 }
 
-function initApp() {
-    applyPreferencesToApp();
-    autoSelectMealType();
-    initLocation();
-    resetGame(true);
-}
+function initApp() { applyPreferencesToApp(); autoSelectMealType(); initLocation(); resetGame(true); }
 
 function applyPreferencesToApp() {
     const prefsJson = localStorage.getItem('food_wheel_prefs');
     if (prefsJson) {
         try {
             const prefs = JSON.parse(prefsJson);
-            if(prefs.searchMode) document.getElementById('searchMode').value = prefs.searchMode;
-            if(prefs.minRating) document.getElementById('minRating').value = prefs.minRating;
-            if(prefs.transport) document.getElementById('transportMode').value = prefs.transport;
-            if(prefs.maxTime) document.getElementById('maxTime').value = prefs.maxTime;
-            if(prefs.priceLevel) document.getElementById('priceLevel').value = prefs.priceLevel;
-            if(prefs.resultCount) document.getElementById('resultCount').value = prefs.resultCount;
-            if(prefs.spinMode && document.getElementById('spinMode')) {
-                document.getElementById('spinMode').value = prefs.spinMode;
-            }
-        } catch (e) { console.error(e); }
+            const setVal = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+            setVal('searchMode', prefs.searchMode);
+            setVal('minRating', prefs.minRating);
+            setVal('transportMode', prefs.transport);
+            setVal('maxTime', prefs.maxTime);
+            setVal('priceLevel', prefs.priceLevel);
+            setVal('resultCount', prefs.resultCount);
+            setVal('spinMode', prefs.spinMode);
+        } catch (e) {}
     }
 }
 
-// ================== 2. 核心邏輯 ==================
+// ================== 2. 核心搜尋與轉盤邏輯 ==================
 
 function autoSelectMealType() {
     const hour = new Date().getHours();
@@ -463,46 +432,40 @@ function handleSearch() {
     });
 }
 
-// 【核心修正】雙模式搜尋策略 (Nearby vs Famous with Step-wise Scan)
+// 雙模式搜尋策略 (Nearby vs Famous with Step-wise Scan)
 function startSearch(location, keywordsRaw) {
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
     const transportMode = document.getElementById('transportMode').value;
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
-    const searchMode = document.getElementById('searchMode').value; // 'nearby' 或 'famous'
+    const searchMode = document.getElementById('searchMode').value;
     
-    // 1. 關鍵字策略：拆分 + 原句 (平行搜尋)
+    // 1. 關鍵字策略：拆分 + 原句
     const splitKeywords = keywordsRaw.split(/\s+/).filter(k => k.length > 0);
     let searchQueries = [...splitKeywords];
     if (splitKeywords.length > 1) {
         searchQueries.push(keywordsRaw);
     }
 
-    // 2. 速度定義與半徑/幾何過濾距離計算
+    // 2. 速度與距離計算
     let speedMetersPerMin = 0;
     if (transportMode === 'DRIVING') {
-        speedMetersPerMin = 1000; // 60 km/h = 1000 m/min
+        speedMetersPerMin = 1000; // 60 km/h
     } else {
-        speedMetersPerMin = 333.33; // 20 km/h = ~333 m/min (走路/單車)
+        speedMetersPerMin = 333.33; // 20 km/h
     }
 
-    // 計算最大理論半徑 (用於 Famous 模式的最大邊界與 Geometry Filter)
     const maxTheoreticalRadius = speedMetersPerMin * maxTime;
-    
-    // 計算幾何過濾半徑 (Geometry Filter) = 速度 x 時間 x 1.5
+    // 幾何過濾半徑 = 速度 x 時間 x 1.5
     const maxLinearDist = maxTheoreticalRadius * 1.5;
 
     const btn = document.querySelector('.search-btn');
     let statusText = "";
-
-    // 3. 建立搜尋請求矩陣
     let promises = [];
 
     if (searchMode === 'nearby') {
-        // === Mode A: 距離優先 (Nearby Mode) ===
-        // 不設 Radius，RankBy=DISTANCE，抓取最近的店
+        // Mode A: 距離優先
         statusText = `📍 距離優先搜尋 (抓取最近 60 筆)...`;
-        
         searchQueries.forEach(keyword => {
             let request = {
                 location: location,
@@ -510,21 +473,14 @@ function startSearch(location, keywordsRaw) {
                 keyword: keyword
             };
             if (priceLevel !== -1) request.maxPrice = priceLevel;
-            
-            // 強制抓滿 3 頁
             promises.push(fetchPlacesWithPagination(service, request, 3));
         });
 
     } else {
-        // === Mode B: 熱門優先 (Famous Mode) - 分段式同心圓掃描 ===
-        // 邏輯：每 5 分鐘切一個半徑，分別搜尋 Prominence
+        // Mode B: 熱門優先 (分段掃描)
         let steps = [];
-        for (let t = 5; t <= maxTime; t += 5) {
-            steps.push(t);
-        }
-        // 如果 maxTime 不是 5 的倍數，確保最後一個時間點有被加進去 (例如 user 輸入 12 分)
+        for (let t = 5; t <= maxTime; t += 5) steps.push(t);
         if (maxTime % 5 !== 0) steps.push(maxTime);
-        // 去重並排序
         steps = [...new Set(steps)].sort((a,b)=>a-b);
 
         statusText = `🌟 熱門優先：分段掃描 (${steps.join(',')}分) x 關鍵字...`;
@@ -532,18 +488,15 @@ function startSearch(location, keywordsRaw) {
         searchQueries.forEach(keyword => {
             steps.forEach(stepTime => {
                 let stepRadius = stepTime * speedMetersPerMin;
-                // API 最小半徑建議 500m
                 if (stepRadius < 500) stepRadius = 500; 
 
                 let request = {
                     location: location,
                     radius: stepRadius,
-                    rankBy: google.maps.places.RankBy.PROMINENCE, // 重點：使用熱門度排序
+                    rankBy: google.maps.places.RankBy.PROMINENCE,
                     keyword: keyword
                 };
                 if (priceLevel !== -1) request.maxPrice = priceLevel;
-
-                // 強制抓滿 3 頁，收集該半徑內的高分店
                 promises.push(fetchPlacesWithPagination(service, request, 3));
             });
         });
@@ -551,10 +504,8 @@ function startSearch(location, keywordsRaw) {
 
     btn.innerText = statusText;
 
-    // 4. 合併結果
     Promise.all(promises).then(resultsArray => {
         let combinedResults = [].concat(...resultsArray);
-        
         if (combinedResults.length === 0) {
             alert("附近找不到符合條件的店家");
             btn.innerText = "🔄 開始搜尋店家";
@@ -570,7 +521,6 @@ function startSearch(location, keywordsRaw) {
     });
 }
 
-// 遞迴抓取分頁的輔助函式 (可指定抓幾頁)
 function fetchPlacesWithPagination(service, request, maxPages = 3) {
     return new Promise((resolve) => {
         let allResults = [];
@@ -580,18 +530,13 @@ function fetchPlacesWithPagination(service, request, maxPages = 3) {
             if (status === google.maps.places.PlacesServiceStatus.OK && results) {
                 allResults = allResults.concat(results);
                 pageCount++;
-                
-                // 檢查是否有下一頁 (且未達頁數上限，且總數未爆量)
                 if (pagination && pagination.hasNextPage && pageCount < maxPages && allResults.length < (maxPages * 20)) {
-                    // Google API 要求：next_page_token 出現後，必須等待約 2 秒才能使用
-                    setTimeout(() => {
-                        pagination.nextPage();
-                    }, 2000);
+                    setTimeout(() => { pagination.nextPage(); }, 2000);
                 } else {
                     resolve(allResults);
                 }
             } else {
-                resolve(allResults); // 即使失敗或沒資料，也回傳目前抓到的
+                resolve(allResults);
             }
         });
     });
@@ -605,24 +550,17 @@ function processResults(origin, results, maxLinearDist) {
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
     const searchMode = document.getElementById('searchMode').value;
 
-    // 1. 去除重複 (Deduplication)
     const uniqueIds = new Set();
     let filtered = [];
     
     results.forEach(p => {
-        // 基本過濾：星等 & 評論數
         if (p.rating && p.rating >= minRating && p.user_ratings_total > 0) {
             if (!uniqueIds.has(p.place_id)) {
                 uniqueIds.add(p.place_id);
-                
-                // 2. 幾何直線距離過濾 (Geometry Filter) - 節省 API Quota
+                // 幾何過濾
                 const loc = p.geometry.location;
                 const distanceMeters = google.maps.geometry.spherical.computeDistanceBetween(origin, loc);
-                
-                // 使用 (速度 x 時間 x 1.5) 作為絕對門檻
-                // 這能篩掉 Nearby Mode 抓回來的「超遠但距離最近」的結果 (如果有)，以及 Famous Mode 範圍邊緣的結果
                 if (distanceMeters <= maxLinearDist) {
-                    // 暫存直線距離供排序參考
                     p.geometryDistance = distanceMeters;
                     filtered.push(p);
                 }
@@ -639,36 +577,27 @@ function processResults(origin, results, maxLinearDist) {
 
     btn.innerText = `計算路程 (過濾前 ${filtered.length} 間)...`;
 
-    // 3. 【關鍵修正】排序與截斷策略 (保障名額)
-    // 計算「近距離保障範圍」 (約為最大直線距離的 1/3)
+    // 排序與保障名額
     const safeZoneDist = maxLinearDist / 3; 
 
     if (searchMode === 'nearby') {
-        // Nearby Mode: 優先選直線距離近的
         filtered.sort((a, b) => a.geometryDistance - b.geometryDistance);
     } else {
-        // Famous Mode: 混合排序 (保障近距離 + 熱門度)
         filtered.sort((a, b) => {
             const getScore = (place) => {
                 let score = place.rating * Math.log10(place.user_ratings_total + 1);
-                
-                // 【核心修正】若在安全保障範圍內，給予極大加權，確保不會被「遠方高分店」擠出 top 80
-                // 這解決了「15分鐘搜尋結果反而比 5分鐘少」的問題
-                if (place.geometryDistance <= safeZoneDist) {
-                    score *= 3.0; // 強力保障
-                }
+                // 近距離保障加權
+                if (place.geometryDistance <= safeZoneDist) score *= 3.0; 
                 return score;
             };
             return getScore(b) - getScore(a);
         });
     }
 
-    // 截斷數量，避免 Matrix API 爆量 (取前 80 間最有希望的)
-    if (filtered.length > 80) {
-        filtered = filtered.slice(0, 80);
-    }
+    // 取前 80 間送 Distance Matrix
+    if (filtered.length > 80) filtered = filtered.slice(0, 80);
 
-    // 4. 批量計算實際路程 (Distance Matrix)
+    // 批量計算
     const batchSize = 25;
     const batches = [];
     for (let i = 0; i < filtered.length; i += batchSize) {
@@ -679,7 +608,7 @@ function processResults(origin, results, maxLinearDist) {
         .then(resultsArray => {
             let validPlaces = [].concat(...resultsArray);
             
-            // 5. 嚴格過濾實際時間
+            // 時間過濾
             validPlaces = validPlaces.filter(p => p.realDurationMins <= maxTime);
 
             if (validPlaces.length === 0) {
@@ -689,12 +618,10 @@ function processResults(origin, results, maxLinearDist) {
                 return;
             }
 
-            // 6. 最終顯示排序
+            // 最終排序
             if (searchMode === 'nearby') {
-                // Nearby Mode: 最終結果依「實際路程時間」排序
                 validPlaces.sort((a, b) => a.realDurationMins - b.realDurationMins);
             } else {
-                // Famous Mode: 最終結果依「評價分數」排序
                 validPlaces.sort((a, b) => {
                     const scoreA = a.rating * Math.log10(a.user_ratings_total + 1);
                     const scoreB = b.rating * Math.log10(b.user_ratings_total + 1);
@@ -702,7 +629,6 @@ function processResults(origin, results, maxLinearDist) {
                 });
             }
 
-            // 截取用戶需要的數量
             allSearchResults = validPlaces.slice(0, userMaxCount); 
             eliminatedIds.clear(); 
             hitCounts = {};
@@ -909,14 +835,11 @@ document.getElementById('spinBtn').onclick = () => {
     try {
         if (places.length === 0) return;
         
+        // 讀取當前設定 (以畫面為主)
         let spinMode = 'repeat';
         const spinModeEl = document.getElementById('spinMode'); 
-        
         if (spinModeEl) {
             spinMode = spinModeEl.value;
-        } else {
-            const prefs = JSON.parse(localStorage.getItem('food_wheel_prefs') || '{}');
-            if(prefs.spinMode) spinMode = prefs.spinMode;
         }
         
         const spinBtn = document.getElementById('spinBtn');
@@ -928,18 +851,23 @@ document.getElementById('spinBtn').onclick = () => {
         canvas.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
         canvas.style.transform = `rotate(${currentRotation}deg)`;
 
+        // 轉動時隱藏結果
         const btnLike = document.getElementById('btnLike');
         const btnDislike = document.getElementById('btnDislike');
         const ratingText = document.getElementById('userPersonalRating');
-        if(btnLike) btnLike.style.display = 'none';
-        if(btnDislike) btnDislike.style.display = 'none';
+        if(btnLike) btnLike.style.display = 'none'; // Grid 項目隱藏
+        if(btnDislike) btnDislike.style.display = 'none'; // Grid 項目隱藏
         if(ratingText) ratingText.innerText = "";
+        
+        // 隱藏連結按鈕
+        ['navLink', 'webLink', 'menuPhotoLink', 'btnAiMenu'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.style.display = 'none';
+        });
 
         setTimeout(() => {
             try {
                 const numOptions = places.length;
-                if (numOptions === 0) throw new Error("No places");
-
                 const arcSize = 360 / numOptions;
                 const actualRotation = currentRotation % 360;
                 let winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
@@ -958,7 +886,6 @@ document.getElementById('spinBtn').onclick = () => {
                         canvas.style.transition = 'none';
                         currentRotation = 0;
                         canvas.style.transform = `rotate(0deg)`;
-                        
                         refreshWheelData(); 
                         setControlsDisabled(false); 
                     }, 2000); 
@@ -1008,34 +935,40 @@ function handleUserRating(placeId, type) {
 }
 
 function updateWinnerStatus(winner) {
+    currentStoreForMenu = winner; // 儲存當前店家供 AI 使用
+
     const nameEl = document.getElementById('storeName');
     if(nameEl) nameEl.innerText = "就決定吃：" + winner.name;
     
     const ratingEl = document.getElementById('storeRating');
     if (ratingEl) {
-        if (winner.rating) {
-            ratingEl.innerText = `⭐ ${winner.rating} (${winner.user_ratings_total || 0} 則評價)`;
-        } else {
-            ratingEl.innerText = "暫無評價資料";
-        }
+        ratingEl.innerText = winner.rating ? `⭐ ${winner.rating} (${winner.user_ratings_total || 0} 則評價)` : "暫無評價資料";
     }
     
     const address = winner.formatted_address || winner.vicinity || "地址不詳";
     const storeAddressEl = document.getElementById('storeAddress');
     if(storeAddressEl) storeAddressEl.innerText = `⏳ 正在查詢詳細資訊...\n📍 ${address}`;
 
+    // 按鈕控制
     const btnLike = document.getElementById('btnLike');
     const btnDislike = document.getElementById('btnDislike');
     const ratingText = document.getElementById('userPersonalRating');
     const navLink = document.getElementById('navLink');
     const webLink = document.getElementById('webLink');
     const menuPhotoLink = document.getElementById('menuPhotoLink');
+    const btnAiMenu = document.getElementById('btnAiMenu');
 
-    // 隱藏連結，等待資料載入
+    // 評價按鈕一律顯示 (grid 佈局)
+    btnLike.style.display = 'block';
+    btnDislike.style.display = 'block';
+
+    // 連結按鈕先隱藏
     if(navLink) navLink.style.display = 'none';
     if(webLink) webLink.style.display = 'none';
     if(menuPhotoLink) menuPhotoLink.style.display = 'none';
+    if(btnAiMenu) btnAiMenu.style.display = 'none';
 
+    // 狀態重置
     if(btnLike) {
         btnLike.classList.remove('active');
         btnLike.onclick = () => handleUserRating(winner.place_id, 'like');
@@ -1046,6 +979,7 @@ function updateWinnerStatus(winner) {
     }
     if(ratingText) ratingText.innerText = "";
 
+    // 顯示個人評價
     if (userRatings[winner.place_id] === 'like') {
         if(btnLike) btnLike.classList.add('active');
         if(ratingText) ratingText.innerText = "👍 您曾標記：再次回訪";
@@ -1054,6 +988,7 @@ function updateWinnerStatus(winner) {
         if(ratingText) ratingText.innerText = "💣 您曾標記：踩雷";
     }
 
+    // 查詢詳情
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     service.getDetails({
         placeId: winner.place_id,
@@ -1073,16 +1008,25 @@ function updateWinnerStatus(winner) {
                 navLink.style.display = 'inline-block';
                 navLink.href = place.url ? place.url : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}&query_place_id=${winner.place_id}`;
             }
-
             if (webLink && place.website) {
                 webLink.style.display = 'inline-block';
                 webLink.href = place.website;
-                webLink.innerText = "🌐 官方網站 / 訂餐";
             }
-
             if (menuPhotoLink) {
                 menuPhotoLink.style.display = 'inline-block';
+                // 技巧：直接搜圖
                 menuPhotoLink.href = `https://www.google.com/search?q=${encodeURIComponent(winner.name + " 菜單")}&tbm=isch`; 
+            }
+
+            // 啟用 AI 菜單按鈕 (如果有 Gemini Key)
+            const geminiKey = localStorage.getItem('food_wheel_gemini_key');
+            if (geminiKey && btnAiMenu) {
+                btnAiMenu.style.display = 'inline-block';
+            }
+            
+            // 儲存照片列表
+            if(place.photos) {
+                currentStoreForMenu.photos = place.photos;
             }
         }
     });
@@ -1093,71 +1037,282 @@ function updateWinnerStatus(winner) {
     }
 }
 
-function getDetailedOpeningStatus(place) {
-    const isOpen = place.opening_hours.isOpen();
-    const periods = place.opening_hours.periods;
-    if (!periods || periods.length === 0) return isOpen ? "🟢 營業中" : "🔴 已打烊";
+// ================== 4. AI 菜單系統 (Gemini Integration) ==================
 
-    let now = new Date();
-    if (typeof place.utc_offset_minutes !== 'undefined') {
-        const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
-        now = new Date(utcTime + (place.utc_offset_minutes * 60000));
+function openAiMenuSelector() {
+    if (!currentStoreForMenu) return;
+    document.getElementById('main-view').style.display = 'none';
+    document.getElementById('menu-screen').style.display = 'block';
+    document.getElementById('menuStoreTitle').innerText = `菜單：${currentStoreForMenu.name}`;
+    
+    // 重置介面狀態
+    document.getElementById('ai-step-1').style.display = 'block';
+    document.getElementById('ai-step-2').style.display = 'none';
+    document.getElementById('ai-loading').style.display = 'none';
+    document.getElementById('btnAnalyzeMenu').disabled = true;
+    document.getElementById('btnAnalyzeMenu').style.opacity = '0.5';
+    selectedPhotoData = null;
+
+    // 載入 Google Maps 照片縮圖
+    const grid = document.getElementById('maps-photo-grid');
+    grid.innerHTML = '';
+    
+    if (currentStoreForMenu.photos && currentStoreForMenu.photos.length > 0) {
+        currentStoreForMenu.photos.slice(0, 10).forEach((photo) => {
+            const imgUrl = photo.getUrl({ maxWidth: 200, maxHeight: 200 });
+            const div = document.createElement('div');
+            div.className = 'photo-item';
+            div.innerHTML = `<img src="${imgUrl}">`;
+            div.onclick = () => alert("由於瀏覽器安全限制 (CORS)，無法直接分析 Google Maps 圖片。\n請使用上方的「上傳/拍攝」按鈕，上傳菜單截圖。");
+            grid.appendChild(div);
+        });
+    } else {
+        grid.innerHTML = '<p style="grid-column:1/-1; text-align:center;">此店家沒有提供 Google Maps 照片。</p>';
     }
-
-    const currentDay = now.getDay();
-    const currentTime = now.getHours() * 100 + now.getMinutes(); 
-    const days = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
-    const formatTime = (t) => {
-        const s = t.toString().padStart(4, '0');
-        return `${s.substring(0, 2)}:${s.substring(2)}`;
-    };
-
-    let events = [];
-    periods.forEach(p => {
-        if (p.open) events.push({ type: 'open', day: p.open.day, time: parseInt(p.open.time) });
-        if (p.close) events.push({ type: 'close', day: p.close.day, time: parseInt(p.close.time) });
-    });
-    events.sort((a, b) => (a.day !== b.day) ? a.day - b.day : a.time - b.time);
-
-    let targetEvent = null;
-    for (let e of events) {
-        if (e.day > currentDay || (e.day === currentDay && e.time > currentTime)) {
-            if ((isOpen && e.type === 'close') || (!isOpen && e.type === 'open')) {
-                targetEvent = e;
-                break;
-            }
-        }
-    }
-    if (!targetEvent) {
-        for (let e of events) {
-             if ((isOpen && e.type === 'close') || (!isOpen && e.type === 'open')) {
-                targetEvent = e;
-                break;
-            }
-        }
-    }
-
-    if (!targetEvent) return isOpen ? "🟢 營業中" : "🔴 已打烊";
-    const dayStr = days[targetEvent.day];
-    const timeStr = formatTime(targetEvent.time);
-    return isOpen ? `🟢 營業中，預計 (${dayStr} ${timeStr}) 結束營業` : `🔴 已打烊，預計 (${dayStr} ${timeStr}) 開始營業`;
 }
 
-function updateHitCountUI(placeId) {
-    if (!hitCounts[placeId]) hitCounts[placeId] = 0;
-    hitCounts[placeId]++;
-    
-    const row = document.getElementById(`row-${placeId}`);
-    if (row) {
-        const countCell = row.querySelector('.hit-count');
-        if (countCell) countCell.innerText = hitCounts[placeId];
-        
-        row.classList.add('active-winner');
-        setTimeout(() => row.classList.remove('active-winner'), 2000); 
+function closeMenuSystem() {
+    document.getElementById('menu-screen').style.display = 'none';
+    document.getElementById('main-view').style.display = 'block';
+}
+
+// 處理用戶上傳圖片 (File API)
+function handleFileUpload(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            selectedPhotoData = e.target.result; // Base64 string
+            // 更新 UI 顯示已選取
+            const grid = document.getElementById('maps-photo-grid');
+            grid.innerHTML = `<div class="photo-item selected" style="grid-column:1/-1; width:200px; margin:0 auto;"><img src="${selectedPhotoData}"></div>`;
+            
+            const btn = document.getElementById('btnAnalyzeMenu');
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.innerText = "🤖 圖片已就緒，開始 AI 解析";
+        };
+        reader.readAsDataURL(input.files[0]);
     }
+}
+
+// 呼叫 Gemini API
+async function analyzeSelectedPhotos() {
+    if (!selectedPhotoData) return;
+    
+    const geminiKey = localStorage.getItem('food_wheel_gemini_key');
+    if (!geminiKey) return alert("請先在設定頁面輸入 Google Gemini API Key");
+
+    // 顯示 Loading
+    document.getElementById('ai-loading').style.display = 'block';
+
+    try {
+        const base64Data = selectedPhotoData.split(',')[1];
+        const mimeType = selectedPhotoData.split(';')[0].split(':')[1];
+
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+        
+        const requestBody = {
+            contents: [{
+                parts: [
+                    { text: "你是一個菜單讀取機器人。請分析這張圖片，找出所有的菜色名稱與價格。請**嚴格**只回傳一個 JSON 陣列，格式為：[{\"category\": \"類別名稱\", \"name\": \"菜名\", \"price\": 數字價格}], 若無類別則歸類為'主餐'。不要包含 Markdown 標記 (如 ```json) 或任何其他文字。" },
+                    {
+                        inlineData: {
+                            mimeType: mimeType,
+                            data: base64Data
+                        }
+                    }
+                ]
+            }]
+        };
+
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
+        const data = await response.json();
+        
+        if (data.candidates && data.candidates[0].content) {
+            let text = data.candidates[0].content.parts[0].text;
+            // 清理可能存在的 Markdown code block
+            text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            
+            let menuJson;
+            try {
+                menuJson = JSON.parse(text);
+            } catch (jsonErr) {
+                throw new Error("AI 回傳格式非有效 JSON");
+            }
+
+            if (Array.isArray(menuJson) && menuJson.length > 0) {
+                initAiMenuSystem(menuJson);
+            } else {
+                alert("AI 無法在圖片中找到可辨識的菜單資料。");
+                document.getElementById('ai-loading').style.display = 'none';
+            }
+        } else {
+            throw new Error("AI 回應格式錯誤或被阻擋");
+        }
+
+    } catch (e) {
+        console.error(e);
+        alert("AI 解析失敗，請檢查 API Key 是否正確，或圖片是否清晰。\n(錯誤: " + e.message + ")");
+        document.getElementById('ai-loading').style.display = 'none';
+    }
+}
+
+// 初始化菜單轉盤 (使用 AI 資料)
+function initAiMenuSystem(menuData) {
+    fullMenuData = menuData;
+    shoppingCart = [];
+    
+    // 整理類別
+    const categories = [...new Set(menuData.map(item => item.category || '主餐'))];
+    const catSelect = document.getElementById('menuCategorySelect');
+    catSelect.innerHTML = "";
+    categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.innerText = cat;
+        catSelect.appendChild(opt);
+    });
+
+    // 切換到步驟 2
+    document.getElementById('ai-loading').style.display = 'none';
+    document.getElementById('ai-step-1').style.display = 'none';
+    document.getElementById('ai-step-2').style.display = 'block';
+    
+    updateCartUI();
+    updateMenuWheel();
+}
+
+function updateMenuWheel() {
+    const cat = document.getElementById('menuCategorySelect').value;
+    currentMenuData = fullMenuData.filter(item => (item.category || '主餐') === cat);
+    drawMenuWheel();
+}
+
+function drawMenuWheel() {
+    const numOptions = currentMenuData.length;
+    if(menuCtx) menuCtx.clearRect(0, 0, 400, 400);
+    if (numOptions === 0) return;
+    
+    const arcSize = (2 * Math.PI) / numOptions;
+    const startAngleOffset = -Math.PI / 2;
+
+    currentMenuData.forEach((item, i) => {
+        const angle = startAngleOffset + (i * arcSize);
+        if(menuCtx) {
+            menuCtx.fillStyle = `hsl(${i * (360 / numOptions)}, 60%, 85%)`; // 顏色淡一點
+            menuCtx.beginPath();
+            menuCtx.moveTo(200, 200);
+            menuCtx.arc(200, 200, 200, angle, angle + arcSize);
+            menuCtx.fill();
+            menuCtx.stroke();
+
+            menuCtx.save();
+            menuCtx.translate(200, 200);
+            menuCtx.rotate(angle + arcSize / 2);
+            let fontSize = 14; if (numOptions > 10) fontSize = 12;
+            menuCtx.fillStyle = "#333";
+            menuCtx.font = `bold ${fontSize}px Arial`;
+            let text = item.name; if (text.length > 6) text = text.substring(0, 5) + "..";
+            menuCtx.fillText(text, 60, 5);
+            menuCtx.restore();
+        }
+    });
+    
+    menuRotation = 0;
+    menuCanvas.style.transform = `rotate(0deg)`;
+    menuCanvas.style.transition = 'none';
+    
+    document.getElementById('dishName').innerText = "準備選菜...";
+    document.getElementById('dishPrice').innerText = "";
+    document.getElementById('addToOrderBtn').style.display = 'none';
+}
+
+document.getElementById('spinMenuBtn').onclick = () => {
+    if (currentMenuData.length === 0) return;
+    const spinBtn = document.getElementById('spinMenuBtn');
+    spinBtn.disabled = true;
+    document.getElementById('addToOrderBtn').style.display = 'none';
+
+    const spinAngle = Math.floor(Math.random() * 1800) + 1800; 
+    menuRotation += spinAngle;
+    menuCanvas.style.transition = 'transform 3s cubic-bezier(0.15, 0, 0.15, 1)';
+    menuCanvas.style.transform = `rotate(${menuRotation}deg)`;
+
+    setTimeout(() => {
+        const numOptions = currentMenuData.length;
+        const arcSize = 360 / numOptions;
+        const actualRotation = menuRotation % 360;
+        let winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
+        if (winningIndex < 0) winningIndex += numOptions;
+        
+        const winner = currentMenuData[winningIndex];
+        document.getElementById('dishName').innerText = winner.name;
+        document.getElementById('dishPrice').innerText = `$${winner.price}`;
+        
+        const addBtn = document.getElementById('addToOrderBtn');
+        addBtn.style.display = 'inline-block';
+        addBtn.onclick = () => addDishToCart(winner);
+        
+        spinBtn.disabled = false;
+    }, 3000);
+};
+
+function addDishToCart(dish) {
+    if(!dish) dish = currentMenuData[0]; 
+    shoppingCart.push(dish);
+    updateCartUI();
+    document.getElementById('addToOrderBtn').style.display = 'none';
+}
+
+function updateCartUI() {
+    const list = document.getElementById('cartList');
+    list.innerHTML = "";
+    let total = 0;
+    shoppingCart.forEach((item, index) => {
+        total += item.price;
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${item.name}</span> <span>$${item.price} <button onclick="removeCartItem(${index})" style="background:none;border:none;cursor:pointer;color:#c0392b;">❌</button></span>`;
+        list.appendChild(li);
+    });
+    document.getElementById('cartTotalDisplay').innerText = `$${total}`;
+}
+
+function removeCartItem(index) {
+    shoppingCart.splice(index, 1);
+    updateCartUI();
+}
+
+function checkout() {
+    if (shoppingCart.length === 0) return alert("購物車是空的！");
+    let total = 0;
+    let msg = `🧾 【${currentStoreForMenu.name}】 點餐明細\n------------------\n`;
+    shoppingCart.forEach(item => {
+        msg += `${item.name} ... $${item.price}\n`;
+        total += item.price;
+    });
+    msg += `------------------\n總計：$${total}`;
+    alert(msg);
 }
 
 // 綁定全域函式
+function getDetailedOpeningStatus(place) { /* 維持原樣 */ 
+    const isOpen = place.opening_hours.isOpen();
+    return isOpen ? "🟢 營業中" : "🔴 已打烊"; 
+}
+function updateHitCountUI(placeId) { /* 維持原樣 */ 
+    if (!hitCounts[placeId]) hitCounts[placeId] = 0; hitCounts[placeId]++;
+    const row = document.getElementById(`row-${placeId}`);
+    if (row) { 
+        row.querySelector('.hit-count').innerText = hitCounts[placeId]; 
+        row.classList.add('active-winner'); setTimeout(() => row.classList.remove('active-winner'), 2000); 
+    }
+}
+
 window.handleUserRating = handleUserRating;
 window.editPreferences = editPreferences;
 window.resetApiKey = resetApiKey;
@@ -1166,3 +1321,12 @@ window.initLocation = initLocation;
 window.showGuide = showGuide;
 window.saveAndStart = saveAndStart;
 window.updateKeywords = updateKeywords;
+// 新增綁定
+window.openAiMenuSelector = openAiMenuSelector;
+window.closeMenuSystem = closeMenuSystem;
+window.handleFileUpload = handleFileUpload;
+window.analyzeSelectedPhotos = analyzeSelectedPhotos;
+window.updateMenuWheel = updateMenuWheel;
+window.addDishToCart = addDishToCart;
+window.checkout = checkout;
+window.removeCartItem = removeCartItem;
