@@ -123,7 +123,7 @@ const guideData = {
             },
             {
                 title: "5. 取得 Key",
-                desc: "選單 > 「API 和服務（APIs & Services）」 > 「憑證 (Credentials)」 > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
+                desc: "選單(☰) > 「API 和服務（APIs & Services）」 > 「憑證 (Credentials)」 > Create Credentials > API Key。複製顯示的亂碼字串貼到下方輸入框。",
                 img: './images/ios_5.jpg'
             }
         ]
@@ -619,7 +619,8 @@ function processResults(origin, results, maxLinearDist) {
                 const loc = p.geometry.location;
                 const distanceMeters = google.maps.geometry.spherical.computeDistanceBetween(origin, loc);
                 
-                // 寬容度設定：(速度 x 時間 x 1.5)
+                // 使用 (速度 x 時間 x 1.5) 作為絕對門檻
+                // 這能篩掉 Nearby Mode 抓回來的「超遠但距離最近」的結果 (如果有)，以及 Famous Mode 範圍邊緣的結果
                 if (distanceMeters <= maxLinearDist) {
                     // 暫存直線距離供排序參考
                     p.geometryDistance = distanceMeters;
@@ -639,9 +640,7 @@ function processResults(origin, results, maxLinearDist) {
     btn.innerText = `計算路程 (過濾前 ${filtered.length} 間)...`;
 
     // 3. 【關鍵修正】排序與截斷策略 (保障名額)
-    // 為了避免遠方名店擠掉近處小店，我們採用「分層保留」
-    
-    // 計算「近距離保障範圍」 (約為最大直線距離的 1/3，大約是第一層搜尋半徑)
+    // 計算「近距離保障範圍」 (約為最大直線距離的 1/3)
     const safeZoneDist = maxLinearDist / 3; 
 
     if (searchMode === 'nearby') {
@@ -1023,19 +1022,25 @@ function updateWinnerStatus(winner) {
     
     const address = winner.formatted_address || winner.vicinity || "地址不詳";
     const storeAddressEl = document.getElementById('storeAddress');
-    if(storeAddressEl) storeAddressEl.innerText = `⏳ 正在查詢詳細營業狀態...\n📍 ${address}`;
+    if(storeAddressEl) storeAddressEl.innerText = `⏳ 正在查詢詳細資訊...\n📍 ${address}`;
 
     const btnLike = document.getElementById('btnLike');
     const btnDislike = document.getElementById('btnDislike');
     const ratingText = document.getElementById('userPersonalRating');
-    
+    const navLink = document.getElementById('navLink');
+    const webLink = document.getElementById('webLink');
+    const menuPhotoLink = document.getElementById('menuPhotoLink');
+
+    // 隱藏連結，等待資料載入
+    if(navLink) navLink.style.display = 'none';
+    if(webLink) webLink.style.display = 'none';
+    if(menuPhotoLink) menuPhotoLink.style.display = 'none';
+
     if(btnLike) {
-        btnLike.style.display = 'inline-block';
         btnLike.classList.remove('active');
         btnLike.onclick = () => handleUserRating(winner.place_id, 'like');
     }
     if(btnDislike) {
-        btnDislike.style.display = 'inline-block';
         btnDislike.classList.remove('active');
         btnDislike.onclick = () => handleUserRating(winner.place_id, 'dislike');
     }
@@ -1052,27 +1057,39 @@ function updateWinnerStatus(winner) {
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     service.getDetails({
         placeId: winner.place_id,
-        fields: ['opening_hours', 'utc_offset_minutes']
+        fields: ['opening_hours', 'utc_offset_minutes', 'website', 'url', 'photos']
     }, (place, status) => {
-        let openStatus = "⚪ 營業時間不明，請聯繫商家確認";
-        if (status === google.maps.places.PlacesServiceStatus.OK && place && place.opening_hours) {
-            openStatus = getDetailedOpeningStatus(place);
-        }
-        if(storeAddressEl) {
-            storeAddressEl.innerHTML = `<strong>${openStatus}</strong><br><span style="font-size: 0.85em; color: #999;">(營業時間僅供參考，以商家資訊為準)</span><br>📍 ${address}`;
+        let openStatus = "⚪ 營業時間不明";
+        if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+            if (place.opening_hours) {
+                openStatus = getDetailedOpeningStatus(place);
+            }
+            if(storeAddressEl) {
+                storeAddressEl.innerHTML = `<strong>${openStatus}</strong><br><span style="font-size: 0.85em; color: #999;">(營業時間僅供參考)</span><br>📍 ${address}`;
+            }
+
+            // 設定連結按鈕
+            if (navLink) {
+                navLink.style.display = 'inline-block';
+                navLink.href = place.url ? place.url : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}&query_place_id=${winner.place_id}`;
+            }
+
+            if (webLink && place.website) {
+                webLink.style.display = 'inline-block';
+                webLink.href = place.website;
+                webLink.innerText = "🌐 官方網站 / 訂餐";
+            }
+
+            if (menuPhotoLink) {
+                menuPhotoLink.style.display = 'inline-block';
+                menuPhotoLink.href = `https://www.google.com/search?q=${encodeURIComponent(winner.name + " 菜單")}&tbm=isch`; 
+            }
         }
     });
 
     const distEl = document.getElementById('storeDistance');
     if (winner.realDurationText && distEl) {
          distEl.innerText = `⏱️ 預估耗時：${winner.realDurationText} (${winner.realDistanceText})`;
-    }
-    
-    const link = document.getElementById('menuLink');
-    if(link) {
-        link.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}&query_place_id=${winner.place_id}`;
-        link.style.display = 'inline-block';
-        link.innerText = "📍 導航去這家";
     }
 }
 
