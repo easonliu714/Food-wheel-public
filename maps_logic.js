@@ -68,12 +68,14 @@ window.handleSearch = function() {
     const addrInput = document.getElementById('currentAddress').value;
     const keywordsRaw = document.getElementById('keywordInput').value;
     const spinBtn = document.getElementById('spinBtn');
+    const searchBtn = document.querySelector('.search-btn');
 
     if (!addrInput || addrInput === "定位中...") return alert("請輸入有效地址或等待定位完成");
     if (!keywordsRaw.trim()) return alert("請輸入關鍵字");
 
     window.resetGame(false); 
 
+    // === 【修正】立即停用按鈕並更新狀態 ===
     if(spinBtn) {
         spinBtn.disabled = true;
         spinBtn.innerText = "資料載入中...";
@@ -81,15 +83,13 @@ window.handleSearch = function() {
         spinBtn.style.cursor = "not-allowed";
     }
 
-    const btn = document.querySelector('.search-btn');
-    btn.innerText = "解析地址中...";
-    btn.disabled = true;
+    searchBtn.innerText = "🔍 解析地址中...";
+    searchBtn.disabled = true;
 
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ address: addrInput }, (results, status) => {
         if (status === "OK" && results[0]) {
             window.userCoordinates = results[0].geometry.location;
-            console.log("Geocode success:", results[0].formatted_address);
             
             const detailDisplay = document.getElementById('detailedAddressDisplay');
             if (detailDisplay) {
@@ -101,14 +101,20 @@ window.handleSearch = function() {
         } else {
             console.error("Geocode error:", status);
             alert("無法解析此地址，錯誤代碼：" + status);
-            btn.innerText = "🔄 開始搜尋店家";
-            btn.disabled = false;
+            // 恢復按鈕
+            searchBtn.innerText = "🔄 開始搜尋店家";
+            searchBtn.disabled = false;
         }
     });
 };
 
 window.startSearch = function(location, keywordsRaw) {
     console.log("startSearch...", location, keywordsRaw);
+    
+    const btn = document.querySelector('.search-btn');
+    // === 【修正】更新狀態文字 ===
+    btn.innerText = "☁️ 正在搜尋周邊店家...";
+
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
     const transportMode = document.getElementById('transportMode').value;
@@ -123,12 +129,11 @@ window.startSearch = function(location, keywordsRaw) {
     const maxTheoreticalRadius = speedMetersPerMin * maxTime;
     const maxLinearDist = maxTheoreticalRadius * 1.5;
 
-    const btn = document.querySelector('.search-btn');
     let statusText = "";
     let promises = [];
 
     if (searchMode === 'nearby') {
-        statusText = `📍 距離優先搜尋 (抓取最近 60 筆)...`;
+        statusText = `📍 距離優先：搜尋 ${searchQueries.length} 組關鍵字...`;
         searchQueries.forEach(keyword => {
             let request = { location: location, rankBy: google.maps.places.RankBy.DISTANCE, keyword: keyword };
             if (priceLevel !== -1) request.maxPrice = priceLevel;
@@ -139,7 +144,7 @@ window.startSearch = function(location, keywordsRaw) {
         for (let t = 5; t <= maxTime; t += 5) steps.push(t);
         if (maxTime % 5 !== 0) steps.push(maxTime);
         steps = [...new Set(steps)].sort((a,b)=>a-b);
-        statusText = `🌟 熱門優先：分段掃描 (${steps.join(',')}分) x 關鍵字...`;
+        statusText = `🌟 熱門優先：分段掃描 (${steps.join(',')}分)...`;
 
         searchQueries.forEach(keyword => {
             steps.forEach(stepTime => {
@@ -178,7 +183,6 @@ window.fetchPlacesWithPagination = function(service, request, maxPages = 3) {
         let allResults = [];
         let pageCount = 0;
         service.nearbySearch(request, (results, status, pagination) => {
-            console.log(`NearbySearch Status: ${status}, Results: ${results ? results.length : 0}`);
             if ((status === google.maps.places.PlacesServiceStatus.OK || status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) && results) {
                 allResults = allResults.concat(results);
                 pageCount++;
@@ -188,9 +192,7 @@ window.fetchPlacesWithPagination = function(service, request, maxPages = 3) {
                     resolve(allResults);
                 }
             } else {
-                if (status !== 'ZERO_RESULTS') {
-                    console.warn(`Places API Warning: ${status}`);
-                }
+                console.warn(`Places API Warning: ${status}`);
                 resolve(allResults);
             }
         });
@@ -223,13 +225,14 @@ window.processResults = function(origin, results, maxLinearDist) {
     });
 
     if (filtered.length === 0) {
-        alert(`無符合 ${minRating} 星以上的店家`);
+        alert(`無符合 ${minRating} 星以上的店家 (或超出幾何距離範圍)`);
         btn.innerText = "🔄 開始搜尋店家";
         btn.disabled = false;
         return;
     }
 
-    btn.innerText = `計算路程 (過濾前 ${filtered.length} 間)...`;
+    // === 【修正】更新按鈕狀態 ===
+    btn.innerText = `🚚 計算 ${filtered.length} 筆路程中...`;
 
     const safeZoneDist = maxLinearDist / 3; 
     if (searchMode === 'nearby') {
@@ -282,12 +285,13 @@ window.processResults = function(origin, results, maxLinearDist) {
 
             window.refreshWheelData(); 
             
+            // === 【修正】完成後恢復按鈕 ===
             btn.innerText = `搜尋完成 (共 ${window.places.length} 間)`;
             btn.disabled = false;
         })
         .catch(err => {
             console.error(err);
-            alert("路程計算失敗");
+            alert("路程計算失敗 (Distance Matrix API Error)");
             btn.innerText = "🔄 開始搜尋店家";
             btn.disabled = false;
         });
@@ -303,8 +307,9 @@ window.refreshWheelData = function() {
         return true;
     });
 
+    // 這裡也可以更新按鈕文字，確保狀態同步
     const searchBtn = document.querySelector('.search-btn');
-    if(searchBtn && !searchBtn.disabled && searchBtn.innerText.includes("搜尋完成")) {
+    if(searchBtn && !searchBtn.disabled) {
         searchBtn.innerText = `搜尋完成 (共 ${window.places.length} 間)`;
     }
 
@@ -395,10 +400,15 @@ window.resetGame = function(fullReset) {
         if(el) el.innerText = "";
     });
     
+    // === 【修正】重置時隱藏所有按鈕 ===
     ['navLink', 'webLink', 'menuPhotoLink', 'btnAiMenu'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.style.display = 'none';
     });
+    const btnLike = document.getElementById('btnLike');
+    const btnDislike = document.getElementById('btnDislike');
+    if(btnLike) btnLike.style.display = 'none';
+    if(btnDislike) btnDislike.style.display = 'none';
 
     if(fullReset) {
         window.places = [];
