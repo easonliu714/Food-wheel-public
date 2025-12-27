@@ -1,6 +1,5 @@
-// script.js - 入口點與事件綁定
+// script.js - 入口點與事件綁定 (與上一版相同)
 
-// spinBtn 的點擊事件
 document.getElementById('spinBtn').onclick = () => {
     try {
         if (window.places.length === 0) return;
@@ -66,7 +65,6 @@ document.getElementById('spinBtn').onclick = () => {
     }
 };
 
-// 菜單轉盤 spin 按鈕 (呼叫 ai_menu.js 的邏輯)
 document.getElementById('spinMenuBtn').onclick = function() {
     if (window.currentMenuData.length === 0) return;
     const spinBtn = document.getElementById('spinMenuBtn');
@@ -91,6 +89,7 @@ document.getElementById('spinMenuBtn').onclick = function() {
         
         const addBtn = document.getElementById('addToOrderBtn');
         addBtn.style.display = 'inline-block';
+        addBtn.onclick = () => window.addDishToCart(winner);
         
         spinBtn.disabled = false;
     }, 3000);
