@@ -15,7 +15,7 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .tab-btn:hover { background: #f0f0f0; }
 .tab-btn.active { background: #3498db; color: white; border-color: #3498db; font-weight: bold; box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3); }
 
-/* 摺疊教學樣式 */
+/* 摺疊教學樣式 (新增) */
 #guide-details {
     background: white;
     border-radius: 10px;
@@ -55,6 +55,31 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .tutorial-box { background: white; padding: 20px; transition: height 0.3s; }
 .tutorial-box h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 
+/* 步驟卡片與圖片 */
+.step-card { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #f0f0f0; }
+.step-card:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.step-header { display: flex; gap: 10px; align-items: center; }
+.step-title { margin: 0; color: #2980b9; font-size: 1.1rem; font-weight: bold; }
+
+.step-image-container { width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid #eee; margin-top: 5px; }
+.step-image-container img { width: 100%; display: block; height: auto; }
+
+.step-content { padding-left: 0; font-size: 0.95rem; color: #555; line-height: 1.6; }
+.step-content a { color: #e67e22; text-decoration: none; font-weight: bold; }
+.api-list { margin: 5px 0 0 0; padding-left: 0; list-style: none; }
+.api-list li { background: #e8f6f3; color: #16a085; padding: 5px 10px; margin-bottom: 5px; border-radius: 4px; font-size: 0.9rem; display: inline-block; margin-right: 5px; }
+
+/* API Key 輸入區 (移到教學下方) */
+.key-input-area { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); text-align: center; border-top: 5px solid #27ae60; margin-top: 20px; }
+.key-input-area label { display: block; font-weight: bold; margin-bottom: 10px; color: #333; }
+#userApiKey { width: 100%; padding: 12px; font-size: 1rem; border: 2px solid #ddd; border-radius: 5px; margin-bottom: 15px; box-sizing: border-box; text-align: center; letter-spacing: 1px; }
+#userApiKey:focus { border-color: #3498db; outline: none; }
+.privacy-note { font-size: 0.8rem; color: #95a5a6; margin-top: 10px; }
+
+.start-btn { width: 100%; padding: 12px; background: #27ae60; color: white; border: none; border-radius: 5px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: background 0.3s; }
+.start-btn:hover { background: #219150; }
+.start-btn:disabled { background: #95a5a6; cursor: not-allowed; }
+
 /* 偏好設定盒 */
 .preferences-box { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; border-left: 5px solid #f39c12; }
 .preferences-box h3 { margin-top: 0; color: #d35400; margin-bottom: 5px; }
@@ -70,30 +95,7 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .setup-input:focus { border-color: #3498db; outline: none; background: #fff; }
 .pref-item.full-width { grid-column: 1 / -1; }
 
-/* 步驟卡片 */
-.step-card { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #f0f0f0; }
-.step-card:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-.step-header { display: flex; gap: 10px; align-items: center; }
-.step-title { margin: 0; color: #2980b9; font-size: 1.1rem; font-weight: bold; }
-
-.step-image-container { width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid #eee; margin-top: 5px; }
-.step-image-container img { width: 100%; display: block; height: auto; }
-
-.step-content { padding-left: 0; font-size: 0.95rem; color: #555; line-height: 1.6; }
-.step-content a { color: #e67e22; text-decoration: none; font-weight: bold; }
-.api-list { margin: 5px 0 0 0; padding-left: 0; list-style: none; }
-.api-list li { background: #e8f6f3; color: #16a085; padding: 5px 10px; margin-bottom: 5px; border-radius: 4px; font-size: 0.9rem; display: inline-block; margin-right: 5px; }
-
-/* Key 輸入區 */
-.key-input-area { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); text-align: center; border-top: 5px solid #27ae60; margin-top: 20px; }
-.key-input-area label { display: block; font-weight: bold; margin-bottom: 10px; color: #333; }
-#userApiKey { width: 100%; padding: 12px; font-size: 1rem; border: 2px solid #ddd; border-radius: 5px; margin-bottom: 15px; box-sizing: border-box; text-align: center; letter-spacing: 1px; }
-#userApiKey:focus { border-color: #3498db; outline: none; }
-.privacy-note { font-size: 0.8rem; color: #95a5a6; margin-top: 10px; }
-
-.start-btn { width: 100%; padding: 12px; background: #27ae60; color: white; border: none; border-radius: 5px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: background 0.3s; }
-.start-btn:hover { background: #219150; }
-.start-btn:disabled { background: #95a5a6; cursor: not-allowed; }
+.small-btn { font-size: 0.8rem; padding: 5px 10px; background: #ecf0f1; border: none; border-radius: 4px; color: #555; cursor: pointer; }
 
 /* ============ 主程式頁面樣式 ============ */
 .header-bar { 
@@ -150,7 +152,6 @@ h1 { color: #333; margin-bottom: 20px; display: flex; align-items: center; justi
 .input-group { display: flex; gap: 5px; }
 #currentAddress { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 1rem; }
 #geoBtn { padding: 0 15px; background: #e67e22; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-.small-btn { font-size: 0.8rem; padding: 5px 10px; background: #ecf0f1; border: none; border-radius: 4px; color: #555; cursor: pointer; }
 
 .controls { background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
 .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.95rem; }
