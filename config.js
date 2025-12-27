@@ -1,18 +1,30 @@
-// config.js
-// 全域變數定義
-let places = []; // 輪盤上目前可用的店家
-let allSearchResults = []; // 搜尋到的所有原始店家
-let hitCounts = {}; // 次數統計
-let userRatings = {}; // 個人評價
-let eliminatedIds = new Set(); // 淘汰名單
-let currentRotation = 0;
-let userCoordinates = null; 
+// ================== config.js : 全域配置與變數 ==================
 
-let canvas = null;
-let ctx = null;
+// 定義全域變數 (掛載在 window 上以確保各檔案可存取)
+window.places = []; 
+window.allSearchResults = []; 
+window.hitCounts = {}; 
+window.userRatings = {}; 
+window.eliminatedIds = new Set(); 
+window.currentRotation = 0;
+window.userCoordinates = null; 
+
+// Canvas 相關
+window.canvas = null;
+window.ctx = null;
+
+// AI 菜單相關
+window.currentStoreForMenu = null;
+window.menuCanvas = null;
+window.menuCtx = null;
+window.menuRotation = 0;
+window.currentMenuData = [];
+window.fullMenuData = [];
+window.shoppingCart = [];
+window.selectedPhotoData = null;
 
 // 預設關鍵字字典
-const defaultKeywordDict = {
+window.defaultKeywordDict = {
     breakfast: "早餐 早午餐",
     lunch: "餐廳 小吃 午餐 異國料理",
     afternoon_tea: "飲料 甜點 咖啡",
@@ -24,40 +36,11 @@ const defaultKeywordDict = {
     all: "美食 餐廳 小吃 夜市 料理 吃到飽" 
 };
 
-let activeKeywordDict = { ...defaultKeywordDict };
+window.activeKeywordDict = { ...window.defaultKeywordDict };
 
 // 教學資料
-const commonApiList = `<ul class="api-list"><li>✅ Maps JavaScript API</li><li>✅ Places API (搜尋)</li><li>✅ Geocoding API (地址)</li><li>✅ Distance Matrix API (距離)</li></ul>`;
-
-const guideData = {
-    desktop: {
-        title: "💻 電腦版申請步驟",
-        steps: [
-            { title: "1. 登入 Google Cloud", desc: "前往 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud Console</a> 並登入。", img: './images/desktop_1.jpg' },
-            { title: "2. 建立新專案", desc: "點擊左上角專案選單 >「建立新專案」。", img: './images/desktop_2.jpg' },
-            { title: "3. 綁定帳單", desc: "左側選單（≡）>「帳單」。綁定信用卡 (享每月$200美金免費額度)。", img: './images/desktop_3.jpg' },
-            { title: "4. 啟用 4 項 API", desc: "左側選單（≡） >「API 和服務（API & Service）」>「啟用 API」。搜尋並啟用：" + commonApiList, img: './images/desktop_4.jpg' },
-            { title: "5. 取得 API Key", desc: "選單（≡） >「憑證（Credentials）」>「建立憑證（Create Credentials）」>「API 金鑰」。複製並貼到上方。", img: './images/desktop_5.jpg' }
-        ]
-    },
-    android: {
-        title: "🤖 Android 手機申請步驟",
-        steps: [
-            { title: "1. 切換電腦版網站", desc: "用 Chrome 開啟 Console，<b>點擊右上角「⋮」勾選「電腦版網站」</b>。", img: './images/android_1.jpg' },
-            { title: "2. 建立新專案", desc: "放大畫面，點擊上方選單 > New Project。", img: './images/android_2.jpg' },
-            { title: "3. 綁定帳單", desc: "左側選單 > Billing。綁定信用卡。", img: './images/android_3.jpg' },
-            { title: "4. 啟用 API", desc: "左側選單（≡） >「API 和服務（API & Service）」>「啟用 API」。搜尋並啟用：" + commonApiList, img: './images/android_4.jpg' },
-            { title: "5. 複製 Key", desc: "選單（≡） >「憑證（Credentials）」>「建立憑證（Create Credentials）」> API Key。", img: './images/android_5.jpg' }
-        ]
-    },
-    ios: {
-        title: "🍎 iOS 申請步驟",
-        steps: [
-            { title: "1. 切換電腦版網站", desc: "用 Safari 開啟 Console，<b>點擊網址列左側「大小(Aa)」>「切換為電腦版網站」</b>。", img: './images/ios_1.jpg' },
-            { title: "2. 建立專案", desc: "手機橫放。點擊上方選單 > New Project。", img: './images/ios_2.jpg' },
-            { title: "3. 綁定帳單", desc: "左側選單 > Billing。綁定信用卡。", img: './images/ios_3.jpg' },
-            { title: "4. 啟用 API", desc: "左側選單（≡） >「API 和服務（API & Service）」>「啟用 API」。搜尋並啟用：" + commonApiList, img: './images/ios_4.jpg' },
-            { title: "5. 取得 Key", desc: "選單（≡） >「憑證（Credentials）」>「建立憑證（Create Credentials）」> API Key。", img: './images/ios_5.jpg' }
-        ]
-    }
+window.guideData = {
+    desktop: { title: "💻 電腦版申請步驟", steps: [{title:"1. 登入 Google Cloud", desc:"使用 Chrome 前往 console.cloud.google.com"}, {title:"2. 建立專案", desc:"建立一個新專案 (FoodWheel)"}, {title:"3. 綁定帳單", desc:"前往 Billing 綁定信用卡 (免費額度內不收費)"}, {title:"4. 啟用 API", desc:"啟用: Maps JS API, Places API, Geocoding API, Distance Matrix API"}, {title:"5. 取得 Key", desc:"前往 Credentials 建立 API Key 並貼上"}] },
+    android: { title: "🤖 Android 步驟", steps: [{title:"1. 切換電腦版網站", desc:"手機瀏覽器勾選「電腦版網站」"}, {title:"2. 建立專案與綁卡", desc:"操作同電腦版"}, {title:"3. 複製 Key", desc:"將 Key 貼到下方欄位"}] },
+    ios: { title: "🍎 iOS 步驟", steps: [{title:"1. 切換電腦版網站", desc:"Safari 網址列左側 Aa > 切換為電腦版網站"}, {title:"2. 建立專案", desc:"操作同電腦版"}] }
 };
