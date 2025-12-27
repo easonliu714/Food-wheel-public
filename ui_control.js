@@ -1,40 +1,38 @@
 // ui_control.js
-// 負責 DOM 操作、頁面切換、教學顯示
+// Responsible for DOM operations, page switching, and tutorials
 
 window.onload = () => {
-    // Canvas 初始化
+    // Canvas Init
     canvas = document.getElementById('wheel');
     if(canvas) ctx = canvas.getContext('2d');
     menuCanvas = document.getElementById('menuWheel');
     if(menuCanvas) menuCtx = menuCanvas.getContext('2d');
 
-    // 載入資料
+    // Load Data
     loadUserRatings();
     loadUserKeywords();
     
-    // UI 初始化
+    // UI Init
     populateSetupKeywords();
     populateSetupGeneralPrefs();
 
-    // 檢查 API Key
+    // Check API Key
     const savedKey = localStorage.getItem('food_wheel_api_key');
     const savedGeminiKey = localStorage.getItem('food_wheel_gemini_key');
     const savedModel = localStorage.getItem('food_wheel_gemini_model');
     
     if (savedKey) {
-        document.getElementById('userApiKey').value = savedKey; // 填入輸入框
-        loadGoogleMapsScript(savedKey); // 嘗試載入
+        document.getElementById('userApiKey').value = savedKey; 
+        loadGoogleMapsScript(savedKey); 
     } else {
         showSetupScreen();
     }
 
     if(savedGeminiKey) {
         document.getElementById('userGeminiKey').value = savedGeminiKey;
-        // 如果已經有 Key，嘗試直接載入模型列表
         fetchAndPopulateModels(savedGeminiKey, savedModel);
     }
 
-    // 綁定過濾器
     const filterCheckbox = document.getElementById('filterDislike');
     if (filterCheckbox) {
         filterCheckbox.addEventListener('change', () => { 
@@ -100,7 +98,6 @@ function showGuide(platform) {
     container.style.display = 'block'; 
     
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    // 簡單處理 active class
     if(platform === 'desktop') document.querySelectorAll('.tab-btn')[0].classList.add('active');
     if(platform === 'android') document.querySelectorAll('.tab-btn')[1].classList.add('active');
     if(platform === 'ios') document.querySelectorAll('.tab-btn')[2].classList.add('active');
@@ -122,20 +119,19 @@ function toggleGeminiGuide() {
     area.style.display = area.style.display === 'none' ? 'block' : 'none';
 }
 
-// 【新增功能】動態抓取可用模型
+// === NEW FEATURE: Dynamic Model Fetching ===
 async function fetchAndPopulateModels(apiKey, selectedModel = null) {
     const modelSelect = document.getElementById('setupGeminiModel');
     if (!modelSelect) return;
 
     try {
-        // 使用 list models API
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
         const data = await response.json();
 
         if (data.models) {
-            modelSelect.innerHTML = ''; // 清空選項
+            modelSelect.innerHTML = ''; // Clear options
             
-            // 過濾出支援 generateContent 的模型 (即聊天/文本生成模型)
+            // Filter models that support generateContent
             const chatModels = data.models.filter(m => 
                 m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent")
             );
@@ -149,9 +145,8 @@ async function fetchAndPopulateModels(apiKey, selectedModel = null) {
 
             chatModels.forEach(model => {
                 const opt = document.createElement('option');
-                // model.name 格式通常為 "models/gemini-1.5-flash"
-                // 我們取最後一段作為乾淨的 ID，但 API 呼叫時建議用全名或去頭
-                // 這裡保留 full name 比較保險，或者去掉 "models/"
+                // Value: e.g., "gemini-1.5-flash" (stripping 'models/')
+                // Display: e.g., "Gemini 1.5 Flash (gemini-1.5-flash)"
                 const value = model.name.replace('models/', '');
                 opt.value = value;
                 opt.text = `${model.displayName} (${value})`;
@@ -160,22 +155,19 @@ async function fetchAndPopulateModels(apiKey, selectedModel = null) {
 
             document.getElementById('model-selection-area').style.display = 'block';
 
-            // 設定預設選取
             if (selectedModel) {
                 modelSelect.value = selectedModel;
             } else {
-                // 智慧預設：優先選 flash-001 或 flash
+                // Smart default: prioritize 'flash'
                 const defaultModel = chatModels.find(m => m.name.includes('flash')) || chatModels[0];
                 modelSelect.value = defaultModel.name.replace('models/', '');
             }
         }
     } catch (e) {
-        console.error("無法取得模型列表", e);
-        // 若失敗，保留原本的 hardcode 選項當 fallback，或顯示錯誤
+        console.error("Failed to fetch models", e);
     }
 }
 
-// 修改：測試 Key 並顯示模型選單
 async function testGeminiKey() {
     const key = document.getElementById('userGeminiKey').value.trim();
     if(!key) return alert("請先輸入 API Key");
@@ -186,7 +178,6 @@ async function testGeminiKey() {
     btn.disabled = true;
     
     try {
-        // 先測試一個簡單請求
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
         const response = await fetch(API_URL, {
             method: 'POST',
@@ -196,7 +187,6 @@ async function testGeminiKey() {
         
         if (response.ok) {
             alert("✅ 金鑰有效！正在讀取可用模型列表...");
-            // 測試成功，抓取模型清單
             await fetchAndPopulateModels(key);
         } else {
             alert("❌ 金鑰無效或額度已滿 (Error: " + response.status + ")");
@@ -216,7 +206,6 @@ function saveAndStart() {
     
     if (inputKey.length < 20) return alert("Google Maps API Key 格式不正確");
     
-    // 儲存設定
     const userPrefs = {
         searchMode: document.getElementById('setupSearchMode').value,
         minRating: document.getElementById('setupMinRating').value,
@@ -227,7 +216,6 @@ function saveAndStart() {
         spinMode: document.getElementById('setupSpinMode') ? document.getElementById('setupSpinMode').value : 'repeat'
     };
     
-    // 儲存關鍵字
     const customKw = {}; 
     const mapping = {'kw_breakfast':'breakfast','kw_lunch':'lunch','kw_afternoon_tea':'afternoon_tea','kw_dinner':'dinner','kw_late_night':'late_night','kw_noodles_rice':'noodles_rice','kw_western_steak':'western_steak','kw_dessert':'dessert','kw_all':'all'};
     for (const [id, key] of Object.entries(mapping)) {
@@ -236,13 +224,12 @@ function saveAndStart() {
     }
     activeKeywordDict = customKw;
 
-    // 寫入 LocalStorage
     localStorage.setItem('food_wheel_custom_keywords', JSON.stringify(customKw));
     localStorage.setItem('food_wheel_api_key', inputKey);
     
     if(geminiKey) {
         localStorage.setItem('food_wheel_gemini_key', geminiKey); 
-        localStorage.setItem('food_wheel_gemini_model', geminiModel); // 儲存模型選擇
+        localStorage.setItem('food_wheel_gemini_model', geminiModel); 
     } else {
         localStorage.removeItem('food_wheel_gemini_key');
         localStorage.removeItem('food_wheel_gemini_model');
@@ -250,7 +237,6 @@ function saveAndStart() {
     
     localStorage.setItem('food_wheel_prefs', JSON.stringify(userPrefs));
     
-    // 關鍵修正：如果 API 已經載入，直接切換畫面並初始化
     if (typeof google !== 'undefined' && google.maps) {
         showAppScreen();
         if(typeof applyPreferencesToApp === 'function') applyPreferencesToApp();
@@ -273,7 +259,6 @@ function loadGoogleMapsScript(apiKey) {
 
 function editPreferences() {
     showSetupScreen();
-    // 重新填入值
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if(savedKey) document.getElementById('userApiKey').value = savedKey;
     
@@ -281,7 +266,6 @@ function editPreferences() {
     if(savedGeminiKey) {
         document.getElementById('userGeminiKey').value = savedGeminiKey;
         const savedModel = localStorage.getItem('food_wheel_gemini_model');
-        // 進入設定頁時，若有 Key 也嘗試載入模型列表以供修改
         fetchAndPopulateModels(savedGeminiKey, savedModel);
     }
     
