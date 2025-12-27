@@ -12,7 +12,6 @@
         .preview-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 5px; border: 1px solid #ddd; }
         .preview-wrapper { position: relative; display: inline-block; }
         .remove-img-btn { position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 18px; font-size: 12px; cursor: pointer; border: 1px solid white; }
-        /* 新增模型選擇區樣式 */
         #model-selection-area { margin-top: 10px; padding: 10px; background: #f0f3f4; border-radius: 5px; display: none; }
     </style>
 </head>
@@ -57,10 +56,7 @@
             <div id="model-selection-area">
                 <label style="color: #2c3e50; font-weight: bold;">🤖 預設 AI 模型：</label>
                 <select id="setupGeminiModel" class="setup-input" style="margin-top: 5px;">
-                    <option value="gemini-flash-latest" selected>Gemini Flash Latest (推薦)</option>
-                    <option value="gemini-1.5-flash">Gemini 1.5 Flash（極速）</option>
-                    <option value="gemini-1.5-pro">Gemini 1.5 Pro (較慢但在意精準度)</option>
-                </select>
+                    </select>
             </div>
             
             <div id="gemini-guide-area" class="tutorial-box" style="display: none; background: #fdfafa;">
@@ -237,36 +233,36 @@
                     <div class="setting-row">
                         <label>🏃‍♂️ 交通：</label>
                         <select id="transportMode">
-                            <option value="WALKING" selected>走路/單車 🚶🚴‍♂️ (時速20km)</option>
-                            <option value="DRIVING">機車/開車 🛵🚗 (時速60km)</option>
+                            <option value="WALKING">走路 (20km/h)</option>
+                            <option value="DRIVING">開車 (60km/h)</option>
                         </select>
                     </div>
                     <div class="setting-row">
                         <label>⏱️ 時間限制：</label>
                         <select id="maxTime">
-                            <option value="5">🕐 5 分鐘內</option>
-                            <option value="10" selected>🕑 10 分鐘內</option>
-                            <option value="15">🕒 15 分鐘內</option>
-                            <option value="20">🕓 20 分鐘內</option>
-                            <option value="30">🕕 30 分鐘內</option>
+                            <option value="5">5 分鐘</option>
+                            <option value="10">10 分鐘</option>
+                            <option value="15">15 分鐘</option>
+                            <option value="20">20 分鐘</option>
+                            <option value="30">30 分鐘</option>
                         </select>
                     </div>
                     <div class="setting-row">
                         <label>🔢 數量：</label>
                         <select id="resultCount">
-                            <option value="10">🏕️ 10 家</option>
-                            <option value="20" selected>🏡 20 家</option>
-                            <option value="30">🏘️ 30 家</option>
-                            <option value="40">🏢 40 家</option>
-                            <option value="50">🌇 50 家</option>
-                            <option value="60">🗺️ 60 家 (Google極限)</option>
+                            <option value="10">10 家</option>
+                            <option value="20">20 家</option>
+                            <option value="30">30 家</option>
+                            <option value="40">40 家</option>
+                            <option value="50">50 家</option>
+                            <option value="60">60 家</option>
                         </select>
                     </div>
                     <div class="setting-row">
                         <label>🎡 轉盤：</label>
                         <select id="spinMode">
-                            <option value="repeat" selected>🔁 重複抽取 (不移除)</option>
-                            <option value="eliminate">❌ 淘汰制 (抽出後移除)</option>
+                            <option value="repeat">重複</option>
+                            <option value="eliminate">淘汰</option>
                         </select>
                     </div>
                 </div>
