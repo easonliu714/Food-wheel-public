@@ -38,13 +38,16 @@
             <label style="font-weight: bold;">Google AI Studio API Key：</label>
             <div style="display:flex; gap:5px; margin-bottom:10px;">
                 <input type="text" id="userGeminiKey" placeholder="AIzaSy... (Gemini Key)" class="setup-input" style="flex:2;">
-                <button id="btnValidateGemini" onclick="validateGeminiKey()" class="small-btn" style="background:#9b59b6; color:white; flex:1;">驗證並取得模型</button>
+                <button id="btnValidateGemini" onclick="validateGeminiKey()" class="small-btn" style="background:#9b59b6; color:white; flex:1;">載入模型</button>
             </div>
             
             <label style="font-size:0.9rem;">🤖 選擇 AI 模型：</label>
-            <select id="geminiModelSelect" class="setup-input" style="margin-bottom:10px;">
-                <option value="gemini-1.5-flash">請先輸入 Key 並驗證...</option>
-            </select>
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <select id="geminiModelSelect" class="setup-input" style="flex:2;">
+                    <option value="gemini-1.5-flash">請先輸入 Key 並驗證...</option>
+                </select>
+                <button onclick="testSelectedGeminiModel()" class="small-btn" style="background:#27ae60; color:white; flex:1;">⚡ 測試</button>
+            </div>
 
             <details>
                 <summary style="cursor: pointer; color: #9b59b6; font-weight: bold; font-size: 0.9rem;">📝 如何取得免費 Gemini Key？ (點擊展開)</summary>
@@ -63,6 +66,10 @@
                         <option value="nearby" selected>📍 距離優先 (找最近)</option>
                         <option value="famous">🌟 熱門優先 (找好店)</option>
                     </select>
+                    <p style="font-size: 0.8rem; color: #888; margin-top: 5px;">
+                        <strong>距離優先：</strong>嚴格由近到遠搜尋，適合時間緊迫。<br>
+                        <strong>熱門優先：</strong>分段掃描範圍內評價較高與知名的店，適合探險。
+                    </p>
                 </div>
                 <div class="pref-item"><label>🎖️ 最低星評</label><select id="setupMinRating"><option value="0">⚪ 不限</option><option value="3.0" selected>⭐⭐⭐ 3.0+</option><option value="3.5">⭐⭐⭐☆ 3.5+</option><option value="4.0">⭐⭐⭐⭐ 4.0+</option><option value="4.5">⭐⭐⭐⭐☆ 4.5+</option></select></div>
                 <div class="pref-item"><label>🎡 轉盤模式</label><select id="setupSpinMode"><option value="repeat" selected>🔁 重複抽取</option><option value="eliminate">❌ 淘汰制</option></select></div>
@@ -118,14 +125,14 @@
                         <option value="famous">🌟 熱門優先 (找好店)</option>
                     </select>
                 </div>
-                <div class="setting-row"><label>📑 類別：</label><select id="mealType" onchange="updateKeywords()"><option value="breakfast">🍔 早餐</option><option value="lunch">🍱 午餐</option><option value="afternoon_tea">🧋 下午茶</option><option value="dinner">🍲 晚餐</option><option value="late_night">🍻 宵夜</option><option value="noodles_rice">🍜 麵飯</option><option value="western_steak">🍽️ 西式</option><option value="dessert">🍧 甜點</option><option value="all">🌏 不限</option></select></div>
-                <div class="setting-row"><label>💸 預算：</label><select id="priceLevel"><option value="-1">不限</option><option value="1">💲 $200↓</option><option value="2">💲💲 $800↓</option><option value="3">💲💲💲 $2000↓</option><option value="4">奢華</option></select></div>
+                <div class="setting-row"><label>📑 類別：</label><select id="mealType" onchange="updateKeywords()"><option value="breakfast">🍔 早餐 / 早午餐</option><option value="lunch">🍱 午餐 / 異國料理</option><option value="afternoon_tea">🧋 下午茶 / 甜點咖啡</option><option value="dinner">🍲 晚餐 / 火鍋</option><option value="late_night">🍻 宵夜 / 炸物</option><option value="noodles_rice">🍜 麵飯 / 小吃</option><option value="western_steak">🍽️ 牛排 / 西式</option><option value="dessert">🍧 甜點 / 冰品</option><option value="all">🌏 所有美食 (不限)</option></select></div>
+                <div class="setting-row"><label>💸 預算：</label><select id="priceLevel"><option value="-1">不限</option><option value="1">💲 $200 以下</option><option value="2">💲💲 $800 以下</option><option value="3">💲💲💲 $2000 以下</option><option value="4">💲💲💲💲 奢華上限</option></select></div>
                 <div class="setting-row" style="flex-direction: column; align-items: flex-start;"><label style="margin-bottom: 5px;">🔎 關鍵字：</label><input type="text" id="keywordInput" class="full-width-input" value=""></div>
-                <div class="setting-row"><label>🎖️ 星評：</label><select id="minRating"><option value="0">不限</option><option value="3.0">3.0+</option><option value="3.5">3.5+</option><option value="4.0">4.0+</option><option value="4.5">4.5+</option></select></div>
-                <div class="setting-row"><label>🏃‍♂️ 交通：</label><select id="transportMode"><option value="WALKING">走路 🚶</option><option value="DRIVING">開車 🚗</option></select></div>
-                <div class="setting-row"><label>⏱️ 時間：</label><select id="maxTime"><option value="5">5分</option><option value="10">10分</option><option value="15">15分</option><option value="20">20分</option><option value="30">30分</option></select></div>
-                <div class="setting-row"><label>🔢 數量：</label><select id="resultCount"><option value="10">10</option><option value="20">20</option><option value="30">30</option><option value="40">40</option><option value="50">50</option><option value="60">60</option></select></div>
-                <div class="setting-row"><label>🎡 模式：</label><select id="spinMode"><option value="repeat">🔁 重複</option><option value="eliminate">❌ 淘汰</option></select></div>
+                <div class="setting-row"><label>🎖️ 星評：</label><select id="minRating"><option value="0">⚪ 不限</option><option value="3.0">⭐⭐⭐ 3.0 以上</option><option value="3.5">⭐⭐⭐☆ 3.5 以上</option><option value="4.0">⭐⭐⭐⭐ 4.0 以上</option><option value="4.5">⭐⭐⭐⭐☆ 4.5 以上</option></select></div>
+                <div class="setting-row"><label>🏃‍♂️ 交通：</label><select id="transportMode"><option value="WALKING">走路 🚶 (20km/h)</option><option value="DRIVING">開車 🚗 (60km/h)</option></select></div>
+                <div class="setting-row"><label>⏱️ 時間：</label><select id="maxTime"><option value="5">🕐 5 分鐘</option><option value="10">🕑 10 分鐘</option><option value="15">🕒 15 分鐘</option><option value="20">🕓 20 分鐘</option><option value="30">🕕 30 分鐘</option></select></div>
+                <div class="setting-row"><label>🔢 數量：</label><select id="resultCount"><option value="10">🏕️ 10 家</option><option value="20">🏡 20 家</option><option value="30">🏘️ 30 家</option><option value="40">🏢 40 家</option><option value="50">🌇 50 家</option><option value="60">🗺️ 60 家</option></select></div>
+                <div class="setting-row"><label>🎡 模式：</label><select id="spinMode"><option value="repeat">🔁 重複抽取</option><option value="eliminate">❌ 淘汰制</option></select></div>
                 <button onclick="handleSearch()" class="search-btn">🔄 開始搜尋店家</button>
             </div>
 
@@ -142,7 +149,7 @@
                 
                 <div class="wheel-section">
                     <div class="filter-box">
-                        <input type="checkbox" id="filterDislike"><label for="filterDislike">🛡️ 濾除踩雷</label>
+                        <input type="checkbox" id="filterDislike"><label for="filterDislike">🛡️ 濾除踩雷商家</label>
                     </div>
                     <div class="wheel-container">
                         <canvas id="wheel" width="400" height="400"></canvas>
@@ -165,7 +172,7 @@
 
                         <div id="external-links" style="margin-top: 15px; display: flex; flex-direction: column; gap: 8px;">
                             <a id="navLink" href="#" target="_blank" class="nav-btn" style="display:none; background: #e67e22;">📍 導航前往</a>
-                            <a id="webLink" href="#" target="_blank" class="nav-btn" style="display:none; background: #3498db;">🌐 官方網站</a>
+                            <a id="webLink" href="#" target="_blank" class="nav-btn" style="display:none; background: #3498db;">🌐 官方網站 / 訂餐</a>
                             <a id="menuPhotoLink" href="#" target="_blank" class="nav-btn" style="display:none; background: #9b59b6;">🖼️ 查看菜單圖片</a>
                             <button id="btnAiMenu" onclick="openAiMenuSelector()" class="nav-btn" style="display:none; background: linear-gradient(45deg, #8e44ad, #c0392b);">✨ AI 讀取菜單 (Beta)</button>
                         </div>
