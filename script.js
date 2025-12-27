@@ -1,47 +1,62 @@
 // script.js - 入口點與事件綁定
 
 window.onload = () => {
-    // 1. 初始化店家轉盤
-    window.canvas = document.getElementById('wheel');
-    if(window.canvas) window.ctx = window.canvas.getContext('2d');
+    try {
+        console.log("Window loaded. Initializing...");
 
-    // 2. 初始化菜單轉盤
-    window.menuCanvas = document.getElementById('menuWheel');
-    if(window.menuCanvas) window.menuCtx = window.menuCanvas.getContext('2d');
+        // 1. 初始化店家轉盤
+        window.canvas = document.getElementById('wheel');
+        if(window.canvas) window.ctx = window.canvas.getContext('2d');
 
-    // 載入評價紀錄
-    const savedRatings = localStorage.getItem('food_wheel_user_ratings');
-    if (savedRatings) {
-        try { window.userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
-    }
+        // 2. 初始化菜單轉盤
+        window.menuCanvas = document.getElementById('menuWheel');
+        if(window.menuCanvas) window.menuCtx = window.menuCanvas.getContext('2d');
 
-    // 載入關鍵字設定
-    window.loadUserKeywords();
+        // 載入評價紀錄
+        const savedRatings = localStorage.getItem('food_wheel_user_ratings');
+        if (savedRatings) {
+            try { window.userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
+        }
 
-    // 載入 API Keys
-    const savedKey = localStorage.getItem('food_wheel_api_key');
-    if (savedKey) {
-        window.loadGoogleMapsScript(savedKey);
-    } else {
-        // 顯示設定畫面
-        document.getElementById('setup-screen').style.display = 'block';
-        document.getElementById('app-screen').style.display = 'none';
-        
-        window.populateSetupKeywords(); 
-        window.populateSetupGeneralPrefs();
-        
-        // 填入儲存的 Gemini Key (如果有)
-        const geminiKey = localStorage.getItem('food_wheel_gemini_key');
-        if(geminiKey) document.getElementById('userGeminiKey').value = geminiKey;
+        // 確保 loadUserKeywords 存在再執行 (重要!)
+        if (typeof window.loadUserKeywords === 'function') {
+            window.loadUserKeywords();
+        } else {
+            console.error("Critical Error: loadUserKeywords is not defined.");
+            // 緊急補救：使用預設值
+            window.activeKeywordDict = { ...window.defaultKeywordDict };
+        }
 
-        // 【修正】預設展開電腦版教學，避免留白
-        window.showGuide('desktop');
-    }
+        // 載入 API Keys
+        const savedKey = localStorage.getItem('food_wheel_api_key');
+        if (savedKey) {
+            console.log("Saved key found, loading Maps API...");
+            window.loadGoogleMapsScript(savedKey);
+        } else {
+            console.log("No key found, showing setup screen.");
+            document.getElementById('setup-screen').style.display = 'block';
+            document.getElementById('app-screen').style.display = 'none';
+            
+            window.populateSetupKeywords(); 
+            window.populateSetupGeneralPrefs();
+            
+            const geminiKey = localStorage.getItem('food_wheel_gemini_key');
+            if(geminiKey && document.getElementById('userGeminiKey')) {
+                document.getElementById('userGeminiKey').value = geminiKey;
+            }
 
-    // 綁定過濾器
-    const filterCheckbox = document.getElementById('filterDislike');
-    if (filterCheckbox) {
-        filterCheckbox.addEventListener('change', () => { window.refreshWheelData(); });
+            window.showGuide('desktop');
+        }
+
+        // 綁定過濾器
+        const filterCheckbox = document.getElementById('filterDislike');
+        if (filterCheckbox) {
+            filterCheckbox.addEventListener('change', () => { window.refreshWheelData(); });
+        }
+
+    } catch (err) {
+        console.error("Initialization Crash:", err);
+        alert("程式初始化失敗：" + err.message + "\n請嘗試重新整理或清除瀏覽器快取。");
     }
 };
 
@@ -66,7 +81,8 @@ if(spinBtn) {
 
             // 隱藏結果區按鈕
             ['navLink', 'webLink', 'menuPhotoLink', 'btnAiMenu'].forEach(id => {
-                document.getElementById(id).style.display = 'none';
+                const el = document.getElementById(id);
+                if(el) el.style.display = 'none';
             });
             document.getElementById('storeName').innerText = "命運旋轉中...";
 
