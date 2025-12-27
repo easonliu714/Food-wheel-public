@@ -1,66 +1,54 @@
 // script.js - 入口點與事件綁定
 
 window.onload = () => {
-    try {
-        console.log("Window loaded. Initializing...");
+    // 1. 初始化店家轉盤
+    window.canvas = document.getElementById('wheel');
+    if(window.canvas) window.ctx = window.canvas.getContext('2d');
 
-        // 1. 初始化店家轉盤
-        window.canvas = document.getElementById('wheel');
-        if(window.canvas) window.ctx = window.canvas.getContext('2d');
+    // 2. 初始化菜單轉盤
+    window.menuCanvas = document.getElementById('menuWheel');
+    if(window.menuCanvas) window.menuCtx = window.menuCanvas.getContext('2d');
 
-        // 2. 初始化菜單轉盤
-        window.menuCanvas = document.getElementById('menuWheel');
-        if(window.menuCanvas) window.menuCtx = window.menuCanvas.getContext('2d');
+    // 載入評價紀錄
+    const savedRatings = localStorage.getItem('food_wheel_user_ratings');
+    if (savedRatings) {
+        try { window.userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
+    }
 
-        // 載入評價紀錄
-        const savedRatings = localStorage.getItem('food_wheel_user_ratings');
-        if (savedRatings) {
-            try { window.userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
+    // 載入關鍵字設定
+    if (typeof window.loadUserKeywords === 'function') {
+        window.loadUserKeywords();
+    } else {
+        window.activeKeywordDict = { ...window.defaultKeywordDict };
+    }
+
+    // 載入 API Keys
+    const savedKey = localStorage.getItem('food_wheel_api_key');
+    if (savedKey) {
+        window.loadGoogleMapsScript(savedKey);
+    } else {
+        document.getElementById('setup-screen').style.display = 'block';
+        document.getElementById('app-screen').style.display = 'none';
+        
+        window.populateSetupKeywords(); 
+        window.populateSetupGeneralPrefs();
+        
+        const geminiKey = localStorage.getItem('food_wheel_gemini_key');
+        if(geminiKey && document.getElementById('userGeminiKey')) {
+            document.getElementById('userGeminiKey').value = geminiKey;
         }
 
-        // 確保 loadUserKeywords 存在再執行 (重要!)
-        if (typeof window.loadUserKeywords === 'function') {
-            window.loadUserKeywords();
-        } else {
-            console.error("Critical Error: loadUserKeywords is not defined.");
-            // 緊急補救：使用預設值
-            window.activeKeywordDict = { ...window.defaultKeywordDict };
-        }
+        window.showGuide('desktop');
+    }
 
-        // 載入 API Keys
-        const savedKey = localStorage.getItem('food_wheel_api_key');
-        if (savedKey) {
-            console.log("Saved key found, loading Maps API...");
-            window.loadGoogleMapsScript(savedKey);
-        } else {
-            console.log("No key found, showing setup screen.");
-            document.getElementById('setup-screen').style.display = 'block';
-            document.getElementById('app-screen').style.display = 'none';
-            
-            window.populateSetupKeywords(); 
-            window.populateSetupGeneralPrefs();
-            
-            const geminiKey = localStorage.getItem('food_wheel_gemini_key');
-            if(geminiKey && document.getElementById('userGeminiKey')) {
-                document.getElementById('userGeminiKey').value = geminiKey;
-            }
-
-            window.showGuide('desktop');
-        }
-
-        // 綁定過濾器
-        const filterCheckbox = document.getElementById('filterDislike');
-        if (filterCheckbox) {
-            filterCheckbox.addEventListener('change', () => { window.refreshWheelData(); });
-        }
-
-    } catch (err) {
-        console.error("Initialization Crash:", err);
-        alert("程式初始化失敗：" + err.message + "\n請嘗試重新整理或清除瀏覽器快取。");
+    // 綁定過濾器
+    const filterCheckbox = document.getElementById('filterDislike');
+    if (filterCheckbox) {
+        filterCheckbox.addEventListener('change', () => { window.refreshWheelData(); });
     }
 };
 
-// 確保按鈕綁定正確
+// Spin 按鈕點擊事件 (轉盤邏輯)
 const spinBtn = document.getElementById('spinBtn');
 if(spinBtn) {
     spinBtn.onclick = () => {
@@ -79,12 +67,24 @@ if(spinBtn) {
             window.canvas.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
             window.canvas.style.transform = `rotate(${window.currentRotation}deg)`;
 
-            // 隱藏結果區按鈕
+            // === 【修正】轉動開始時，隱藏所有結果與按鈕 ===
+            document.getElementById('storeName').innerText = "命運旋轉中...";
+            document.getElementById('storeRating').innerText = "";
+            document.getElementById('storeAddress').innerText = "";
+            document.getElementById('storeDistance').innerText = "";
+            document.getElementById('userPersonalRating').innerText = "";
+            
+            // 隱藏踩雷/回訪按鈕
+            const btnLike = document.getElementById('btnLike');
+            const btnDislike = document.getElementById('btnDislike');
+            if(btnLike) btnLike.style.display = 'none';
+            if(btnDislike) btnDislike.style.display = 'none';
+
+            // 隱藏功能連結 (導航、菜單等)
             ['navLink', 'webLink', 'menuPhotoLink', 'btnAiMenu'].forEach(id => {
                 const el = document.getElementById(id);
                 if(el) el.style.display = 'none';
             });
-            document.getElementById('storeName').innerText = "命運旋轉中...";
 
             setTimeout(() => {
                 try {
@@ -97,6 +97,7 @@ if(spinBtn) {
                     const winner = window.places[winningIndex];
                     if(!winner) throw new Error("Winner undefined");
 
+                    // 顯示結果
                     window.updateWinnerStatus(winner);
                     window.updateHitCountUI(winner.place_id);
 
@@ -129,6 +130,141 @@ if(spinBtn) {
     };
 }
 
+// === 【修正】更新獲勝店家資訊與顯示按鈕 ===
+window.updateWinnerStatus = function(winner) {
+    window.currentStoreForMenu = winner; 
+
+    const nameEl = document.getElementById('storeName');
+    if(nameEl) nameEl.innerText = "就決定吃：" + winner.name;
+    
+    const ratingEl = document.getElementById('storeRating');
+    if (ratingEl) {
+        ratingEl.innerText = winner.rating ? `⭐ ${winner.rating} (${winner.user_ratings_total || 0} 則評價)` : "暫無評價資料";
+    }
+    
+    const address = winner.formatted_address || winner.vicinity || "地址不詳";
+    const storeAddressEl = document.getElementById('storeAddress');
+    if(storeAddressEl) storeAddressEl.innerText = `⏳ 正在查詢詳細資訊...\n📍 ${address}`;
+
+    // 準備按鈕元素
+    const btnLike = document.getElementById('btnLike');
+    const btnDislike = document.getElementById('btnDislike');
+    const ratingText = document.getElementById('userPersonalRating');
+    
+    // === 【修正】轉盤結束後，顯示評價按鈕 ===
+    if(btnLike) btnLike.style.display = 'block'; 
+    if(btnDislike) btnDislike.style.display = 'block';
+
+    // 綁定評價事件
+    if(btnLike) {
+        btnLike.classList.remove('active');
+        btnLike.onclick = () => window.handleUserRating(winner.place_id, 'like');
+    }
+    if(btnDislike) {
+        btnDislike.classList.remove('active');
+        btnDislike.onclick = () => window.handleUserRating(winner.place_id, 'dislike');
+    }
+    
+    // 顯示個人評價狀態
+    if(ratingText) ratingText.innerText = "";
+    if (window.userRatings[winner.place_id] === 'like') {
+        if(btnLike) btnLike.classList.add('active');
+        if(ratingText) ratingText.innerText = "👍 您曾標記：再次回訪";
+    } else if (window.userRatings[winner.place_id] === 'dislike') {
+        if(btnDislike) btnDislike.classList.add('active');
+        if(ratingText) ratingText.innerText = "💣 您曾標記：踩雷";
+    }
+
+    // 查詢 Places Details 以獲取連結與照片
+    const service = new google.maps.places.PlacesService(document.createElement('div'));
+    service.getDetails({
+        placeId: winner.place_id,
+        fields: ['opening_hours', 'utc_offset_minutes', 'website', 'url', 'photos']
+    }, (place, status) => {
+        
+        let openStatus = "⚪ 營業時間不明";
+        if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+            
+            // 1. 營業時間
+            if (place.opening_hours) {
+                openStatus = window.getDetailedOpeningStatus(place);
+            }
+            if(storeAddressEl) {
+                storeAddressEl.innerHTML = `<strong>${openStatus}</strong><br><span style="font-size: 0.85em; color: #999;">(營業時間僅供參考)</span><br>📍 ${address}`;
+            }
+
+            // 2. === 【修正】顯示導航與連結按鈕 ===
+            const navLink = document.getElementById('navLink');
+            const webLink = document.getElementById('webLink');
+            const menuPhotoLink = document.getElementById('menuPhotoLink');
+            const btnAiMenu = document.getElementById('btnAiMenu');
+
+            if (navLink) {
+                navLink.style.display = 'inline-block'; // 顯示
+                navLink.href = place.url ? place.url : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}&query_place_id=${winner.place_id}`;
+            }
+
+            if (webLink && place.website) {
+                webLink.style.display = 'inline-block'; // 顯示
+                webLink.href = place.website;
+            } else if (webLink) {
+                webLink.style.display = 'none';
+            }
+
+            if (menuPhotoLink) {
+                menuPhotoLink.style.display = 'inline-block'; // 顯示
+                menuPhotoLink.href = `https://www.google.com/search?q=${encodeURIComponent(winner.name + " 菜單")}&tbm=isch`; 
+            }
+
+            // 3. AI 菜單按鈕
+            const geminiKey = localStorage.getItem('food_wheel_gemini_key');
+            if (geminiKey && btnAiMenu) {
+                btnAiMenu.style.display = 'inline-block'; // 顯示
+            } else if (btnAiMenu) {
+                btnAiMenu.style.display = 'none';
+            }
+            
+            // 儲存照片
+            if(place.photos) {
+                window.currentStoreForMenu.photos = place.photos;
+            }
+        }
+    });
+
+    // 顯示距離資訊
+    const distEl = document.getElementById('storeDistance');
+    if (winner.realDurationText && distEl) {
+         distEl.innerText = `⏱️ 預估耗時：${winner.realDurationText} (${winner.realDistanceText})`;
+    }
+};
+
+window.handleUserRating = function(placeId, type) {
+    if (window.userRatings[placeId] === type) delete window.userRatings[placeId];
+    else window.userRatings[placeId] = type;
+    
+    localStorage.setItem('food_wheel_user_ratings', JSON.stringify(window.userRatings));
+    
+    // 即時更新按鈕樣式
+    const btnLike = document.getElementById('btnLike');
+    const btnDislike = document.getElementById('btnDislike');
+    const ratingText = document.getElementById('userPersonalRating');
+    
+    if(btnLike) btnLike.classList.remove('active');
+    if(btnDislike) btnDislike.classList.remove('active');
+    if(ratingText) ratingText.innerText = "";
+
+    if (window.userRatings[placeId] === 'like') {
+        if(btnLike) btnLike.classList.add('active');
+        if(ratingText) ratingText.innerText = "👍 您標記為：再次回訪";
+    } else if (window.userRatings[placeId] === 'dislike') {
+        if(btnDislike) btnDislike.classList.add('active');
+        if(ratingText) ratingText.innerText = "💣 您標記為：踩雷";
+    }
+    
+    window.refreshWheelData();
+};
+
+// 菜單轉盤 spin 按鈕 (呼叫 ai_menu.js 的邏輯)
 const spinMenuBtn = document.getElementById('spinMenuBtn');
 if(spinMenuBtn) {
     spinMenuBtn.onclick = function() {
