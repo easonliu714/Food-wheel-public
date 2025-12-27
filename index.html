@@ -34,7 +34,7 @@
                     </select>
                     <p style="font-size: 0.8rem; color: #888; margin-top: 5px;">
                         <strong>距離優先：</strong>嚴格由近到遠搜尋，適合時間緊迫、想找最近的店。<br>
-                        <strong>熱門優先：</strong>在範圍內搜尋評價較高與知名的店，適合美食探險。
+                        <strong>熱門優先：</strong>分段掃描範圍內評價較高與知名的店，適合美食探險。
                     </p>
                 </div>
 
@@ -304,10 +304,15 @@
                     
                     <p id="userPersonalRating" style="font-size: 0.9rem; margin: 5px 0; min-height: 20px;"></p>
 
-                    <div class="action-row">
+                    <div class="action-buttons-grid">
                         <button id="btnDislike" class="rate-btn dislike" title="標記為地雷">💣 踩雷</button>
-                        <a id="menuLink" href="#" target="_blank" style="display:none;" class="nav-btn">📍 導航去這家</a>
                         <button id="btnLike" class="rate-btn like" title="標記為回訪">👍 回訪</button>
+                    </div>
+
+                    <div id="external-links" style="margin-top: 15px; display: flex; flex-direction: column; gap: 8px;">
+                        <a id="navLink" href="#" target="_blank" class="nav-btn" style="display:none; background: #e67e22;">📍 導航前往</a>
+                        <a id="webLink" href="#" target="_blank" class="nav-btn" style="display:none; background: #3498db;">🌐 官方網站 / 訂餐</a>
+                        <a id="menuPhotoLink" href="#" target="_blank" class="nav-btn" style="display:none; background: #9b59b6;">🖼️ 查看 Google 菜單圖片</a>
                     </div>
                 </div>
             </div>
