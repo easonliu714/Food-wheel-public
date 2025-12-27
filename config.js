@@ -38,9 +38,32 @@ window.defaultKeywordDict = {
 
 window.activeKeywordDict = { ...window.defaultKeywordDict };
 
-// 教學資料
+// 完整教學資料
 window.guideData = {
-    desktop: { title: "💻 電腦版申請步驟", steps: [{title:"1. 登入 Google Cloud", desc:"使用 Chrome 前往 console.cloud.google.com"}, {title:"2. 建立專案", desc:"建立一個新專案 (FoodWheel)"}, {title:"3. 綁定帳單", desc:"前往 Billing 綁定信用卡 (免費額度內不收費)"}, {title:"4. 啟用 API", desc:"啟用: Maps JS API, Places API, Geocoding API, Distance Matrix API"}, {title:"5. 取得 Key", desc:"前往 Credentials 建立 API Key 並貼上"}] },
-    android: { title: "🤖 Android 步驟", steps: [{title:"1. 切換電腦版網站", desc:"手機瀏覽器勾選「電腦版網站」"}, {title:"2. 建立專案與綁卡", desc:"操作同電腦版"}, {title:"3. 複製 Key", desc:"將 Key 貼到下方欄位"}] },
-    ios: { title: "🍎 iOS 步驟", steps: [{title:"1. 切換電腦版網站", desc:"Safari 網址列左側 Aa > 切換為電腦版網站"}, {title:"2. 建立專案", desc:"操作同電腦版"}] }
+    desktop: { 
+        title: "💻 電腦版申請步驟", 
+        steps: [
+            {title:"1. 登入 Google Cloud", desc:"前往 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud Console</a> 並登入 Google 帳號。"}, 
+            {title:"2. 建立新專案", desc:"點擊上方專案選單 > <strong>建立新專案 (New Project)</strong>，命名為 FoodWheel。"}, 
+            {title:"3. 綁定帳單 (必做)", desc:"左側選單 > <strong>帳單 (Billing)</strong> > 連結付款方式 (Google 每月贈送 $200 美金，個人使用通常免費)。"}, 
+            {title:"4. 啟用 4 項 API", desc:"前往 <strong>API 和服務 > 啟用 API</strong>，搜尋並啟用：<br>1. Maps JavaScript API<br>2. Places API (New)<br>3. Geocoding API<br>4. Distance Matrix API"}, 
+            {title:"5. 取得金鑰", desc:"前往 <strong>憑證 (Credentials)</strong> > 建立憑證 > API 金鑰。複製 <code>AIza</code> 開頭的字串貼入下方。"}
+        ] 
+    },
+    android: { 
+        title: "🤖 Android 手機申請步驟", 
+        steps: [
+            {title:"1. 開啟電腦版網站", desc:"使用 Chrome 開啟 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud</a>，點擊右上角選單勾選<strong>「電腦版網站」</strong>。"}, 
+            {title:"2. 建立專案與綁卡", desc:"操作步驟同電腦版 (介面較小請放大操作)。務必確認<strong>帳單</strong>已綁定信用卡。"}, 
+            {title:"3. 複製 Key", desc:"建立 API Key 後，長按複製該字串，貼到本網頁下方輸入框。"}
+        ] 
+    },
+    ios: { 
+        title: "🍎 iOS (iPhone) 申請步驟", 
+        steps: [
+            {title:"1. 切換電腦版網站", desc:"使用 Safari 開啟 <a href='https://console.cloud.google.com/' target='_blank'>Google Cloud</a>，點擊網址列左側 <strong>「Aa」</strong> > <strong>切換為電腦版網站</strong>。"}, 
+            {title:"2. 建立專案", desc:"操作步驟同電腦版。請確保已啟用 Maps JS, Places, Geocoding, Distance Matrix 四個 API。"},
+            {title:"3. 取得 Key", desc:"複製生成的 API Key 貼到下方。"}
+        ] 
+    }
 };
