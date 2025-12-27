@@ -99,7 +99,7 @@ function handleSearch() {
 function startSearch(location, keywordsRaw) {
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
-    const searchMode = document.getElementById('searchMode').value;
+    // const searchMode = document.getElementById('searchMode').value; // 原版邏輯不在此處區分模式
     
     const splitKeywords = keywordsRaw.split(/\s+/).filter(k => k.length > 0);
     let searchQueries = [...splitKeywords];
@@ -109,24 +109,20 @@ function startSearch(location, keywordsRaw) {
     const btn = document.querySelector('.search-btn');
     btn.innerText = "搜尋中...";
 
+    // 【修正重點】還原為原版邏輯：
+    // 不論模式為何，都使用 radius: 1000 (或 2000)，而不使用 RankBy.DISTANCE
+    // 這樣能確保 API 回傳較多結果，再由前端過濾
     searchQueries.forEach(keyword => {
-        let request = { location: location, keyword: keyword };
+        let request = { 
+            location: location, 
+            radius: 1500, // 稍微加大半徑確保有結果
+            keyword: keyword 
+        };
         
-        if (searchMode === 'nearby') {
-            // !!! 關鍵修復 !!! 
-            // 若 rankBy 為 DISTANCE，Google API 嚴格禁止傳入 'radius'，否則會回傳 INVALID_REQUEST
-            request.rankBy = google.maps.places.RankBy.DISTANCE;
-            // 這裡不設定 radius
-        } else {
-            // 熱門模式 (PROMINENCE) 需要 radius
-            request.radius = 2000; 
-        }
-
         if (priceLevel !== -1) request.maxPrice = priceLevel;
         
         promises.push(new Promise(resolve => {
             service.nearbySearch(request, (results, status) => {
-                // 即便 ZERO_RESULTS 也視為成功回傳空陣列，避免 Promise.all 失敗
                 resolve((status === 'OK' && results) ? results : []);
             });
         }));
@@ -135,7 +131,7 @@ function startSearch(location, keywordsRaw) {
     Promise.all(promises).then(resultsArray => {
         let combinedResults = [].concat(...resultsArray);
         if (combinedResults.length === 0) {
-            alert("附近無符合條件的店家 (API 回傳 0 筆)");
+            alert("附近無符合條件的店家");
             btn.innerText = "🔄 開始搜尋店家";
             return;
         }
@@ -159,7 +155,7 @@ function processResults(origin, results) {
         }
     });
 
-    // 取前 50 個計算距離
+    // 取前 50 個計算距離 (避免 API 超額)
     if (filtered.length > 50) filtered = filtered.slice(0, 50);
 
     if (filtered.length === 0) {
@@ -194,10 +190,15 @@ function processResults(origin, results) {
             const maxTime = parseInt(document.getElementById('maxTime').value, 10);
             filtered = filtered.filter(p => p.realDurationMins <= maxTime);
             
-            // 排序 (依模式)
+            // 【修正重點】排序邏輯在此處執行 (前端排序)
             const searchMode = document.getElementById('searchMode').value;
-            if (searchMode === 'nearby') filtered.sort((a,b) => a.realDurationMins - b.realDurationMins);
-            else filtered.sort((a,b) => (b.rating * Math.log(b.user_ratings_total)) - (a.rating * Math.log(a.user_ratings_total)));
+            if (searchMode === 'nearby') {
+                // 距離優先：依據實際路程時間排序
+                filtered.sort((a,b) => a.realDurationMins - b.realDurationMins);
+            } else {
+                // 熱門優先：依據 (評分 * log(評論數)) 排序
+                filtered.sort((a,b) => (b.rating * Math.log(b.user_ratings_total)) - (a.rating * Math.log(a.user_ratings_total)));
+            }
 
             allSearchResults = filtered.slice(0, userMaxCount);
             
