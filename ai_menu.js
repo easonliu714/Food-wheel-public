@@ -1,5 +1,5 @@
 // ai_menu.js
-// Responsible for Image processing, Gemini API calls, and Menu Wheel
+// 負責圖片處理、Gemini API 呼叫、菜單轉盤
 
 let currentStoreForMenu = null;
 let currentMenuData = [];
