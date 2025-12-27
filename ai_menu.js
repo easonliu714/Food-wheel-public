@@ -1,5 +1,5 @@
 // ai_menu.js
-// 負責圖片處理、Gemini API 呼叫、菜單轉盤
+// Responsible for Image processing, Gemini API calls, and Menu Wheel
 
 let currentStoreForMenu = null;
 let currentMenuData = [];
@@ -8,21 +8,18 @@ let shoppingCart = [];
 let menuRotation = 0;
 let menuCanvas = null;
 let menuCtx = null;
-let selectedImages = []; // 儲存多張圖片的 { data: base64, mime: type }
+let selectedImages = []; // Stores { data: base64, mime: type }
 
-// 開啟菜單介面
 function openAiMenuSelector() {
     if (!currentStoreForMenu) return;
     document.getElementById('main-view').style.display = 'none';
     document.getElementById('menu-screen').style.display = 'block';
     document.getElementById('menuStoreTitle').innerText = `菜單：${currentStoreForMenu.name}`;
     
-    // 顯示目前設定的模型
-    const savedModel = localStorage.getItem('food_wheel_gemini_model') || 'gemini-1.5-flash-latest';
+    const savedModel = localStorage.getItem('food_wheel_gemini_model') || 'gemini-1.5-flash';
     const label = document.getElementById('modelNameLabel');
     if(label) label.innerText = savedModel;
 
-    // 重置介面
     document.getElementById('ai-step-1').style.display = 'block';
     document.getElementById('ai-step-2').style.display = 'none';
     document.getElementById('photo-preview-area').innerHTML = '';
@@ -40,26 +37,23 @@ function closeMenuSystem() {
     document.getElementById('main-view').style.display = 'block';
 }
 
-// 處理多張圖片上傳
 function handleFileUpload(input) {
     if (input.files) {
         Array.from(input.files).forEach(file => {
             processImage(file);
         });
     }
-    input.value = ''; // 清空以允許重複上傳相同檔案
+    input.value = '';
 }
 
-// 核心：圖片壓縮處理 (解決 400 Bad Request)
 function processImage(file) {
     const reader = new FileReader();
     reader.onload = function(e) {
         const img = new Image();
         img.src = e.target.result;
         img.onload = function() {
-            // 壓縮邏輯
             const canvas = document.createElement('canvas');
-            const MAX_SIZE = 1024; // 限制長邊為 1024px
+            const MAX_SIZE = 1024;
             let width = img.width;
             let height = img.height;
             
@@ -74,16 +68,13 @@ function processImage(file) {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
             
-            // 轉為 JPEG 且品質 0.8
             const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
             
-            // 加入列表 (只取 base64 字串部分)
             selectedImages.push({
                 data: compressedBase64.split(',')[1],
                 mime: 'image/jpeg'
             });
 
-            // 更新預覽 UI
             updatePreviewUI(compressedBase64, selectedImages.length - 1);
             
             const btn = document.getElementById('btnAnalyzeMenu');
@@ -124,8 +115,7 @@ async function analyzeSelectedPhotos() {
     if (validImages.length === 0) return;
     
     const geminiKey = localStorage.getItem('food_wheel_gemini_key');
-    // 優先使用儲存的模型，若無則預設
-    const model = localStorage.getItem('food_wheel_gemini_model') || 'gemini-1.5-flash-latest';
+    const model = localStorage.getItem('food_wheel_gemini_model') || 'gemini-1.5-flash';
     
     document.getElementById('ai-loading').style.display = 'block';
     const statusText = document.getElementById('ai-status-text');
@@ -134,7 +124,6 @@ async function analyzeSelectedPhotos() {
     try {
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
         
-        // 構建 Payload
         const parts = [{ text: "你是一個菜單讀取機器人。請分析這些圖片，找出所有的菜色名稱與價格。對於手寫菜單，請仔細辨識品項與對應價格。請**嚴格**只回傳一個 JSON 陣列，格式為：[{\"category\": \"類別名稱\", \"name\": \"菜名\", \"price\": 數字價格}], 若無類別則歸類為'主餐'。不要包含 Markdown 標記，直接回傳 JSON 字串。" }];
         
         validImages.forEach(img => {
@@ -156,7 +145,6 @@ async function analyzeSelectedPhotos() {
         
         if (data.candidates && data.candidates[0].content) {
             let text = data.candidates[0].content.parts[0].text;
-            // 清理 Markdown
             text = text.replace(/```json/g, '').replace(/```/g, '').trim();
             const menuJson = JSON.parse(text);
             initAiMenuSystem(menuJson);
@@ -174,7 +162,6 @@ async function analyzeSelectedPhotos() {
 function initAiMenuSystem(menuData) {
     fullMenuData = menuData;
     shoppingCart = [];
-    // 提取不重複類別
     const categories = [...new Set(menuData.map(item => item.category || '主餐'))];
     
     const catSelect = document.getElementById('menuCategorySelect');
