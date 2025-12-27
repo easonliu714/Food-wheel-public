@@ -1,5 +1,5 @@
 // maps_logic.js
-// 負責 Google Maps 初始化、搜尋、轉盤邏輯 (完全復刻原版邏輯)
+// Responsible for Google Maps initialization, search, and wheel logic
 
 function initApp() { 
     applyPreferencesToApp(); 
@@ -96,30 +96,30 @@ function handleSearch() {
     });
 }
 
-// 核心搜尋邏輯：完全恢復 script.js 的半徑計算
+// === CORE SEARCH LOGIC RESTORED ===
 function startSearch(location, keywordsRaw) {
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     
-    // 取得使用者設定參數
+    // Get user preferences
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
     const transportMode = document.getElementById('transportMode').value;
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
     
-    // 【原版邏輯恢復】計算動態半徑
-    // 走路預設 20 km/h, 開車預設 60 km/h (保守估計，用於抓取候選名單)
+    // === RESTORED SPEED LOGIC ===
+    // Walking/Bike = 20 km/h
+    // Driving/Motorcycle = 60 km/h
     const estimatedSpeedKmH = (transportMode === 'WALKING') ? 20 : 60;
     
-    // 距離 (km) = 速度 (km/h) * 時間 (h)
+    // Calculate Radius: Distance = Speed * Time
     const maxDistKm = estimatedSpeedKmH * (maxTime / 60);
     
-    // 轉換為公尺，並設定邊界 (最小 1000m 以免太少，最大 50000m 為 API 極限)
+    // Convert to meters, clamp between 1000m and 50000m (API limit)
     let calculatedRadius = Math.floor(maxDistKm * 1000);
     calculatedRadius = Math.max(1000, calculatedRadius);
     calculatedRadius = Math.min(50000, calculatedRadius);
 
-    console.log(`搜尋策略: 模式=${transportMode}, 時間=${maxTime}分, 計算半徑=${calculatedRadius}m`);
+    console.log(`Search Strategy: Mode=${transportMode}, Time=${maxTime}min, Speed=${estimatedSpeedKmH}km/h, Radius=${calculatedRadius}m`);
     
-    // 關鍵字處理
     const splitKeywords = keywordsRaw.split(/\s+/).filter(k => k.length > 0);
     let searchQueries = [...splitKeywords];
     if (splitKeywords.length > 1) searchQueries.push(keywordsRaw);
@@ -128,7 +128,8 @@ function startSearch(location, keywordsRaw) {
     const btn = document.querySelector('.search-btn');
     btn.innerText = "搜尋中...";
 
-    // 執行搜尋 (Nearby Search with Radius)
+    // Always use radius-based search (API limitation: rankBy=distance disallows radius)
+    // We filter/sort by distance later in processResults
     searchQueries.forEach(keyword => {
         let request = { 
             location: location, 
@@ -140,7 +141,6 @@ function startSearch(location, keywordsRaw) {
         
         promises.push(new Promise(resolve => {
             service.nearbySearch(request, (results, status) => {
-                // 不論是否 ZERO_RESULTS 都回傳，方便後續合併
                 resolve((status === 'OK' && results) ? results : []);
             });
         }));
@@ -164,7 +164,7 @@ function processResults(origin, results) {
     const minRating = parseFloat(document.getElementById('minRating').value);
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
     
-    // 去重與基本評分過濾
+    // 1. Basic Filtering (Deduplication & Rating)
     const uniqueIds = new Set();
     let filtered = [];
     results.forEach(p => {
@@ -174,8 +174,7 @@ function processResults(origin, results) {
         }
     });
 
-    // Distance Matrix API 限制 (一次最多 25 個目的地比較保險，原版可能設定 50)
-    // 為了安全起見，我們取前 50 個候選
+    // Limit to 50 for Distance Matrix to avoid hitting limits/costs too fast
     if (filtered.length > 50) filtered = filtered.slice(0, 50);
 
     if (filtered.length === 0) {
@@ -202,7 +201,7 @@ function processResults(origin, results) {
                 if (elements[i].status === 'OK') {
                     const durationMins = Math.ceil(elements[i].duration.value / 60);
                     
-                    // 【原版邏輯】嚴格檢查實際路程時間
+                    // 2. Strict Time Filtering (Real travel time)
                     if (durationMins <= maxTime) {
                         filtered[i].realDurationMins = durationMins;
                         filtered[i].realDistanceText = elements[i].distance.text;
@@ -212,17 +211,16 @@ function processResults(origin, results) {
                 }
             }
             
-            // 排序邏輯
+            // 3. Sorting (Client-side)
             const searchMode = document.getElementById('searchMode').value;
             if (searchMode === 'nearby') {
-                // 距離優先
+                // Sort by Duration
                 validResults.sort((a,b) => a.realDurationMins - b.realDurationMins);
             } else {
-                // 熱門優先 (評分 * log(評論數))
+                // Sort by Popularity (Rating & Review Count weight)
                 validResults.sort((a,b) => (b.rating * Math.log(b.user_ratings_total)) - (a.rating * Math.log(a.user_ratings_total)));
             }
 
-            // 截取使用者設定的數量
             allSearchResults = validResults.slice(0, userMaxCount);
             
             if (allSearchResults.length === 0) {
@@ -242,11 +240,8 @@ function processResults(origin, results) {
 function refreshWheelData() {
     const filterDislike = document.getElementById('filterDislike').checked;
     
-    // 從 allSearchResults 產生 places (轉盤資料)
     places = allSearchResults.filter(p => {
-        // 排除已淘汰
         if (eliminatedIds.has(p.place_id)) return false;
-        // 排除使用者踩雷
         if (filterDislike && userRatings[p.place_id] === 'dislike') return false;
         return true;
     });
@@ -290,7 +285,7 @@ function drawWheel() {
         ctx.fill();
         ctx.stroke();
         
-        // 文字
+        // Text
         ctx.save();
         ctx.translate(200, 200);
         ctx.rotate(angle + arcSize / 2);
@@ -301,7 +296,6 @@ function drawWheel() {
     });
 }
 
-// 轉盤點擊事件
 document.getElementById('spinBtn').onclick = () => {
     if (places.length === 0) return;
     const spinBtn = document.getElementById('spinBtn');
@@ -320,11 +314,9 @@ document.getElementById('spinBtn').onclick = () => {
         
         updateWinnerUI(winner);
         
-        // 紀錄次數
         if (!hitCounts[winner.place_id]) hitCounts[winner.place_id] = 0;
         hitCounts[winner.place_id]++;
         
-        // 更新列表顯示次數
         initResultList(allSearchResults);
 
         const spinMode = document.getElementById('spinMode') ? document.getElementById('spinMode').value : 'repeat';
@@ -343,7 +335,6 @@ function updateWinnerUI(winner) {
     document.getElementById('storeRating').innerText = `${winner.rating} (${winner.user_ratings_total})`;
     document.getElementById('storeAddress').innerText = winner.vicinity || winner.formatted_address;
     
-    // 更新按鈕
     const navLink = document.getElementById('navLink');
     const menuBtn = document.getElementById('btnAiMenu');
     navLink.style.display = 'inline-block';
@@ -351,7 +342,6 @@ function updateWinnerUI(winner) {
     
     if(localStorage.getItem('food_wheel_gemini_key')) menuBtn.style.display = 'inline-block';
 
-    // 評價按鈕
     document.getElementById('btnLike').onclick = () => { userRatings[winner.place_id] = 'like'; localStorage.setItem('food_wheel_user_ratings', JSON.stringify(userRatings)); refreshWheelData(); };
     document.getElementById('btnDislike').onclick = () => { userRatings[winner.place_id] = 'dislike'; localStorage.setItem('food_wheel_user_ratings', JSON.stringify(userRatings)); refreshWheelData(); };
 }
