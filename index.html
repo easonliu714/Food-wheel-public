@@ -12,6 +12,8 @@
         .preview-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 5px; border: 1px solid #ddd; }
         .preview-wrapper { position: relative; display: inline-block; }
         .remove-img-btn { position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 18px; font-size: 12px; cursor: pointer; border: 1px solid white; }
+        /* 新增模型選擇區樣式 */
+        #model-selection-area { margin-top: 10px; padding: 10px; background: #f0f3f4; border-radius: 5px; display: none; }
     </style>
 </head>
 <body>
@@ -48,8 +50,17 @@
             <input type="text" id="userGeminiKey" placeholder="AIzaSy... (Gemini Key)" class="setup-input" style="text-align: center; margin-bottom: 5px;">
             
             <div style="text-align: center; margin-bottom: 10px;">
-                <button onclick="testGeminiKey()" class="small-btn" style="background:#e8f6f3; color:#16a085; border:1px solid #16a085; margin-right:5px;">⚡ 測試 Key 有效性</button>
-                <button onclick="toggleGeminiGuide()" class="small-btn" style="color:#9b59b6; background:none; border:1px solid #9b59b6;">📝 如何申請 Gemini API Key？</button>
+                <button onclick="testGeminiKey()" class="small-btn" style="background:#e8f6f3; color:#16a085; border:1px solid #16a085; margin-right:5px;">⚡ 測試 Key 並取得模型</button>
+                <button onclick="toggleGeminiGuide()" class="small-btn" style="color:#9b59b6; background:none; border:1px solid #9b59b6;">📝 如何申請？</button>
+            </div>
+
+            <div id="model-selection-area">
+                <label style="color: #2c3e50; font-weight: bold;">🤖 預設 AI 模型：</label>
+                <select id="setupGeminiModel" class="setup-input" style="margin-top: 5px;">
+                    <option value="gemini-1.5-flash-latest" selected>Gemini 1.5 Flash Latest (推薦)</option>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                    <option value="gemini-1.5-pro">Gemini 1.5 Pro (較慢但在意精準度)</option>
+                </select>
             </div>
             
             <div id="gemini-guide-area" class="tutorial-box" style="display: none; background: #fdfafa;">
@@ -196,11 +207,11 @@
                  <div class="setting-row">
                     <label for="priceLevel">💸 預算：</label>
                     <select id="priceLevel">
-                         <option value="-1" selected>不限</option>
-                        <option value="1">$200 下</option>
-                        <option value="2">$800 下</option>
-                        <option value="3">$2000 下</option>
-                        <option value="4">奢華</option>
+                        <option value="-1" selected>不限</option>
+                        <option value="1">💲 $200 以下 (便宜)</option>
+                        <option value="2">💲💲 $800 以下 (中價位)</option>
+                        <option value="3">💲💲💲 $2000 以下 (高價位)</option>
+                        <option value="4">💲💲💲💲 奢華上限</option>
                     </select>
                 </div>
                 <div class="setting-row" style="flex-direction: column; align-items: flex-start;">
@@ -211,12 +222,53 @@
                      <label>隱藏設定 (展開/收合)</label>
                      <input type="checkbox" onchange="document.getElementById('advanced-controls').style.display=this.checked?'block':'none'">
                 </div>
+                
                 <div id="advanced-controls" style="display:none; width:100%;">
-                    <div class="setting-row"><label>最低星評：</label><select id="minRating"><option value="3.0">3.0+</option><option value="3.5">3.5+</option><option value="4.0">4.0+</option></select></div>
-                    <div class="setting-row"><label>交通：</label><select id="transportMode"><option value="WALKING">走路</option><option value="DRIVING">開車</option></select></div>
-                    <div class="setting-row"><label>時間：</label><select id="maxTime"><option value="10">10分</option><option value="20">20分</option><option value="30">30分</option></select></div>
-                    <div class="setting-row"><label>數量：</label><select id="resultCount"><option value="20">20</option><option value="40">40</option><option value="60">60</option></select></div>
-                    <div class="setting-row"><label>轉盤：</label><select id="spinMode"><option value="repeat">重複</option><option value="eliminate">淘汰</option></select></div>
+                    <div class="setting-row">
+                        <label>🎖️ 最低星評：</label>
+                        <select id="minRating">
+                            <option value="0">⚪ 不限</option>
+                            <option value="3.0">⭐⭐⭐ 3.0+</option>
+                            <option value="3.5">⭐⭐⭐☆ 3.5+</option>
+                            <option value="4.0">⭐⭐⭐⭐ 4.0+</option>
+                            <option value="4.5">⭐⭐⭐⭐☆ 4.5+</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
+                        <label>🏃‍♂️ 交通：</label>
+                        <select id="transportMode">
+                            <option value="WALKING">走路 (20km/h)</option>
+                            <option value="DRIVING">開車 (60km/h)</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
+                        <label>⏱️ 時間限制：</label>
+                        <select id="maxTime">
+                            <option value="5">5 分鐘</option>
+                            <option value="10">10 分鐘</option>
+                            <option value="15">15 分鐘</option>
+                            <option value="20">20 分鐘</option>
+                            <option value="30">30 分鐘</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
+                        <label>🔢 數量：</label>
+                        <select id="resultCount">
+                            <option value="10">10 家</option>
+                            <option value="20">20 家</option>
+                            <option value="30">30 家</option>
+                            <option value="40">40 家</option>
+                            <option value="50">50 家</option>
+                            <option value="60">60 家</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
+                        <label>🎡 轉盤：</label>
+                        <select id="spinMode">
+                            <option value="repeat">重複</option>
+                            <option value="eliminate">淘汰</option>
+                        </select>
+                    </div>
                 </div>
 
                 <button onclick="handleSearch()" class="search-btn">🔄 開始搜尋店家</button>
@@ -280,15 +332,7 @@
             <div id="ai-step-1" class="menu-layout">
                 <h3>📷 上傳菜單圖片 (支援多張)</h3>
                 
-                <div class="setting-row" style="margin-bottom:15px; justify-content:center;">
-                    <label>🤖 使用模型：</label>
-                    <select id="geminiModelSelect" style="width:auto;">
-                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (快速/免費)</option>
-                        <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash-8B (極速)</option>
-                        <option value="gemini-1.5-pro">Gemini 1.5 Pro (精準/較慢)</option>
-                        <option value="gemini-flash-latest">Gemini Flash Latest (最新)</option>
-                    </select>
-                </div>
+                <p id="currentModelDisplay" style="text-align:center; color:#555; font-size:0.9rem; margin-bottom:10px;">目前使用模型：<span id="modelNameLabel" style="font-weight:bold; color:#8e44ad;">-</span></p>
 
                 <div class="upload-area">
                     <label for="menuFileUpload" class="upload-btn">📤 選擇圖片 (可多選)</label>
