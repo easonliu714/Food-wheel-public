@@ -3,6 +3,7 @@
 window.showGuide = function(platform) {
     const container = document.getElementById('guide-content');
     if(!container) return;
+    
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     const buttons = document.querySelectorAll('.tab-btn');
     if(platform==='desktop' && buttons[0]) buttons[0].classList.add('active');
@@ -12,7 +13,8 @@ window.showGuide = function(platform) {
     const data = window.guideData[platform];
     let html = `<h3>${data.title}</h3>`;
     data.steps.forEach(step => {
-        html += `<div class="step-card"><div class="step-header"><div class="step-title">${step.title}</div></div><div class="step-content"><p>${step.desc}</p></div></div>`;
+        let imgHtml = step.img ? `<div class="step-image-container"><img src="${step.img}" alt="Step Image"></div>` : '';
+        html += `<div class="step-card"><div class="step-header"><div class="step-title">${step.title}</div></div>${imgHtml}<div class="step-content"><p>${step.desc}</p></div></div>`;
     });
     container.innerHTML = html;
 };
@@ -38,70 +40,142 @@ window.populateSetupGeneralPrefs = function() {
             setVal('setupMaxTime', prefs.maxTime);
             setVal('setupPriceLevel', prefs.priceLevel);
             setVal('setupResultCount', prefs.resultCount);
+            
+            // Gemini Model 設定
+            if(prefs.geminiModel) {
+                const modelSelect = document.getElementById('geminiModelSelect');
+                if(modelSelect) {
+                    // 如果選項不存在，先加一個預設的，等到驗證時會更新
+                    if(modelSelect.options.length === 0) {
+                        modelSelect.innerHTML = `<option value="${prefs.geminiModel}" selected>${prefs.geminiModel}</option>`;
+                    } else {
+                        modelSelect.value = prefs.geminiModel;
+                    }
+                }
+            }
         } catch (e) { console.error("設定載入失敗", e); }
     }
 };
 
+// 驗證 Gemini Key 並取得模型列表
+window.validateGeminiKey = async function() {
+    const key = document.getElementById('userGeminiKey').value.trim();
+    if(!key) return alert("請先輸入 Gemini API Key");
+    
+    const btn = document.getElementById('btnValidateGemini');
+    const originalText = btn.innerText;
+    btn.innerText = "驗證中...";
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+        const data = await response.json();
+        
+        if(data.error) throw new Error(data.error.message);
+        
+        // 過濾出支援 generateContent 的模型
+        const models = data.models.filter(m => m.supportedGenerationMethods.includes("generateContent"));
+        
+        const select = document.getElementById('geminiModelSelect');
+        select.innerHTML = ""; // 清空
+        
+        if(models.length === 0) throw new Error("此 Key 無法存取任何生成模型");
+
+        models.forEach(m => {
+            const opt = document.createElement('option');
+            // 只取 models/gemini-1.5-flash 這種格式的 id
+            opt.value = m.name.replace('models/', '');
+            opt.innerText = m.displayName + ` (${m.name.replace('models/', '')})`;
+            select.appendChild(opt);
+        });
+
+        // 預設選中 flash 或 pro
+        const defaultModel = models.find(m => m.name.includes('flash')) || models[0];
+        select.value = defaultModel.name.replace('models/', '');
+
+        alert(`✅ Gemini Key 驗證成功！\n已載入 ${models.length} 個可用模型。`);
+        
+    } catch(e) {
+        alert("❌ Gemini 驗證失敗：" + e.message);
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+};
+
+// Maps API Key 驗證
 window.validateAndSaveKey = async function() {
     const inputKey = document.getElementById('userApiKey').value.trim();
-    if (!inputKey) return alert("請輸入 API Key");
+    if (!inputKey) return alert("請輸入 Google Maps API Key");
 
     const btn = document.querySelector('.start-btn');
     const originalText = btn.innerText;
     btn.innerText = "驗證中...";
     btn.disabled = true;
 
-    // 攔截 Google Maps 的全域驗證失敗回呼
-    window.gm_authFailure = () => {
-        alert("❌ 驗證失敗：Google 拒絕了此 Key。\n請檢查：\n1. Key 是否抄寫正確？\n2. 是否已在 Google Cloud 綁定帳單？");
-        btn.innerText = originalText;
-        btn.disabled = false;
-        // 移除失敗的 script 避免干擾
-        const oldScript = document.getElementById('google-maps-script');
-        if(oldScript) oldScript.remove();
-    };
-
-    // 移除舊的 Script (如果有的話)
+    // 清除舊的 script 以防干擾
     const oldScript = document.getElementById('google-maps-script');
     if(oldScript) oldScript.remove();
 
+    // 預防性定義錯誤回調，但稍後會移除
+    window.gm_authFailure = () => {
+        alert("❌ 驗證失敗：Google 拒絕了此 Key。\n常見原因：\n1. Key 輸入錯誤\n2. 未啟用 Billing (綁定信用卡)");
+        btn.innerText = originalText;
+        btn.disabled = false;
+    };
+
     const script = document.createElement('script');
-    script.id = 'google-maps-script'; // 給予 ID 方便管理
+    script.id = 'google-maps-script';
     script.src = `https://maps.googleapis.com/maps/api/js?key=${inputKey}&libraries=places,geometry&callback=onMapsApiValidationSuccess`;
     script.async = true;
 
     window.onMapsApiValidationSuccess = async () => {
-        // 如果這個函式執行了，表示 Maps JS API 載入成功，但仍需檢查其他 API 權限
+        // 成功載入 JS，現在測試實際功能
         try {
+            // 移除錯誤監聽，避免稍後的非同步錯誤導致誤報
+            window.gm_authFailure = () => {}; 
+
+            // 1. 測試 Geocoding
             const geocoder = new google.maps.Geocoder();
             await new Promise((resolve, reject) => {
                 geocoder.geocode({ 'address': 'Taipei' }, (results, status) => {
                     if (status === 'OK' || status === 'ZERO_RESULTS') resolve();
-                    else reject(`Geocoding API 異常 (${status}) - 請確認已啟用此 API`);
+                    else reject(`Geocoding API 未啟用 (${status})`);
                 });
             });
 
+            // 2. 測試 Places
             const dummyDiv = document.createElement('div');
             const placesService = new google.maps.places.PlacesService(dummyDiv);
             await new Promise((resolve, reject) => {
                 placesService.findPlaceFromQuery({ query: 'Restaurant', fields: ['name'] }, (results, status) => {
                     if (status === 'OK' || status === 'ZERO_RESULTS') resolve();
-                    else reject(`Places API 異常 (${status}) - 請確認已啟用此 API`);
+                    else reject(`Places API 未啟用 (${status})`);
                 });
             });
 
-            // 驗證通過
+            // 3. 測試 Distance Matrix
+            const distService = new google.maps.DistanceMatrixService();
+            await new Promise((resolve, reject) => {
+                distService.getDistanceMatrix({
+                    origins: [{lat: 25.03, lng: 121.56}],
+                    destinations: [{lat: 25.04, lng: 121.57}],
+                    travelMode: 'DRIVING'
+                }, (response, status) => {
+                    if (status === 'OK') resolve();
+                    else reject(`Distance Matrix API 未啟用 (${status})`);
+                });
+            });
+
             alert("✅ 驗證成功！所有必要 API 皆已啟用。");
             window.saveAndStart(true); 
 
         } catch (err) {
-            alert(`⚠️ API Key 有效，但缺少部分權限：\n${err}`);
+            alert(`⚠️ API Key 有效，但權限不足：\n${err}\n請至 Google Cloud Console 啟用對應 API。`);
         } finally {
             btn.innerText = originalText;
             btn.disabled = false;
-            // 清理 callback
             delete window.onMapsApiValidationSuccess;
-            delete window.gm_authFailure;
         }
     };
 
@@ -117,6 +191,7 @@ window.validateAndSaveKey = async function() {
 window.saveAndStart = function(skipLoad = false) {
     const inputKey = document.getElementById('userApiKey').value.trim();
     const geminiKey = document.getElementById('userGeminiKey').value.trim();
+    const geminiModel = document.getElementById('geminiModelSelect').value;
     
     if (inputKey.length < 20) return alert("Google Maps API Key 格式不正確");
     
@@ -127,7 +202,8 @@ window.saveAndStart = function(skipLoad = false) {
         maxTime: document.getElementById('setupMaxTime').value,
         priceLevel: document.getElementById('setupPriceLevel').value,
         resultCount: document.getElementById('setupResultCount').value,
-        spinMode: document.getElementById('setupSpinMode') ? document.getElementById('setupSpinMode').value : 'repeat'
+        spinMode: document.getElementById('setupSpinMode') ? document.getElementById('setupSpinMode').value : 'repeat',
+        geminiModel: geminiModel // 儲存選擇的模型
     };
     
     const customKw = {}; 
@@ -164,25 +240,17 @@ window.editPreferences = function() {
     document.getElementById('app-screen').style.display = 'none';
     document.getElementById('setup-screen').style.display = 'block';
     
-    // 重新載入儲存的 Key
     const savedKey = localStorage.getItem('food_wheel_api_key');
     if(savedKey) document.getElementById('userApiKey').value = savedKey;
     const savedGeminiKey = localStorage.getItem('food_wheel_gemini_key');
     if(savedGeminiKey) document.getElementById('userGeminiKey').value = savedGeminiKey;
     
-    // 重新載入偏好設定與關鍵字
     window.populateSetupKeywords(); 
     window.populateSetupGeneralPrefs(); 
 };
 
 window.loadGoogleMapsScript = function(apiKey) {
-    // 檢查是否已經載入過
-    if (typeof google !== 'undefined' && google.maps) { 
-        window.initApp(); 
-        return; 
-    }
-    
-    // 避免重複加入 script tag
+    if (typeof google !== 'undefined' && google.maps) { window.initApp(); return; }
     if(document.getElementById('google-maps-script')) return;
 
     const script = document.createElement('script');
@@ -195,7 +263,7 @@ window.loadGoogleMapsScript = function(apiKey) {
         window.initApp(); 
     };
     script.onerror = () => { 
-        alert("Google Maps API 載入失敗，請檢查 Key 是否正確"); 
+        alert("API 載入失敗"); 
         localStorage.removeItem('food_wheel_api_key'); 
         location.reload(); 
     };
