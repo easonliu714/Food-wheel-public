@@ -1,5 +1,5 @@
 // maps_logic.js
-// 負責 Google Maps 初始化、搜尋、轉盤邏輯
+// 負責 Google Maps 初始化、搜尋、轉盤邏輯 (完全復刻原版邏輯)
 
 function initApp() { 
     applyPreferencesToApp(); 
@@ -96,11 +96,30 @@ function handleSearch() {
     });
 }
 
+// 核心搜尋邏輯：完全恢復 script.js 的半徑計算
 function startSearch(location, keywordsRaw) {
     const service = new google.maps.places.PlacesService(document.createElement('div'));
-    const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
-    // const searchMode = document.getElementById('searchMode').value; // 原版邏輯不在此處區分模式
     
+    // 取得使用者設定參數
+    const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
+    const transportMode = document.getElementById('transportMode').value;
+    const maxTime = parseInt(document.getElementById('maxTime').value, 10);
+    
+    // 【原版邏輯恢復】計算動態半徑
+    // 走路預設 20 km/h, 開車預設 60 km/h (保守估計，用於抓取候選名單)
+    const estimatedSpeedKmH = (transportMode === 'WALKING') ? 20 : 60;
+    
+    // 距離 (km) = 速度 (km/h) * 時間 (h)
+    const maxDistKm = estimatedSpeedKmH * (maxTime / 60);
+    
+    // 轉換為公尺，並設定邊界 (最小 1000m 以免太少，最大 50000m 為 API 極限)
+    let calculatedRadius = Math.floor(maxDistKm * 1000);
+    calculatedRadius = Math.max(1000, calculatedRadius);
+    calculatedRadius = Math.min(50000, calculatedRadius);
+
+    console.log(`搜尋策略: 模式=${transportMode}, 時間=${maxTime}分, 計算半徑=${calculatedRadius}m`);
+    
+    // 關鍵字處理
     const splitKeywords = keywordsRaw.split(/\s+/).filter(k => k.length > 0);
     let searchQueries = [...splitKeywords];
     if (splitKeywords.length > 1) searchQueries.push(keywordsRaw);
@@ -109,13 +128,11 @@ function startSearch(location, keywordsRaw) {
     const btn = document.querySelector('.search-btn');
     btn.innerText = "搜尋中...";
 
-    // 【修正重點】還原為原版邏輯：
-    // 不論模式為何，都使用 radius: 1000 (或 2000)，而不使用 RankBy.DISTANCE
-    // 這樣能確保 API 回傳較多結果，再由前端過濾
+    // 執行搜尋 (Nearby Search with Radius)
     searchQueries.forEach(keyword => {
         let request = { 
             location: location, 
-            radius: 1500, // 稍微加大半徑確保有結果
+            radius: calculatedRadius, 
             keyword: keyword 
         };
         
@@ -123,6 +140,7 @@ function startSearch(location, keywordsRaw) {
         
         promises.push(new Promise(resolve => {
             service.nearbySearch(request, (results, status) => {
+                // 不論是否 ZERO_RESULTS 都回傳，方便後續合併
                 resolve((status === 'OK' && results) ? results : []);
             });
         }));
@@ -131,7 +149,7 @@ function startSearch(location, keywordsRaw) {
     Promise.all(promises).then(resultsArray => {
         let combinedResults = [].concat(...resultsArray);
         if (combinedResults.length === 0) {
-            alert("附近無符合條件的店家");
+            alert("附近無符合條件的店家 (請嘗試增加時間或變更關鍵字)");
             btn.innerText = "🔄 開始搜尋店家";
             return;
         }
@@ -144,8 +162,9 @@ function processResults(origin, results) {
     const userMaxCount = parseInt(document.getElementById('resultCount').value, 10);
     const transportMode = document.getElementById('transportMode').value;
     const minRating = parseFloat(document.getElementById('minRating').value);
+    const maxTime = parseInt(document.getElementById('maxTime').value, 10);
     
-    // 去重與基本過濾
+    // 去重與基本評分過濾
     const uniqueIds = new Set();
     let filtered = [];
     results.forEach(p => {
@@ -155,16 +174,17 @@ function processResults(origin, results) {
         }
     });
 
-    // 取前 50 個計算距離 (避免 API 超額)
+    // Distance Matrix API 限制 (一次最多 25 個目的地比較保險，原版可能設定 50)
+    // 為了安全起見，我們取前 50 個候選
     if (filtered.length > 50) filtered = filtered.slice(0, 50);
 
     if (filtered.length === 0) {
-        alert("過濾後無符合條件店家 (可能是評分過濾)");
+        alert("評分過濾後無符合條件店家");
         btn.innerText = "🔄 開始搜尋店家";
         return;
     }
 
-    btn.innerText = "計算路程...";
+    btn.innerText = "計算實際路程...";
     
     const service = new google.maps.DistanceMatrixService();
     const destLocs = filtered.map(d => d.geometry.location);
@@ -176,41 +196,44 @@ function processResults(origin, results) {
     }, (response, status) => {
         if (status === 'OK') {
             const elements = response.rows[0].elements;
+            let validResults = [];
+
             for (let i = 0; i < filtered.length; i++) {
                 if (elements[i].status === 'OK') {
-                    filtered[i].realDurationMins = Math.ceil(elements[i].duration.value / 60);
-                    filtered[i].realDistanceText = elements[i].distance.text;
-                    filtered[i].realDurationText = elements[i].duration.text;
-                } else {
-                    filtered[i].realDurationMins = 999;
+                    const durationMins = Math.ceil(elements[i].duration.value / 60);
+                    
+                    // 【原版邏輯】嚴格檢查實際路程時間
+                    if (durationMins <= maxTime) {
+                        filtered[i].realDurationMins = durationMins;
+                        filtered[i].realDistanceText = elements[i].distance.text;
+                        filtered[i].realDurationText = elements[i].duration.text;
+                        validResults.push(filtered[i]);
+                    }
                 }
             }
             
-            // 時間過濾
-            const maxTime = parseInt(document.getElementById('maxTime').value, 10);
-            filtered = filtered.filter(p => p.realDurationMins <= maxTime);
-            
-            // 【修正重點】排序邏輯在此處執行 (前端排序)
+            // 排序邏輯
             const searchMode = document.getElementById('searchMode').value;
             if (searchMode === 'nearby') {
-                // 距離優先：依據實際路程時間排序
-                filtered.sort((a,b) => a.realDurationMins - b.realDurationMins);
+                // 距離優先
+                validResults.sort((a,b) => a.realDurationMins - b.realDurationMins);
             } else {
-                // 熱門優先：依據 (評分 * log(評論數)) 排序
-                filtered.sort((a,b) => (b.rating * Math.log(b.user_ratings_total)) - (a.rating * Math.log(a.user_ratings_total)));
+                // 熱門優先 (評分 * log(評論數))
+                validResults.sort((a,b) => (b.rating * Math.log(b.user_ratings_total)) - (a.rating * Math.log(a.user_ratings_total)));
             }
 
-            allSearchResults = filtered.slice(0, userMaxCount);
+            // 截取使用者設定的數量
+            allSearchResults = validResults.slice(0, userMaxCount);
             
             if (allSearchResults.length === 0) {
-                 alert("經距離/時間篩選後無店家");
+                 alert("經路程計算後，沒有店家在時間限制內到達");
                  btn.innerText = "🔄 開始搜尋店家";
             } else {
                  refreshWheelData();
                  btn.innerText = "搜尋完成";
             }
         } else {
-            alert("距離計算失敗");
+            alert("距離計算 API 失敗");
             btn.innerText = "🔄 開始搜尋店家";
         }
     });
@@ -218,8 +241,12 @@ function processResults(origin, results) {
 
 function refreshWheelData() {
     const filterDislike = document.getElementById('filterDislike').checked;
+    
+    // 從 allSearchResults 產生 places (轉盤資料)
     places = allSearchResults.filter(p => {
+        // 排除已淘汰
         if (eliminatedIds.has(p.place_id)) return false;
+        // 排除使用者踩雷
         if (filterDislike && userRatings[p.place_id] === 'dislike') return false;
         return true;
     });
@@ -233,6 +260,12 @@ function initResultList(list) {
     const tbody = document.querySelector('#resultsTable tbody');
     if(!tbody) return;
     tbody.innerHTML = '';
+    
+    if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">無資料</td></tr>';
+        return;
+    }
+
     list.forEach(p => {
         const isEliminated = eliminatedIds.has(p.place_id);
         const tr = document.createElement('tr');
@@ -287,6 +320,13 @@ document.getElementById('spinBtn').onclick = () => {
         
         updateWinnerUI(winner);
         
+        // 紀錄次數
+        if (!hitCounts[winner.place_id]) hitCounts[winner.place_id] = 0;
+        hitCounts[winner.place_id]++;
+        
+        // 更新列表顯示次數
+        initResultList(allSearchResults);
+
         const spinMode = document.getElementById('spinMode') ? document.getElementById('spinMode').value : 'repeat';
         if (spinMode === 'eliminate') {
             eliminatedIds.add(winner.place_id);
