@@ -117,7 +117,7 @@
             </div>
             
             <div class="location-box">
-                <label for="currentAddress">📍 目前搜尋中心 (可修改)：</label>
+                <label for="currentAddress">📍 目前搜尋中心 (可修改，可輸入特定地標)：</label>
                 <div class="input-group">
                     <input type="text" id="currentAddress" placeholder="等待定位中..." value="">
                     <button id="geoBtn" onclick="handleSearch()">🔍 搜尋</button>
@@ -143,7 +143,7 @@
                 <div class="setting-row"><label>⏱️ 路程時間：</label><select id="maxTime"><option value="5">🕐 5 分鐘</option><option value="10">🕑 10 分鐘</option><option value="15">🕒 15 分鐘</option><option value="20">🕓 20 分鐘</option><option value="30">🕕 30 分鐘</option></select></div>
                 <div class="setting-row"><label>🔢 商家上限：</label><select id="resultCount"><option value="10">🏕️ 10 家</option><option value="20">🏡 20 家</option><option value="30">🏘️ 30 家</option><option value="40">🏢 40 家</option><option value="50">🌇 50 家</option><option value="60">🗺️ 60 家</option></select></div>
                 <div class="setting-row"><label>🎡 轉盤模式：</label><select id="spinMode"><option value="repeat">🔁 重複抽取（不移除）</option><option value="eliminate">❌ 淘汰制（抽到後移除）</option></select></div>
-                <div class="setting-row" style="flex-direction: column; align-items: flex-start;"><label style="margin-bottom: 5px;">🔎 關鍵字（可自訂，空格分隔）：</label><input type="text" id="keywordInput" class="full-width-input" value=""></div>
+                <div class="setting-row" style="flex-direction: column; align-items: flex-start;"><label style="margin-bottom: 5px;">🔎 關鍵字（可自訂，用空格分隔）：</label><input type="text" id="keywordInput" class="full-width-input" value=""></div>
                 <button onclick="handleSearch()" class="search-btn">🔄 開始搜尋店家</button>
             </div>
 
