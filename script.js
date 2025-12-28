@@ -157,6 +157,7 @@ function updateResultUI(p) {
     document.getElementById('storeAddress').innerText = p.vicinity || p.formatted_address;
     
     // 先顯示保守估計數據 (這是 processResults 算出來的)
+    // 因為這裡是詳細結果頁，我們可以稍微多加一點標示，與列表區分
     const conservativeInfo = `${p.displayDistanceText} / ${p.displayDurationText}`;
     document.getElementById('storeDistance').innerHTML = `📏 保守估計：${conservativeInfo}<br>🚀 正在計算精確路徑...`;
 
