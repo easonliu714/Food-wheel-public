@@ -39,6 +39,30 @@
 
         <div class="preferences-box" style="border-left-color: #9b59b6; margin-top: 20px;">
             <h3>✨ AI 智能菜單設定 (選填)</h3>
+
+            <details id="gemini-guide-details" style="margin-bottom: 15px;">
+                <summary class="guide-summary" style="color: #8e44ad;">📖 如何取得 Google Gemini API Key？ (點擊展開)</summary>
+                <div class="tutorial-box">
+                    <div class="step-card">
+                        <div class="step-header"><div class="step-title">步驟 1：前往 Google AI Studio</div></div>
+                        <div class="step-content">
+                            <p>點擊前往 <a href="https://aistudio.google.com/" target="_blank" style="color:#2980b9; text-decoration: underline;">Google AI Studio</a> 並登入您的 Google 帳號。</p>
+                        </div>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-header"><div class="step-title">步驟 2：點擊 Get API key</div></div>
+                        <div class="step-content">
+                            <p>在畫面<b>左側功能欄的最下方（左下角）</b>，找到並點擊 <strong>🔑 Get API key</strong> 按鈕。</p>
+                        </div>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-header"><div class="step-title">步驟 3：建立並複製 Key</div></div>
+                        <div class="step-content">
+                            <p>點擊 <strong>Create API key</strong>，選擇您的專案（或新建），建立後複製那一串以 <code>AIzaSy...</code> 開頭的文字。</p>
+                        </div>
+                    </div>
+                </div>
+            </details>
             <label style="font-weight: bold;">Google AI Studio API Key：</label>
             <div style="display:flex; gap:5px; margin-bottom:10px;">
                 <input type="text" id="userGeminiKey" placeholder="AIzaSy... (Gemini Key)" class="setup-input" style="flex:2;">
@@ -48,7 +72,7 @@
             <label style="font-size:0.9rem;">🤖 選擇 AI 模型：</label>
             <div style="display:flex; gap:5px; margin-bottom:10px;">
                 <select id="geminiModelSelect" class="setup-input" style="flex:2;">
-                    <option value="gemini-1.5-flash">⚠️ 請先輸入 Key 並驗證...</option>
+                    <option value="gemini-1.5-flash">請先輸入 Key 並驗證...</option>
                 </select>
                 <button onclick="testSelectedGeminiModel()" class="small-btn" style="background:#27ae60; color:white; flex:1;">⚡ 測試</button>
             </div>
