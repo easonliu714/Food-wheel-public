@@ -48,7 +48,7 @@
             <label style="font-size:0.9rem;">🤖 選擇 AI 模型：</label>
             <div style="display:flex; gap:5px; margin-bottom:10px;">
                 <select id="geminiModelSelect" class="setup-input" style="flex:2;">
-                    <option value="gemini-1.5-flash">請先輸入 Key 並驗證...</option>
+                    <option value="gemini-1.5-flash">⚠️ 請先輸入 Key 並驗證...</option>
                 </select>
                 <button onclick="testSelectedGeminiModel()" class="small-btn" style="background:#27ae60; color:white; flex:1;">⚡ 測試</button>
             </div>
@@ -119,7 +119,7 @@
                 <div class="setting-row"><label>🏃‍♂️ 交通：</label><select id="transportMode"><option value="WALKING">走路 🚶 (20km/h)</option><option value="DRIVING">開車 🚗 (60km/h)</option></select></div>
                 <div class="setting-row"><label>⏱️ 時間：</label><select id="maxTime"><option value="5">🕐 5 分鐘</option><option value="10">🕑 10 分鐘</option><option value="15">🕒 15 分鐘</option><option value="20">🕓 20 分鐘</option><option value="30">🕕 30 分鐘</option></select></div>
                 <div class="setting-row"><label>🔢 數量：</label><select id="resultCount"><option value="10">🏕️ 10 家</option><option value="20">🏡 20 家</option><option value="30">🏘️ 30 家</option><option value="40">🏢 40 家</option><option value="50">🌇 50 家</option><option value="60">🗺️ 60 家</option></select></div>
-                <div class="setting-row"><label>🎡 模式：</label><select id="spinMode"><option value="repeat">🔁 重複抽取</option><option value="eliminate">❌ 淘汰制</option></select></div>
+                <div class="setting-row"><label>🎡 模式：</label><select id="spinMode"><option value="repeat">🔁 重複抽取（不移除）</option><option value="eliminate">❌ 淘汰制（抽到後移除）</option></select></div>
                 <button onclick="handleSearch()" class="search-btn">🔄 開始搜尋店家</button>
             </div>
 
@@ -134,7 +134,7 @@
                         <div id="pointer">▼</div>
                     </div>
                     <div class="action-area">
-                        <button id="spinBtn" disabled style="opacity: 0.5;">請先搜尋店家</button>
+                        <button id="spinBtn" disabled style="opacity: 0.5;">⚠️ 請先搜尋店家</button>
                     </div>
                 </div>
 
@@ -177,7 +177,7 @@
         <div id="menu-screen" style="display: none;">
             <div class="header-bar">
                 <button onclick="closeMenuSystem()" class="header-btn">⬅️ 返回店家</button>
-                <h1 id="menuStoreTitle" style="font-size: 1.2rem;">AI 智能菜單</h1>
+                <h1 id="menuStoreTitle" style="font-size: 1.2rem;">📝 AI 智能菜單</h1>
             </div>
             
             <div id="ai-step-1" class="menu-layout">
@@ -188,7 +188,7 @@
                     <button id="btnLoadSavedMenu" onclick="loadSavedMenu()" class="upload-btn" style="background:#f39c12; margin-left:10px; display:none;">📂 讀取已存菜單</button>
                 </div>
                 <div id="maps-photo-grid" class="photo-grid"></div>
-                <button id="btnAnalyzeMenu" onclick="analyzeSelectedPhotos()" class="search-btn" disabled style="margin-top:20px; opacity:0.5;">🤖 開始 AI 解析</button>
+                <button id="btnAnalyzeMenu" onclick="analyzeSelectedPhotos()" class="search-btn" disabled style="margin-top:20px; opacity:0.5;">💻 開始 AI 解析</button>
             </div>
             
             <div id="ai-step-2" class="menu-layout" style="display:none;">
@@ -203,7 +203,7 @@
                 </div>
                 <div class="cart-panel">
                     <h3>🛒 預點清單</h3><ul id="cartList" class="cart-list"></ul>
-                    <div class="cart-total">總計：<span id="cartTotalDisplay">$0</span></div>
+                    <div class="cart-total">🏧 總計：<span id="cartTotalDisplay">$0</span></div>
                     <button onclick="checkout()" class="search-btn" style="background: #27ae60; margin-top:10px;">✅ 結帳</button>
                 </div>
                 <div class="full-menu-panel" style="margin-top:20px;">
@@ -211,7 +211,7 @@
                     <div id="fullMenuContainer" style="max-height: 300px; overflow-y: auto;"></div>
                 </div>
                 <p class="ai-disclaimer">
-                    ⚠️ 免責聲明：AI 辨識菜單的正確性會受到上傳圖片清晰度與時效性影響，<br>
+                    ⚠️ 免責聲明：AI 辨識菜單正確性會受到上傳圖片清晰度與時效性影響，<br>
                     菜單內容與價格僅供試算參考，請以商家現場即時資訊為準。
                 </p>
             </div>
