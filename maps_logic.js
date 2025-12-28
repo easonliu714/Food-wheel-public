@@ -184,8 +184,8 @@ window.processResults = function(origin, results) {
                 p.conservativeDurationMins = conservativeDurationMins;
                 
                 // 建立顯示用的文字
-                p.displayDistanceText = (distanceMeters / 1000).toFixed(1) + " km (直線)";
-                p.displayDurationText = `約 ${conservativeDurationMins} 分 (保守)`;
+                p.displayDistanceText = (distanceMeters / 1000).toFixed(1) + " km/";
+                p.displayDurationText = `約 ${conservativeDurationMins} 分`;
                 
                 filtered.push(p);
             }
