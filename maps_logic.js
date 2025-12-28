@@ -193,7 +193,7 @@ window.processResults = function(origin, results) {
     });
 
     if (filtered.length === 0) {
-        alert("經保守估計 (走路2km/h, 開車30km/h) 計算後，無符合時間內的店家。");
+        alert("經保守估計 (走路2km/h, 開車20km/h) 計算後，無符合時間內的店家。");
         btn.innerText = "🔄 開始搜尋店家";
         btn.disabled = false;
         return;
