@@ -1,9 +1,9 @@
 /* =========================================
    Food Wheel Style Sheet
-   Version: 2025-12-28-v6 (Disclaimer Added)
+   Version: 2025-12-28-v7 (Layout & Status Fix)
    Tasks: 
-   1. 新增 AI 免責聲明樣式
-   2. 保持之前的所有設定 (深色按鈕、響應式排版等)
+   1. 修正 #result 區塊寬度溢出 (box-sizing)
+   2. 保持之前的所有設定 (深色按鈕、響應式排版、免責聲明)
    ========================================= */
 
 body {
@@ -91,7 +91,20 @@ h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
 }
 
 .wheel-section-centered { order: 1; display: flex; flex-direction: column; align-items: center; width: 100%; }
-#result { order: 2; text-align: center; width: 100%; padding: 20px; background: #fff; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+
+/* [FIXED] 加入 box-sizing: border-box 防止 padding 撐開寬度導致溢出 */
+#result { 
+    order: 2; 
+    text-align: center; 
+    width: 100%; 
+    padding: 20px; 
+    background: #fff; 
+    border: 1px solid #eee; 
+    border-radius: 8px; 
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    box-sizing: border-box; /* 關鍵修正 */
+}
+
 .list-panel-full { order: 3; border: 1px solid #eee; border-radius: 8px; padding: 15px; background: #fff; max-height: 400px; overflow-y: auto; width: 100%; box-sizing: border-box; }
 
 .wheel-container { position: relative; width: 100%; max-width: 400px; height: auto; aspect-ratio: 1/1; margin: 20px 0; }
@@ -178,7 +191,7 @@ tr.eliminated { opacity: 0.4; text-decoration: line-through; background: #f0f0f0
 /* 菜單頁面：加入購物車按鈕 (深色背景) */
 #addToOrderBtn { background-color: #34495e; color: white; }
 
-/* [NEW] 免責聲明樣式 */
+/* 免責聲明樣式 */
 .ai-disclaimer {
     font-size: 0.8rem;
     color: #999;
