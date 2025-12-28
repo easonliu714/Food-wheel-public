@@ -1,6 +1,6 @@
 /* =========================================
    Food Wheel Style Sheet
-   Version: 2025-12-28-v8 (Add Boost Like Option)
+   Version: 2025-12-28-v9 (Force Side-by-Side Layout)
    ========================================= */
 
 body {
@@ -89,24 +89,27 @@ h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
 
 .wheel-section-centered { order: 1; display: flex; flex-direction: column; align-items: center; width: 100%; }
 
-/* [MODIFIED] Filter Box Styling for Side-by-Side Layout */
+/* [MODIFIED] Filter Box: 強制並排設定 */
 .filter-box {
     display: flex;
+    flex-direction: row; /* 明確指定為橫向 */
     justify-content: center;
-    gap: 20px;
+    flex-wrap: wrap; /* 如果螢幕極小，允許換行，避免破版 */
+    gap: 15px; /* 設定適當間距 */
     margin-bottom: 15px;
     width: 100%;
 }
 .filter-item {
     display: flex;
     align-items: center;
-    font-size: 0.95rem;
+    font-size: 0.9rem; /* 微調字體大小以適應並排 */
     color: #555;
     cursor: pointer;
     background: #f8f9fa;
-    padding: 5px 12px;
+    padding: 6px 12px;
     border-radius: 20px;
     border: 1px solid #eee;
+    white-space: nowrap; /* 防止文字折行 */
 }
 .filter-item input { margin-right: 6px; cursor: pointer; }
 .filter-item label { cursor: pointer; user-select: none; }
@@ -235,5 +238,6 @@ tr.eliminated { opacity: 0.4; text-decoration: line-through; background: #f0f0f0
     .container { width: 100%; box-shadow: none; }
     .pref-grid, .keyword-settings-grid { grid-template-columns: 1fr; }
     .pref-item.full-width { grid-column: span 1; }
-    .filter-box { flex-direction: column; align-items: center; gap: 10px; } /* 手機版自動垂直排列 */
+    /* [MODIFIED] 移除 .filter-box { flex-direction: column; } 的設定，改為縮小間距 */
+    .filter-box { gap: 10px; } 
 }
