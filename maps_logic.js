@@ -159,6 +159,9 @@ window.processResults = function(origin, results) {
     const transportMode = document.getElementById('transportMode').value;
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
     const searchMode = document.getElementById('searchMode').value;
+    
+    // [修正] 取得星評下限
+    const minRating = parseFloat(document.getElementById('minRating').value) || 0;
 
     const uniqueIds = new Set();
     let filtered = [];
@@ -177,7 +180,11 @@ window.processResults = function(origin, results) {
             // 2. 計算保守預估時間
             const conservativeDurationMins = Math.ceil(distanceMeters / speedPerMin);
 
-            // 3. 篩選符合時間限制的店家
+            // 3. 篩選符合時間與評分的店家
+            // [修正] 加入星評過濾：若有評分且低於 minRating 則移除；若無評分但 minRating > 0 也移除 (視需求而定，此處假設無評分不合規)
+            const currentRating = p.rating || 0;
+            if (currentRating < minRating) return;
+
             if (conservativeDurationMins <= maxTime) {
                 p.geometryDistance = distanceMeters;
                 p.conservativeDurationMins = conservativeDurationMins;
@@ -192,7 +199,7 @@ window.processResults = function(origin, results) {
     });
 
     if (filtered.length === 0) {
-        alert("經保守估計 (走路2km/h, 開車20km/h) 計算後，無符合時間內的店家。");
+        alert(`經計算後無符合條件的店家。\n(可能原因：距離過遠、評分低於 ${minRating} 或無資料)`);
         btn.innerText = "🔄 開始搜尋店家";
         btn.disabled = false;
         return;
