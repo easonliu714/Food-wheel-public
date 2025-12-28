@@ -1,5 +1,13 @@
 // ================== maps_logic.js ==================
 
+// 定義保守估計的速度常數 (單位：公尺/分鐘)
+// 步行 2 km/h = 2000m / 60min ≈ 33.33 m/min
+// 開車 30 km/h = 30000m / 60min = 500 m/min
+const CONSERVATIVE_SPEEDS = {
+    WALKING: 33.33,
+    DRIVING: 500
+};
+
 window.initLocation = function() {
     if (typeof google === 'undefined') { console.warn("Maps API not loaded"); return; }
     const addrInput = document.getElementById('currentAddress');
@@ -49,7 +57,7 @@ window.handleSearch = function() {
             const formattedAddress = results[0].formatted_address;
             const simplifiedAddress = formattedAddress.replace(/^\d+\s*/, '').replace(/^台灣/, '');
             
-            addrInput.value = simplifiedAddress; // Sync input
+            addrInput.value = simplifiedAddress; 
             
             const detailDisplay = document.getElementById('detailedAddressDisplay');
             if (detailDisplay) { 
@@ -72,7 +80,7 @@ window.startSearch = function(location, keywordsRaw) {
 
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
-    const transportMode = document.getElementById('transportMode').value;
+    const transportMode = document.getElementById('transportMode').value; // 'WALKING' or 'DRIVING'
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
     const searchMode = document.getElementById('searchMode').value;
     
@@ -80,9 +88,10 @@ window.startSearch = function(location, keywordsRaw) {
     let searchQueries = [...splitKeywords];
     if (splitKeywords.length > 1) searchQueries.push(keywordsRaw);
 
-    let speedMetersPerMin = (transportMode === 'DRIVING') ? 1000 : 333.33;
-    const maxTheoreticalRadius = speedMetersPerMin * maxTime;
-    const maxLinearDist = maxTheoreticalRadius * 1.5;
+    // 這裡使用較寬鬆的「搜尋半徑」來抓取資料，確保有足夠的候選店家
+    // 實際篩選會在 processResults 使用保守速度進行
+    let searchSpeed = (transportMode === 'DRIVING') ? 800 : 80; // 搜尋時假設稍微正常一點的速度抓範圍
+    const maxTheoreticalRadius = searchSpeed * maxTime;
 
     let promises = [];
     if (searchMode === 'nearby') {
@@ -98,7 +107,7 @@ window.startSearch = function(location, keywordsRaw) {
         steps = [...new Set(steps)].sort((a,b)=>a-b);
         searchQueries.forEach(keyword => {
             steps.forEach(stepTime => {
-                let stepRadius = stepTime * speedMetersPerMin;
+                let stepRadius = stepTime * searchSpeed;
                 if (stepRadius < 500) stepRadius = 500; 
                 let request = { location: location, radius: stepRadius, rankBy: google.maps.places.RankBy.PROMINENCE, keyword: keyword };
                 if (priceLevel !== -1) request.maxPrice = priceLevel;
@@ -115,7 +124,7 @@ window.startSearch = function(location, keywordsRaw) {
             btn.disabled = false;
             return;
         }
-        window.processResults(location, combinedResults, maxLinearDist);
+        window.processResults(location, combinedResults);
     }).catch(err => {
         console.error(err);
         alert("搜尋錯誤: " + err);
@@ -144,7 +153,8 @@ window.fetchPlacesWithPagination = function(service, request, maxPages = 3) {
     });
 };
 
-window.processResults = function(origin, results, maxLinearDist) {
+// [方案 B 修改重點]：改用本地計算直線距離與保守耗時
+window.processResults = function(origin, results) {
     const btn = document.querySelector('.search-btn');
     const userMaxCount = parseInt(document.getElementById('resultCount').value, 10);
     const transportMode = document.getElementById('transportMode').value;
@@ -153,102 +163,67 @@ window.processResults = function(origin, results, maxLinearDist) {
 
     const uniqueIds = new Set();
     let filtered = [];
+
+    // 設定保守速度
+    const speedPerMin = (transportMode === 'DRIVING') ? CONSERVATIVE_SPEEDS.DRIVING : CONSERVATIVE_SPEEDS.WALKING;
+
     results.forEach(p => {
         if (!uniqueIds.has(p.place_id)) {
             uniqueIds.add(p.place_id);
             const loc = p.geometry.location;
+            
+            // 1. 計算直線距離 (Distance Matrix API 省略)
             const distanceMeters = google.maps.geometry.spherical.computeDistanceBetween(origin, loc);
-            if (distanceMeters <= maxLinearDist) {
+            
+            // 2. 計算保守預估時間
+            const conservativeDurationMins = Math.ceil(distanceMeters / speedPerMin);
+
+            // 3. 篩選符合時間限制的店家
+            if (conservativeDurationMins <= maxTime) {
                 p.geometryDistance = distanceMeters;
+                p.conservativeDurationMins = conservativeDurationMins;
+                
+                // 建立顯示用的文字
+                p.displayDistanceText = (distanceMeters / 1000).toFixed(1) + " km (直線)";
+                p.displayDurationText = `約 ${conservativeDurationMins} 分 (保守)`;
+                
                 filtered.push(p);
             }
         }
     });
 
     if (filtered.length === 0) {
-        alert("無符合店家");
+        alert("經保守估計 (走路2km/h, 開車30km/h) 計算後，無符合時間內的店家。");
         btn.innerText = "🔄 開始搜尋店家";
         btn.disabled = false;
         return;
     }
 
-    btn.innerText = `🚚 計算 ${Math.min(filtered.length, 60)} 筆路程中...`;
-
-    // 截斷
-    if (searchMode === 'nearby') filtered.sort((a, b) => a.geometryDistance - b.geometryDistance);
-    if (filtered.length > 60) filtered = filtered.slice(0, 60);
-
-    // 批次計算距離
-    const batchSize = 25;
-    const batches = [];
-    for (let i = 0; i < filtered.length; i += batchSize) {
-        batches.push(filtered.slice(i, i + batchSize));
+    // 排序
+    if (searchMode === 'nearby') {
+        filtered.sort((a, b) => a.geometryDistance - b.geometryDistance);
     }
+    // 若為 famous 模式 (Google 預設排序)，則保留原始順序，或可依 rating 微調，這裡維持原始邏輯
 
-    Promise.all(batches.map(batch => window.getDistances(origin, batch, transportMode)))
-        .then(resultsArray => {
-            let validPlaces = [].concat(...resultsArray);
-            validPlaces = validPlaces.filter(p => p.realDurationMins <= maxTime);
+    // 截斷數量
+    window.allSearchResults = filtered.slice(0, userMaxCount);
+    
+    // 初始化輪盤數據
+    window.eliminatedIds.clear(); 
+    window.hitCounts = {};
+    window.allSearchResults.forEach(p => window.hitCounts[p.place_id] = 0);
 
-            if (validPlaces.length === 0) {
-                alert("所有店家路程皆超時");
-                btn.innerText = "🔄 開始搜尋店家";
-                btn.disabled = false;
-                return;
-            }
-            if (searchMode === 'nearby') validPlaces.sort((a, b) => a.realDurationMins - b.realDurationMins);
-            
-            window.allSearchResults = validPlaces.slice(0, userMaxCount); 
-            window.eliminatedIds.clear(); 
-            window.hitCounts = {};
-            window.allSearchResults.forEach(p => window.hitCounts[p.place_id] = 0);
-
-            if (typeof window.refreshWheelData === 'function') {
-                window.refreshWheelData();
-                btn.innerText = `搜尋完成 (共 ${window.places.length} 間)`;
-                btn.disabled = false;
-            } else {
-                console.error("Critical: refreshWheelData not found!");
-                alert("系統錯誤：UI 模組未載入");
-                btn.disabled = false;
-            }
-        })
-        .catch(err => {
-            console.error("Distance Matrix Error:", err);
-            if (confirm(`路程計算失敗 (${err})。\n是否使用「直線距離」顯示結果？`)) {
-                let fallbackPlaces = filtered.map(p => {
-                    let speed = (transportMode === 'DRIVING') ? 600 : 80;
-                    p.realDurationMins = Math.ceil(p.geometryDistance / speed);
-                    p.realDistanceText = (p.geometryDistance / 1000).toFixed(1) + " km (直線)";
-                    p.realDurationText = "~" + p.realDurationMins + " 分 (估計)";
-                    return p;
-                });
-                fallbackPlaces = fallbackPlaces.filter(p => p.realDurationMins <= maxTime);
-                
-                if (fallbackPlaces.length === 0) {
-                    alert("即便用直線距離估算，也無符合店家。");
-                    btn.innerText = "🔄 開始搜尋店家";
-                    btn.disabled = false;
-                    return;
-                }
-                
-                window.allSearchResults = fallbackPlaces.slice(0, userMaxCount); 
-                window.eliminatedIds.clear(); 
-                window.hitCounts = {};
-                window.allSearchResults.forEach(p => window.hitCounts[p.place_id] = 0);
-                
-                if (typeof window.refreshWheelData === 'function') {
-                    window.refreshWheelData();
-                    btn.innerText = `搜尋完成 (共 ${window.places.length} 間) - 直線估算`;
-                    btn.disabled = false;
-                }
-            } else {
-                btn.innerText = "🔄 開始搜尋店家";
-                btn.disabled = false;
-            }
-        });
+    if (typeof window.refreshWheelData === 'function') {
+        window.refreshWheelData();
+        btn.innerText = `搜尋完成 (共 ${window.places.length} 間)`;
+        btn.disabled = false;
+    } else {
+        console.error("Critical: refreshWheelData not found!");
+        btn.disabled = false;
+    }
 };
 
+// 取得單一店家的精確路徑 (供 script.js 在中獎後呼叫)
 window.getDistances = function(origin, destinations, mode) {
     return new Promise((resolve, reject) => {
         const service = new google.maps.DistanceMatrixService();
@@ -266,6 +241,7 @@ window.getDistances = function(origin, destinations, mode) {
                     const el = elements[i];
                     if (el.status === 'OK') {
                         let p = destinations[i];
+                        // 這是 Google Maps 計算的真實路徑與預設速度耗時
                         p.realDistanceText = el.distance.text;
                         p.realDurationText = el.duration.text;
                         p.realDurationMins = Math.ceil(el.duration.value / 60);
@@ -275,11 +251,7 @@ window.getDistances = function(origin, destinations, mode) {
                 resolve(processed);
             } else { 
                 console.warn(`Distance Matrix Status: ${status}`);
-                if (status === 'OVER_QUERY_LIMIT' || status === 'REQUEST_DENIED' || status === 'UNKNOWN_ERROR') {
-                    reject(status);
-                } else {
-                    resolve([]); 
-                }
+                reject(status);
             }
         });
     });
