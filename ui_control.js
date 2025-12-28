@@ -1,6 +1,4 @@
 // ================== ui_control.js : 介面控制與 API 驗證 ==================
-// Version: 2025-12-28-v8 (Add Boost Like Option Logic)
-// ================== ui_control.js : 介面控制與 API 驗證 ==================
 // Version: 2025-12-28-v9-PlanB
 
 // 1. 基礎設定與教學
@@ -405,9 +403,8 @@ window.initResultList = function(list) {
 
         const ratingText = p.rating ? `${p.rating} <span style="font-size:0.8em; color:#666;">(${p.user_ratings_total || 0})</span>` : "無評價";
         
-        // [修改處] 使用在 maps_logic 計算出的保守數據
-        // 若未來轉盤轉到並更新了 real 數據，這裡也可以優先顯示 real (視需求而定，目前列表維持保守估計以統一標準)
-        const distanceText = `${p.displayDistanceText}<br><span style="font-size:0.85em; color:#666;">${p.displayDurationText}</span>`;
+        // [修改處] 使用斜線分隔，不加文字說明
+        const distanceText = `${p.displayDistanceText} / ${p.displayDurationText}`;
 
         tr.innerHTML = `<td>${nameHtml}<br>${statusHtml}</td><td>⭐ ${ratingText}</td><td>${distanceText}</td><td class="hit-count">${window.hitCounts[p.place_id] || 0}</td>`;
         tbody.appendChild(tr);
@@ -416,7 +413,7 @@ window.initResultList = function(list) {
     if (!document.getElementById('disclaimer-row')) {
         const footerRow = document.createElement('tr');
         footerRow.id = 'disclaimer-row';
-        footerRow.innerHTML = `<td colspan="4" style="font-size:0.75rem; color:#999; text-align:center; padding:5px;">* 距離為直線計算，時間採保守低速估計 (步2km/h, 車20km/h)。</td>`;
+        footerRow.innerHTML = `<td colspan="4" style="font-size:0.75rem; color:#999; text-align:center; padding:5px;">* 距離與時間為直線粗估 (步2km/h, 車20km/h)，實際路況請見轉盤結果。</td>`;
         tbody.appendChild(footerRow);
     }
 };
