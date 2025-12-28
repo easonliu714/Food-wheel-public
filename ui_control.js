@@ -416,7 +416,7 @@ window.initResultList = function(list) {
     if (!document.getElementById('disclaimer-row')) {
         const footerRow = document.createElement('tr');
         footerRow.id = 'disclaimer-row';
-        footerRow.innerHTML = `<td colspan="4" style="font-size:0.75rem; color:#999; text-align:center; padding:5px;">* 距離為直線計算，時間採保守低速估計 (步2km/h, 車30km/h)。</td>`;
+        footerRow.innerHTML = `<td colspan="4" style="font-size:0.75rem; color:#999; text-align:center; padding:5px;">* 距離為直線計算，時間採保守低速估計 (步2km/h, 車20km/h)。</td>`;
         tbody.appendChild(footerRow);
     }
 };
