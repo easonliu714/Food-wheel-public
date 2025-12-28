@@ -138,12 +138,12 @@
                 </div>
                 <div class="setting-row"><label>📑 用餐類別：</label><select id="mealType" onchange="updateKeywords()"><option value="breakfast">🍔 早餐 / 早午餐</option><option value="lunch">🍱 午餐 / 異國料理</option><option value="afternoon_tea">🧋 下午茶 / 甜點咖啡</option><option value="dinner">🍲 晚餐 / 火鍋</option><option value="late_night">🍻 宵夜 / 炸物</option><option value="noodles_rice">🍜 麵飯 / 小吃</option><option value="western_steak">🍽️ 牛排 / 西式</option><option value="dessert">🍧 甜點 / 冰品</option><option value="all">🌏 所有美食 (不限)</option></select></div>
                 <div class="setting-row"><label>💸 預算上限：</label><select id="priceLevel"><option value="-1">不限</option><option value="1">💲 $200 以下</option><option value="2">💲💲 $800 以下</option><option value="3">💲💲💲 $2000 以下</option><option value="4">💲💲💲💲 奢華</option></select></div>
-                <div class="setting-row" style="flex-direction: column; align-items: flex-start;"><label style="margin-bottom: 5px;">🔎 關鍵字：</label><input type="text" id="keywordInput" class="full-width-input" value=""></div>
                 <div class="setting-row"><label>🎖️ 星評下限：</label><select id="minRating"><option value="0">⚪ 不限</option><option value="3.0">⭐⭐⭐ 3.0 以上</option><option value="3.5">⭐⭐⭐☆ 3.5 以上</option><option value="4.0">⭐⭐⭐⭐ 4.0 以上</option><option value="4.5">⭐⭐⭐⭐☆ 4.5 以上</option></select></div>
                 <div class="setting-row"><label>🏃‍♂️ 交通方式：</label><select id="transportMode"><option value="WALKING">走路 🚶 (20km/h)</option><option value="DRIVING">開車 🚗 (60km/h)</option></select></div>
                 <div class="setting-row"><label>⏱️ 路程時間：</label><select id="maxTime"><option value="5">🕐 5 分鐘</option><option value="10">🕑 10 分鐘</option><option value="15">🕒 15 分鐘</option><option value="20">🕓 20 分鐘</option><option value="30">🕕 30 分鐘</option></select></div>
                 <div class="setting-row"><label>🔢 商家上限：</label><select id="resultCount"><option value="10">🏕️ 10 家</option><option value="20">🏡 20 家</option><option value="30">🏘️ 30 家</option><option value="40">🏢 40 家</option><option value="50">🌇 50 家</option><option value="60">🗺️ 60 家</option></select></div>
                 <div class="setting-row"><label>🎡 轉盤模式：</label><select id="spinMode"><option value="repeat">🔁 重複抽取（不移除）</option><option value="eliminate">❌ 淘汰制（抽到後移除）</option></select></div>
+                <div class="setting-row" style="flex-direction: column; align-items: flex-start;"><label style="margin-bottom: 5px;">🔎 關鍵字（可自訂，空格分隔）：</label><input type="text" id="keywordInput" class="full-width-input" value=""></div>
                 <button onclick="handleSearch()" class="search-btn">🔄 開始搜尋店家</button>
             </div>
 
