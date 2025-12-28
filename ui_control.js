@@ -1,4 +1,5 @@
 // ================== ui_control.js : 介面控制與 API 驗證 ==================
+// Version: 2025-12-28-v8 (Add Boost Like Option Logic)
 
 // 1. 基礎設定與教學
 window.showGuide = function(platform) {
@@ -65,7 +66,6 @@ window.validateAndSaveKey = function() {
     let inputKey = document.getElementById('userApiKey').value.trim();
     const savedKey = localStorage.getItem('food_wheel_api_key');
     
-    // 檢查是否為遮蔽字元，若是則使用舊金鑰
     if (inputKey === '●●●●●●●●') {
         if (savedKey) {
             inputKey = savedKey; 
@@ -291,21 +291,39 @@ window.enableSpinButton = function(count) {
     }
 };
 
+// [UPDATED] 加入加權邏輯 (Boost Likes)
 window.refreshWheelData = function() {
     const filterDislikeEl = document.getElementById('filterDislike');
     const filterDislike = filterDislikeEl ? filterDislikeEl.checked : false;
     
-    window.places = window.allSearchResults.filter(p => {
+    const boostLikeEl = document.getElementById('boostLike');
+    const boostLike = boostLikeEl ? boostLikeEl.checked : false;
+    
+    // 1. 先執行基礎過濾 (排除淘汰與踩雷)
+    const filteredBase = window.allSearchResults.filter(p => {
         if (window.eliminatedIds.has(p.place_id)) return false;
         if (filterDislike && window.userRatings[p.place_id] === 'dislike') return false;
         return true;
     });
 
+    // 2. 執行加權 (Weighting)：若店家是 "Like" 且開啟加權，則加入兩次
+    window.places = [];
+    filteredBase.forEach(p => {
+        window.places.push(p); // 原始加入
+        
+        if (boostLike && window.userRatings[p.place_id] === 'like') {
+            window.places.push(p); // 二次加入 (增加角度/機率)
+        }
+    });
+
     const searchBtn = document.querySelector('.search-btn');
     if(searchBtn && !searchBtn.disabled && searchBtn.innerText.includes("搜尋完成")) {
-        searchBtn.innerText = `搜尋完成 (共 ${window.places.length} 間)`;
+        // 按鈕顯示的是「不含重複」的實際店家數
+        const uniqueCount = new Set(window.places.map(p => p.place_id)).size;
+        searchBtn.innerText = `搜尋完成 (共 ${uniqueCount} 間)`;
     }
 
+    // 列表僅需顯示原始搜尋結果與狀態 (initResultList 會自行處理過濾顯示樣式)
     window.initResultList(window.allSearchResults);
     window.drawWheel();
     window.enableSpinButton(window.places.length);
