@@ -2,10 +2,10 @@
 
 // 定義保守估計的速度常數 (單位：公尺/分鐘)
 // 步行 2 km/h = 2000m / 60min ≈ 33.33 m/min
-// 開車 30 km/h = 30000m / 60min = 500 m/min
+// 開車 20 km/h = 20000m / 60min = 333.33 m/min
 const CONSERVATIVE_SPEEDS = {
     WALKING: 33.33,
-    DRIVING: 500
+    DRIVING: 333.33
 };
 
 window.initLocation = function() {
@@ -80,7 +80,7 @@ window.startSearch = function(location, keywordsRaw) {
 
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
-    const transportMode = document.getElementById('transportMode').value; // 'WALKING' or 'DRIVING'
+    const transportMode = document.getElementById('transportMode').value;
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
     const searchMode = document.getElementById('searchMode').value;
     
@@ -88,11 +88,10 @@ window.startSearch = function(location, keywordsRaw) {
     let searchQueries = [...splitKeywords];
     if (splitKeywords.length > 1) searchQueries.push(keywordsRaw);
 
-    // 這裡使用較寬鬆的「搜尋半徑」來抓取資料，確保有足夠的候選店家
-    // 實際篩選會在 processResults 使用保守速度進行
-    let searchSpeed = (transportMode === 'DRIVING') ? 800 : 80; // 搜尋時假設稍微正常一點的速度抓範圍
-    const maxTheoreticalRadius = searchSpeed * maxTime;
-
+    // 搜尋半徑寬鬆抓取，因為直線距離通常比路徑短，我們需要擴大範圍再過濾
+    // 假設開車平均 40km/h 來抓搜尋範圍，過濾時再用保守速度 20km/h
+    let searchSpeed = (transportMode === 'DRIVING') ? 666 : 66; 
+    
     let promises = [];
     if (searchMode === 'nearby') {
         searchQueries.forEach(keyword => {
@@ -153,7 +152,7 @@ window.fetchPlacesWithPagination = function(service, request, maxPages = 3) {
     });
 };
 
-// [方案 B 修改重點]：改用本地計算直線距離與保守耗時
+// 方案 B：本地計算直線距離與保守耗時
 window.processResults = function(origin, results) {
     const btn = document.querySelector('.search-btn');
     const userMaxCount = parseInt(document.getElementById('resultCount').value, 10);
@@ -164,7 +163,7 @@ window.processResults = function(origin, results) {
     const uniqueIds = new Set();
     let filtered = [];
 
-    // 設定保守速度
+    // 使用新的保守速度設定
     const speedPerMin = (transportMode === 'DRIVING') ? CONSERVATIVE_SPEEDS.DRIVING : CONSERVATIVE_SPEEDS.WALKING;
 
     results.forEach(p => {
@@ -183,9 +182,9 @@ window.processResults = function(origin, results) {
                 p.geometryDistance = distanceMeters;
                 p.conservativeDurationMins = conservativeDurationMins;
                 
-                // 建立顯示用的文字
-                p.displayDistanceText = (distanceMeters / 1000).toFixed(1) + " km/";
-                p.displayDurationText = `約 ${conservativeDurationMins} 分`;
+                // 簡潔的顯示文字 (不含括號說明)
+                p.displayDistanceText = (distanceMeters / 1000).toFixed(1) + " km";
+                p.displayDurationText = conservativeDurationMins + " 分";
                 
                 filtered.push(p);
             }
@@ -203,7 +202,6 @@ window.processResults = function(origin, results) {
     if (searchMode === 'nearby') {
         filtered.sort((a, b) => a.geometryDistance - b.geometryDistance);
     }
-    // 若為 famous 模式 (Google 預設排序)，則保留原始順序，或可依 rating 微調，這裡維持原始邏輯
 
     // 截斷數量
     window.allSearchResults = filtered.slice(0, userMaxCount);
