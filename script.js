@@ -1,31 +1,23 @@
 // ================== script.js : 入口點與核心互動邏輯 ==================
-// Version: 2025-12-28-v8
-// Tasks:
-// 1. 修正跨日營業時間判斷邏輯 (Manual Check)
-// 2. 轉盤結果區增加營業時間免責聲明
-// 3. [New] 綁定 "增加回訪機率" Checkbox 事件
+// Version: 2025-12-28-v9-PlanB
 
 window.onload = () => {
     try {
         console.log("Window loaded. Starting initialization...");
 
-        // 1. 初始化 Canvas
         window.canvas = document.getElementById('wheel');
         if(window.canvas) window.ctx = window.canvas.getContext('2d');
         window.menuCanvas = document.getElementById('menuWheel');
         if(window.menuCanvas) window.menuCtx = window.menuCanvas.getContext('2d');
 
-        // 2. 載入使用者資料
         const savedRatings = localStorage.getItem('food_wheel_user_ratings');
         if (savedRatings) {
             try { window.userRatings = JSON.parse(savedRatings); } catch(e) { console.error(e); }
         }
 
-        // 載入關鍵字
         if (typeof window.loadUserKeywords === 'function') window.loadUserKeywords();
         else window.activeKeywordDict = { ...window.defaultKeywordDict };
 
-        // 3. 檢查 Key 並決定流程
         const savedKey = localStorage.getItem('food_wheel_api_key');
         
         if (typeof window.populateSetupKeywords === 'function') window.populateSetupKeywords(); 
@@ -37,28 +29,23 @@ window.onload = () => {
         }
 
         if (savedKey) {
-            console.log("Saved key found, loading Maps SDK...");
             if (typeof window.loadGoogleMapsScript === 'function') {
                 window.loadGoogleMapsScript(savedKey);
             } else {
-                console.error("loadGoogleMapsScript function missing!");
                 alert("系統錯誤：UI 模組未正確載入");
             }
         } else {
-            console.log("No key found, showing Setup screen.");
             document.getElementById('setup-screen').style.display = 'block';
             document.getElementById('app-screen').style.display = 'none';
             if (typeof window.showGuide === 'function') window.showGuide('desktop');
         }
 
-        // 4. 綁定過濾器與加權器事件
         const filterCheckbox = document.getElementById('filterDislike');
         if (filterCheckbox) {
             filterCheckbox.addEventListener('change', () => { 
                 if (typeof window.refreshWheelData === 'function') window.refreshWheelData(); 
             });
         }
-        // [NEW] 綁定加權回訪事件
         const boostLikeCheckbox = document.getElementById('boostLike');
         if (boostLikeCheckbox) {
             boostLikeCheckbox.addEventListener('change', () => { 
@@ -72,7 +59,6 @@ window.onload = () => {
     }
 };
 
-// Spin 按鈕邏輯
 const spinBtn = document.getElementById('spinBtn');
 if(spinBtn) {
     spinBtn.onclick = () => {
@@ -90,7 +76,6 @@ if(spinBtn) {
             window.canvas.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
             window.canvas.style.transform = `rotate(${window.currentRotation}deg)`;
 
-            // 轉動時隱藏結果與操作按鈕
             ['storeName', 'storeRating', 'storeAddress', 'storePhone', 'storeStatus', 'storeDistance', 'userPersonalRating'].forEach(id => {
                 const el = document.getElementById(id);
                 if(el) {
@@ -115,11 +100,10 @@ if(spinBtn) {
                     const winner = window.places[winningIndex];
                     if(!winner) throw new Error("Winner undefined");
 
+                    // 呼叫更新 UI，這裡會觸發 Distance Matrix API
                     updateResultUI(winner);
 
                     if (spinMode === 'eliminate') {
-                        // 淘汰模式下，如果該店家因為加權佔據了兩個位置，我們需要把它的 ID 加入淘汰名單
-                        // refreshWheelData 在下次繪製時，會根據 ID 排除，所以兩個位置都會同時消失，邏輯正確。
                         window.eliminatedIds.add(winner.place_id); 
                         setTimeout(() => {
                             window.canvas.style.transition = 'none';
@@ -144,48 +128,59 @@ if(spinBtn) {
     };
 }
 
-// Check Open Status Manual (Keep original logic)
+// 輔助函式 (Manual Check 邏輯保持不變)
 function checkOpenStatusManual(periods) {
     if (!periods || periods.length === 0) return null; 
     if (periods.length === 1 && periods[0].open && !periods[0].close) return true;
-
     const now = new Date();
     const currentAbsMinutes = now.getDay() * 24 * 60 + now.getHours() * 60 + now.getMinutes();
-
     let isOpen = false;
-
     for (const p of periods) {
         if (!p.open || !p.close) continue;
-
         const openTime = parseInt(p.open.time);
         const closeTime = parseInt(p.close.time);
-
         let startMin = p.open.day * 24 * 60 + Math.floor(openTime / 100) * 60 + (openTime % 100);
         let endMin = p.close.day * 24 * 60 + Math.floor(closeTime / 100) * 60 + (closeTime % 100);
-
-        if (endMin < startMin) {
-            endMin += 7 * 24 * 60; 
-        }
-
+        if (endMin < startMin) { endMin += 7 * 24 * 60; }
         if ((currentAbsMinutes >= startMin && currentAbsMinutes < endMin) ||
             ((currentAbsMinutes + 7*24*60) >= startMin && (currentAbsMinutes + 7*24*60) < endMin)) {
-            isOpen = true;
-            break;
+            isOpen = true; break;
         }
     }
     return isOpen;
 }
 
-// 輔助函式：更新結果顯示
+// [方案 B 修改重點]：中獎後才計算真實距離
 function updateResultUI(p) {
     document.getElementById('storeName').innerText = p.name;
     document.getElementById('storeRating').innerText = p.rating ? `⭐ ${p.rating} (${p.user_ratings_total})` : "無評價";
     document.getElementById('storeAddress').innerText = p.vicinity || p.formatted_address;
     
-    // 初始化
+    // 先顯示保守估計數據 (這是 processResults 算出來的)
+    const conservativeInfo = `${p.displayDistanceText} / ${p.displayDurationText}`;
+    document.getElementById('storeDistance').innerHTML = `📏 保守估計：${conservativeInfo}<br>🚀 正在計算精確路徑...`;
+
+    // 呼叫 Google Distance Matrix API 取得真實數據
+    const transportMode = document.getElementById('transportMode').value;
+    if (window.userCoordinates && typeof window.getDistances === 'function') {
+        window.getDistances(window.userCoordinates, [p], transportMode)
+            .then(updatedList => {
+                if (updatedList && updatedList.length > 0) {
+                    const real = updatedList[0];
+                    // 更新 UI 為真實數據 (Google 預設時速)
+                    document.getElementById('storeDistance').innerHTML = 
+                        `🚗 真實路徑：${real.realDistanceText}<br>` +
+                        `⏱️ Google 預估耗時：${real.realDurationText} ` + 
+                        `<span style="font-size:0.8em; color:#666;">(${transportMode==='WALKING'?'步行':'開車'}預設時速)</span>`;
+                }
+            })
+            .catch(err => {
+                document.getElementById('storeDistance').innerHTML = `📏 保守估計：${conservativeInfo}<br>(精確計算失敗)`;
+            });
+    }
+
     document.getElementById('storePhone').innerText = "";
     document.getElementById('storeStatus').innerText = "讀取詳細營業時間...";
-    document.getElementById('storeDistance').innerText = p.realDistanceText ? `🚗 路程：${p.realDistanceText} / ${p.realDurationText}` : "";
 
     ['navLink', 'menuPhotoLink', 'btnAiMenu', 'btnLike', 'btnDislike'].forEach(id => {
         const el = document.getElementById(id);
@@ -202,7 +197,6 @@ function updateResultUI(p) {
     window.currentStoreForMenu = p;
     document.getElementById('btnAiMenu').style.display = 'inline-block';
 
-    // 呼叫 Details
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     service.getDetails({
         placeId: p.place_id,
@@ -216,9 +210,6 @@ function updateResultUI(p) {
             if (place.website) {
                 webBtn.style.display = 'inline-block';
                 webBtn.href = place.website;
-            } else if (place.url) {
-                // webBtn.style.display = 'inline-block';
-                // webBtn.href = place.url; 
             }
 
             let statusHtml = "";
@@ -261,6 +252,7 @@ function updateResultUI(p) {
     document.getElementById('btnDislike').onclick = () => ratePlace(p.place_id, 'dislike');
 }
 
+// 輔助函式 (Calculate Next Status Time 保持不變)
 function calculateNextStatusTime(openingHours) {
     if (!openingHours || !openingHours.periods) return null;
     const now = new Date();
@@ -310,6 +302,7 @@ function calculateNextStatusTime(openingHours) {
     return null;
 }
 
+// 輔助函式 (Rating UI 保持不變)
 function ratePlace(placeId, type) {
     if (window.userRatings[placeId] === type) {
         delete window.userRatings[placeId]; 
