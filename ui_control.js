@@ -1,5 +1,5 @@
 // ================== ui_control.js : 介面控制與 API 驗證 ==================
-// Version: 2025-12-28-v9-PlanB-Fix
+// Version: 2025-12-28-v10-PlanB-RangeFix
 
 // 1. 基礎設定與教學
 window.showGuide = function(platform) {
@@ -18,11 +18,10 @@ window.showGuide = function(platform) {
     container.innerHTML = html;
 };
 
-// [新增] 主畫面連動關鍵字函式 (修復問題 1)
+// 主畫面連動關鍵字函式
 window.updateKeywords = function() {
     const type = document.getElementById('mealType').value;
     const input = document.getElementById('keywordInput');
-    // 確保 activeKeywordDict 存在
     if (window.activeKeywordDict && window.activeKeywordDict[type] !== undefined) {
         input.value = window.activeKeywordDict[type];
     }
@@ -30,7 +29,7 @@ window.updateKeywords = function() {
 
 // 2. 設定頁面邏輯
 window.populateSetupKeywords = function() {
-    if (!window.activeKeywordDict) return; // 防呆
+    if (!window.activeKeywordDict) return;
     const mapping = {'kw_breakfast':'breakfast','kw_lunch':'lunch','kw_afternoon_tea':'afternoon_tea','kw_dinner':'dinner','kw_late_night':'late_night','kw_noodles_rice':'noodles_rice','kw_western_steak':'western_steak','kw_dessert':'dessert','kw_all':'all'};
     for (const [id, key] of Object.entries(mapping)) {
         const input = document.getElementById(id);
@@ -41,7 +40,6 @@ window.populateSetupKeywords = function() {
 window.populateSetupGeneralPrefs = function() {
     const prefsJson = localStorage.getItem('food_wheel_prefs');
     
-    // 金鑰遮蔽邏輯
     const savedMapKey = localStorage.getItem('food_wheel_api_key');
     const savedGeminiKey = localStorage.getItem('food_wheel_gemini_key');
     
@@ -112,7 +110,7 @@ window.validateAndSaveKey = function() {
                 });
             });
             alert("✅ 驗證成功！");
-            window.saveAndStart(true, inputKey); // 傳入真實 Key
+            window.saveAndStart(true, inputKey); 
         } catch (err) {
             alert(`⚠️ API Key 有效但權限不足：\n${err}\n請確保已啟用 Geocoding API 與 Places API。`);
         } finally {
@@ -130,7 +128,6 @@ window.validateAndSaveKey = function() {
     document.head.appendChild(script);
 };
 
-// [修正] 加入關鍵字儲存邏輯 (修復問題 3)
 window.saveAndStart = function(skipLoad = false, validatedMapKey = null) {
     let mapKeyToSave = validatedMapKey;
     if (!mapKeyToSave) {
@@ -162,10 +159,8 @@ window.saveAndStart = function(skipLoad = false, validatedMapKey = null) {
         geminiModel: getVal('geminiModelSelect')
     };
 
-    // 儲存自訂關鍵字
     const keywordMapping = {'kw_breakfast':'breakfast','kw_lunch':'lunch','kw_afternoon_tea':'afternoon_tea','kw_dinner':'dinner','kw_late_night':'late_night','kw_noodles_rice':'noodles_rice','kw_western_steak':'western_steak','kw_dessert':'dessert','kw_all':'all'};
     
-    // 確保字典已初始化
     if (!window.activeKeywordDict) window.activeKeywordDict = {};
 
     for (const [id, key] of Object.entries(keywordMapping)) {
@@ -217,7 +212,6 @@ window.initApp = function() {
     const mealSelect = document.getElementById('mealType');
     if (mealSelect) {
         mealSelect.value = autoMealType;
-        // 確保 updateKeywords 存在後呼叫
         if (typeof window.updateKeywords === 'function') {
             window.updateKeywords(); 
         } else {
@@ -252,7 +246,7 @@ window.editPreferences = function() {
     document.getElementById('app-screen').style.display = 'none';
     document.getElementById('setup-screen').style.display = 'block';
     window.populateSetupGeneralPrefs();
-    window.populateSetupKeywords(); // 確保也載入關鍵字
+    window.populateSetupKeywords(); 
 };
 
 window.resetApiKey = function() {
@@ -262,12 +256,10 @@ window.resetApiKey = function() {
         localStorage.removeItem('food_wheel_gemini_key');
         localStorage.removeItem('food_wheel_user_ratings');
         localStorage.removeItem('food_wheel_menus'); 
-        localStorage.removeItem('food_wheel_custom_keywords'); // 也清除自訂關鍵字
+        localStorage.removeItem('food_wheel_custom_keywords'); 
         location.reload();
     }
 };
-
-// 5. 遊戲邏輯與 UI 更新
 
 window.resetGame = function(fullReset) {
     window.currentRotation = 0; 
@@ -325,14 +317,12 @@ window.refreshWheelData = function() {
     const boostLikeEl = document.getElementById('boostLike');
     const boostLike = boostLikeEl ? boostLikeEl.checked : false;
     
-    // 1. 先執行基礎過濾 (排除淘汰與踩雷)
     const filteredBase = window.allSearchResults.filter(p => {
         if (window.eliminatedIds.has(p.place_id)) return false;
         if (filterDislike && window.userRatings[p.place_id] === 'dislike') return false;
         return true;
     });
 
-    // 2. 執行加權 (Weighting)
     window.places = [];
     filteredBase.forEach(p => {
         window.places.push(p); 
@@ -435,7 +425,7 @@ window.initResultList = function(list) {
     if (!document.getElementById('disclaimer-row')) {
         const footerRow = document.createElement('tr');
         footerRow.id = 'disclaimer-row';
-        footerRow.innerHTML = `<td colspan="4" style="font-size:0.75rem; color:#999; text-align:center; padding:5px;">* 距離與時間為直線粗估 (步2km/h, 車20km/h)，實際路況請見轉盤結果。</td>`;
+        footerRow.innerHTML = `<td colspan="4" style="font-size:0.75rem; color:#999; text-align:center; padding:5px;">* 距離與時間為直線粗估 (步2.5km/h, 車25km/h)，實際路況請見轉盤結果。</td>`;
         tbody.appendChild(footerRow);
     }
 };
