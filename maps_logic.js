@@ -104,7 +104,7 @@ window.startSearch = function(location, keywordsRaw) {
                 } else {
                     // 其他等級: 鎖定特定區間 (min=max)
                     // 2: $200-800, 3: $800-2000, 4: $2000+
-                    request.minPrice = priceLevel;
+                    request.minPrice = priceLevel-1;
                     request.maxPrice = priceLevel;
                 }
             }
