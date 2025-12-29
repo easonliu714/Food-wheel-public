@@ -96,15 +96,14 @@ window.startSearch = function(location, keywordsRaw) {
         searchQueries.forEach(keyword => {
             let request = { location: location, rankBy: google.maps.places.RankBy.DISTANCE, keyword: keyword };
             
-            // [修正] 預算區間邏輯
+            // 設定 API 請求的價格區間 (第一道防線)
             if (priceLevel !== -1) {
                 if (priceLevel === 1) {
                     // $200以下: 包含 0 (免費) 與 1 (平價)
                     request.maxPrice = 1;
                 } else {
                     // 其他等級: 鎖定特定區間 (min=max)
-                    // 2: $200-800, 3: $800-2000, 4: $2000+
-                    request.minPrice = priceLevel-1;
+                    request.minPrice = priceLevel;
                     request.maxPrice = priceLevel;
                 }
             }
@@ -122,7 +121,7 @@ window.startSearch = function(location, keywordsRaw) {
                 if (stepRadius < 500) stepRadius = 500; 
                 let request = { location: location, radius: stepRadius, rankBy: google.maps.places.RankBy.PROMINENCE, keyword: keyword };
                 
-                // [修正] 預算區間邏輯 (同上)
+                // 設定 API 請求的價格區間 (第一道防線)
                 if (priceLevel !== -1) {
                     if (priceLevel === 1) {
                         request.maxPrice = 1;
@@ -182,6 +181,9 @@ window.processResults = function(origin, results) {
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
     const searchMode = document.getElementById('searchMode').value;
     const minRating = parseFloat(document.getElementById('minRating').value) || 0;
+    
+    // [修正] 取得使用者設定的價格區間
+    const priceLevel = parseInt(document.getElementById('priceLevel').value, 10);
 
     const uniqueIds = new Set();
     let filtered = [];
@@ -203,6 +205,20 @@ window.processResults = function(origin, results) {
             const currentRating = p.rating || 0;
             if (currentRating < minRating) return;
 
+            // [新增] 價格雙重過濾 (第二道防線：Client-side Filtering)
+            // 即使 API 可能漏放不符條件的資料，這裡會再次嚴格檢查
+            if (priceLevel !== -1 && p.price_level !== undefined) {
+                if (priceLevel === 1) {
+                    // 使用者選 $200以下 (Level 1)
+                    // 若店家 > 1 (如 Level 2, 3, 4)，則移除
+                    if (p.price_level > 1) return;
+                } else {
+                    // 使用者選特定區間 (如 Level 2)
+                    // 若店家等級不等於設定值，則移除
+                    if (p.price_level !== priceLevel) return;
+                }
+            }
+
             if (conservativeDurationMins <= maxTime) {
                 p.geometryDistance = distanceMeters;
                 p.conservativeDurationMins = conservativeDurationMins;
@@ -217,7 +233,7 @@ window.processResults = function(origin, results) {
     });
 
     if (filtered.length === 0) {
-        alert(`經計算後無符合條件的店家。\n(可能原因：距離過遠、評分低於 ${minRating} 或無資料)`);
+        alert(`經計算後無符合條件的店家。\n(可能原因：距離過遠、評分低於 ${minRating}、價格不符或無資料)`);
         btn.innerText = "🔄 開始搜尋店家";
         btn.disabled = false;
         return;
