@@ -1,11 +1,11 @@
 // ================== maps_logic.js ==================
 
 // 定義保守估計的速度常數 (單位：公尺/分鐘)
-// 步行 2 km/h = 2000m / 60min ≈ 33.33 m/min
-// 開車 20 km/h = 20000m / 60min = 333.33 m/min
+// 步行 2.5 km/h = 2500m / 60min ≈ 41.66 m/min
+// 開車 25 km/h = 25000m / 60min = 416.66 m/min
 const CONSERVATIVE_SPEEDS = {
-    WALKING: 33.33,
-    DRIVING: 333.33
+    WALKING: 41.66,
+    DRIVING: 416.66
 };
 
 window.initLocation = function() {
@@ -89,14 +89,26 @@ window.startSearch = function(location, keywordsRaw) {
     if (splitKeywords.length > 1) searchQueries.push(keywordsRaw);
 
     // 搜尋半徑寬鬆抓取，因為直線距離通常比路徑短，我們需要擴大範圍再過濾
-    // 假設開車平均 40km/h 來抓搜尋範圍，過濾時再用保守速度 20km/h
     let searchSpeed = (transportMode === 'DRIVING') ? 666 : 66; 
     
     let promises = [];
     if (searchMode === 'nearby') {
         searchQueries.forEach(keyword => {
             let request = { location: location, rankBy: google.maps.places.RankBy.DISTANCE, keyword: keyword };
-            if (priceLevel !== -1) request.maxPrice = priceLevel;
+            
+            // [修正] 預算區間邏輯
+            if (priceLevel !== -1) {
+                if (priceLevel === 1) {
+                    // $200以下: 包含 0 (免費) 與 1 (平價)
+                    request.maxPrice = 1;
+                } else {
+                    // 其他等級: 鎖定特定區間 (min=max)
+                    // 2: $200-800, 3: $800-2000, 4: $2000+
+                    request.minPrice = priceLevel;
+                    request.maxPrice = priceLevel;
+                }
+            }
+
             promises.push(window.fetchPlacesWithPagination(service, request, 3));
         });
     } else {
@@ -109,7 +121,17 @@ window.startSearch = function(location, keywordsRaw) {
                 let stepRadius = stepTime * searchSpeed;
                 if (stepRadius < 500) stepRadius = 500; 
                 let request = { location: location, radius: stepRadius, rankBy: google.maps.places.RankBy.PROMINENCE, keyword: keyword };
-                if (priceLevel !== -1) request.maxPrice = priceLevel;
+                
+                // [修正] 預算區間邏輯 (同上)
+                if (priceLevel !== -1) {
+                    if (priceLevel === 1) {
+                        request.maxPrice = 1;
+                    } else {
+                        request.minPrice = priceLevel;
+                        request.maxPrice = priceLevel;
+                    }
+                }
+
                 promises.push(window.fetchPlacesWithPagination(service, request, 3));
             });
         });
@@ -159,14 +181,11 @@ window.processResults = function(origin, results) {
     const transportMode = document.getElementById('transportMode').value;
     const maxTime = parseInt(document.getElementById('maxTime').value, 10);
     const searchMode = document.getElementById('searchMode').value;
-    
-    // [修正] 取得星評下限
     const minRating = parseFloat(document.getElementById('minRating').value) || 0;
 
     const uniqueIds = new Set();
     let filtered = [];
 
-    // 使用新的保守速度設定
     const speedPerMin = (transportMode === 'DRIVING') ? CONSERVATIVE_SPEEDS.DRIVING : CONSERVATIVE_SPEEDS.WALKING;
 
     results.forEach(p => {
@@ -174,14 +193,13 @@ window.processResults = function(origin, results) {
             uniqueIds.add(p.place_id);
             const loc = p.geometry.location;
             
-            // 1. 計算直線距離 (Distance Matrix API 省略)
+            // 1. 計算直線距離
             const distanceMeters = google.maps.geometry.spherical.computeDistanceBetween(origin, loc);
             
             // 2. 計算保守預估時間
             const conservativeDurationMins = Math.ceil(distanceMeters / speedPerMin);
 
-            // 3. 篩選符合時間與評分的店家
-            // [修正] 加入星評過濾：若有評分且低於 minRating 則移除；若無評分但 minRating > 0 也移除 (視需求而定，此處假設無評分不合規)
+            // 3. 篩選 (時間 & 評分)
             const currentRating = p.rating || 0;
             if (currentRating < minRating) return;
 
@@ -189,7 +207,7 @@ window.processResults = function(origin, results) {
                 p.geometryDistance = distanceMeters;
                 p.conservativeDurationMins = conservativeDurationMins;
                 
-                // 簡潔的顯示文字 (不含括號說明)
+                // 簡潔顯示
                 p.displayDistanceText = (distanceMeters / 1000).toFixed(1) + " km";
                 p.displayDurationText = conservativeDurationMins + " 分";
                 
@@ -246,7 +264,6 @@ window.getDistances = function(origin, destinations, mode) {
                     const el = elements[i];
                     if (el.status === 'OK') {
                         let p = destinations[i];
-                        // 這是 Google Maps 計算的真實路徑與預設速度耗時
                         p.realDistanceText = el.distance.text;
                         p.realDurationText = el.duration.text;
                         p.realDurationMins = Math.ceil(el.duration.value / 60);
