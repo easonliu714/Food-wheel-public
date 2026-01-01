@@ -1,5 +1,5 @@
 // ================== ui_control.js : 介面控制與 API 驗證 ==================
-// Version: 2025-12-28-v10-PlanB-RangeFix
+// Version: 2025-12-28-v11-TableMenuLink
 
 // 1. 基礎設定與教學
 window.showGuide = function(platform) {
@@ -290,7 +290,7 @@ window.resetGame = function(fullReset) {
         window.enableSpinButton(0);
         
         const tbody = document.querySelector('#resultsTable tbody');
-        if(tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#999;">尚未搜尋...</td></tr>';
+        if(tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999;">尚未搜尋...</td></tr>';
     }
 };
 
@@ -374,14 +374,25 @@ window.drawWheel = function() {
 
 window.initResultList = function(list) {
     const tbody = document.querySelector('#resultsTable tbody');
+    const thead = document.querySelector('#resultsTable thead tr');
     if(!tbody) return;
+    
+    // [MODIFIED] 更新表頭以包含「菜單」欄位
+    if(thead) {
+        thead.innerHTML = `<th>店名</th><th>星評</th><th>直線/粗估</th><th>菜單</th><th>次數</th>`;
+    }
+
     tbody.innerHTML = ''; 
     if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">無資料</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">無資料</td></tr>';
         return;
     }
     const filterDislikeEl = document.getElementById('filterDislike');
     const filterDislike = filterDislikeEl ? filterDislikeEl.checked : false;
+
+    // 檢查是否有儲存的菜單資料
+    let allMenus = {};
+    try { allMenus = JSON.parse(localStorage.getItem('food_wheel_menus')) || {}; } catch(e) {}
 
     list.forEach(p => {
         const isEliminated = window.eliminatedIds.has(p.place_id);
@@ -418,15 +429,33 @@ window.initResultList = function(list) {
         
         const distanceText = `${p.displayDistanceText} / ${p.displayDurationText}`;
 
-        tr.innerHTML = `<td>${nameHtml}<br>${statusHtml}</td><td>⭐ ${ratingText}</td><td>${distanceText}</td><td class="hit-count">${window.hitCounts[p.place_id] || 0}</td>`;
+        // [MODIFIED] 菜單欄位邏輯
+        const menuData = allMenus[p.place_id];
+        let menuHtml = `<span style="color:#ccc">-</span>`;
+        if(menuData && menuData.length > 0) {
+            menuHtml = `<a href="javascript:void(0)" onclick="openMenuFromList('${p.place_id}')" style="color:#e67e22; font-weight:bold; text-decoration:none;">📖 點餐</a>`;
+        }
+
+        tr.innerHTML = `<td>${nameHtml}<br>${statusHtml}</td><td>⭐ ${ratingText}</td><td>${distanceText}</td><td>${menuHtml}</td><td class="hit-count">${window.hitCounts[p.place_id] || 0}</td>`;
         tbody.appendChild(tr);
     });
     
     if (!document.getElementById('disclaimer-row')) {
         const footerRow = document.createElement('tr');
         footerRow.id = 'disclaimer-row';
-        footerRow.innerHTML = `<td colspan="4" style="font-size:0.75rem; color:#999; text-align:center; padding:5px;">* 距離與時間為直線粗估 (步2.5km/h, 車25km/h)，實際路況請見轉盤結果。</td>`;
+        footerRow.innerHTML = `<td colspan="5" style="font-size:0.75rem; color:#999; text-align:center; padding:5px;">* 距離與時間為直線粗估 (步2.5km/h, 車25km/h)，實際路況請見轉盤結果。</td>`;
         tbody.appendChild(footerRow);
+    }
+};
+
+// [MODIFIED] 新增從列表開啟菜單的函式
+window.openMenuFromList = function(placeId) {
+    const place = window.allSearchResults.find(p => p.place_id === placeId);
+    if(place) {
+        window.currentStoreForMenu = place;
+        window.openAiMenuSelector();
+        // 滾動到最上方以顯示菜單畫面
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 };
 
