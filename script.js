@@ -1,5 +1,5 @@
 // ================== script.js : 入口點與核心互動邏輯 ==================
-// Version: 2025-12-28-v9-PlanB
+// Version: 2025-12-28-v11-SpinBtnFix
 
 window.onload = () => {
     try {
@@ -69,6 +69,7 @@ if(spinBtn) {
             const spinModeEl = document.getElementById('spinMode'); 
             if (spinModeEl) spinMode = spinModeEl.value;
             
+            // [MODIFIED] 確保按鈕被禁用，避免誤觸
             spinBtn.disabled = true; 
             
             const spinAngle = Math.floor(Math.random() * 1800) + 1800; 
@@ -109,9 +110,14 @@ if(spinBtn) {
                             window.canvas.style.transition = 'none';
                             window.currentRotation = 0;
                             window.canvas.style.transform = `rotate(0deg)`;
-                            if (typeof window.refreshWheelData === 'function') window.refreshWheelData(); 
+                            if (typeof window.refreshWheelData === 'function') {
+                                window.refreshWheelData(); 
+                                // refreshWheelData 內部會呼叫 enableSpinButton，確保狀態更新後才開啟
+                            }
                         }, 2000); 
                     } else {
+                        // [MODIFIED] 只有在 repeat 模式下且動畫結束後才手動開啟
+                        // eliminate 模式交由 refreshWheelData 控制
                         spinBtn.disabled = false;
                         if (typeof window.refreshWheelData === 'function') window.refreshWheelData(); 
                     }
@@ -150,14 +156,13 @@ function checkOpenStatusManual(periods) {
     return isOpen;
 }
 
-// [方案 B 修改重點]：中獎後才計算真實距離
+// 方案 B 修改重點：中獎後才計算真實距離
 function updateResultUI(p) {
     document.getElementById('storeName').innerText = p.name;
     document.getElementById('storeRating').innerText = p.rating ? `⭐ ${p.rating} (${p.user_ratings_total})` : "無評價";
     document.getElementById('storeAddress').innerText = p.vicinity || p.formatted_address;
     
     // 先顯示保守估計數據 (這是 processResults 算出來的)
-    // 因為這裡是詳細結果頁，我們可以稍微多加一點標示，與列表區分
     const conservativeInfo = `${p.displayDistanceText} / ${p.displayDurationText}`;
     document.getElementById('storeDistance').innerHTML = `📏 保守估計：${conservativeInfo}<br>🚀 正在計算精確路徑...`;
 
@@ -168,7 +173,6 @@ function updateResultUI(p) {
             .then(updatedList => {
                 if (updatedList && updatedList.length > 0) {
                     const real = updatedList[0];
-                    // 更新 UI 為真實數據 (Google 預設時速)
                     document.getElementById('storeDistance').innerHTML = 
                         `🚗 真實路徑：${real.realDistanceText}<br>` +
                         `⏱️ Google 預估耗時：${real.realDurationText} ` + 
