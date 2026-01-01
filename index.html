@@ -194,6 +194,7 @@
                 
                 <div class="list-panel-full">
                     <h3>📋 搜尋結果清單</h3>
+                    <p style="font-size:0.8rem; color:#999; margin-bottom: 5px; margin-top: 0;">* 距離與時間為直線粗估 (步2.5km/h, 車25km/h)，實際路況請見轉盤結果。</p>
                     <div class="table-wrapper">
                         <table id="resultsTable">
                             <thead><tr><th>店名</th><th>星評</th><th>直線/粗估</th><th>次數</th></tr></thead>
@@ -224,13 +225,14 @@
             
             <div id="ai-step-2" class="menu-layout" style="display:none;">
                 <div id="menuImagesPreview" style="display:none;"></div>
-                
-                <div class="menu-controls"><label>📂 類別：</label><select id="menuCategorySelect" onchange="updateMenuWheel()"></select></div>
-                <div class="wheel-container"><canvas id="menuWheel" width="400" height="400"></canvas><div id="pointer">▼</div></div>
-                <p class="ai-disclaimer">
+
+                <p class="ai-disclaimer" style="margin-top:0; border-top:none; border-bottom:1px dashed #eee; margin-bottom:15px;">
                     ⚠️ 免責聲明：AI 辨識菜單正確性會受到上傳圖片清晰度與時效性影響，<br>
                     菜單內容與價格僅供試算參考，請以商家現場即時資訊為準。
                 </p>
+                
+                <div class="menu-controls"><label>📂 類別：</label><select id="menuCategorySelect" onchange="updateMenuWheel()"></select></div>
+                <div class="wheel-container"><canvas id="menuWheel" width="400" height="400"></canvas><div id="pointer">▼</div></div>
                 <div class="action-area"><button id="spinMenuBtn" class="search-btn">🎰 轉菜色</button></div>
                 <div id="menuResult" style="text-align: center; margin-bottom: 20px;">
                     <h2 id="dishName" style="color: #d35400;">...</h2><p id="dishPrice" style="font-weight: bold;"></p>
@@ -245,10 +247,6 @@
                     <h3>📜 完整菜單明細</h3>
                     <div id="fullMenuContainer" style="max-height: 300px; overflow-y: auto;"></div>
                 </div>
-                <p class="ai-disclaimer">
-                    ⚠️ 免責聲明：AI 辨識菜單正確性會受到上傳圖片清晰度與時效性影響，<br>
-                    菜單內容與價格僅供試算參考，請以商家現場即時資訊為準。
-                </p>
             </div>
             
             <div id="ai-loading" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:1001; text-align:center; padding-top:200px;">
