@@ -1,5 +1,8 @@
 // ================== ui_control.js : 介面控制與 API 驗證 ==================
-// Version: 2025-12-28-v12-LayoutFix
+// Version: 2025-12-28-v13-SortFilter
+
+// 狀態變數：商家列表排序狀態
+window.storeSortState = { key: null, asc: true };
 
 // 1. 基礎設定與教學
 window.showGuide = function(platform) {
@@ -39,7 +42,6 @@ window.populateSetupKeywords = function() {
 
 window.populateSetupGeneralPrefs = function() {
     const prefsJson = localStorage.getItem('food_wheel_prefs');
-    
     const savedMapKey = localStorage.getItem('food_wheel_api_key');
     const savedGeminiKey = localStorage.getItem('food_wheel_gemini_key');
     
@@ -286,6 +288,7 @@ window.resetGame = function(fullReset) {
         window.allSearchResults = [];
         window.eliminatedIds.clear();
         window.hitCounts = {};
+        window.storeSortState = { key: null, asc: true }; // 重置排序
         if(window.ctx) window.ctx.clearRect(0, 0, 400, 400);
         window.enableSpinButton(0);
         
@@ -310,16 +313,29 @@ window.enableSpinButton = function(count) {
     }
 };
 
+// [MODIFIED] 修改: 加入「營業中」過濾邏輯
 window.refreshWheelData = function() {
     const filterDislikeEl = document.getElementById('filterDislike');
     const filterDislike = filterDislikeEl ? filterDislikeEl.checked : false;
     
     const boostLikeEl = document.getElementById('boostLike');
     const boostLike = boostLikeEl ? boostLikeEl.checked : false;
+
+    // 新增：讀取營業中 Checkbox
+    const filterOpenEl = document.getElementById('filterOpen');
+    const filterOpen = filterOpenEl ? filterOpenEl.checked : false;
     
     const filteredBase = window.allSearchResults.filter(p => {
         if (window.eliminatedIds.has(p.place_id)) return false;
         if (filterDislike && window.userRatings[p.place_id] === 'dislike') return false;
+        
+        // 營業中過濾邏輯：
+        // 若勾選，且商家有 opening_hours 資訊，且 open_now 為 false (明確休息中)，則濾除
+        // 若 open_now 為 undefined 或 true，則保留 (因為 undefined 代表未知)
+        if (filterOpen && p.opening_hours && p.opening_hours.open_now === false) {
+            return false;
+        }
+
         return true;
     });
 
@@ -337,7 +353,14 @@ window.refreshWheelData = function() {
         searchBtn.innerText = `搜尋完成 (共 ${uniqueCount} 間)`;
     }
 
-    window.initResultList(window.allSearchResults);
+    // 重新繪製列表 (傳入過濾後的結果)
+    window.initResultList(window.places); 
+    // 注意：initResultList 現在會渲染所有傳入的 places，但轉盤邏輯需要 window.places 
+    // 為了列表顯示正確 (不重複顯示 Boost 的店家)，這裡最好只傳入 filteredBase
+    // 但因為排序功能可能需要操作，我們統一重新渲染
+    // 修正：列表不應該顯示重複的 boost 項目，轉盤才需要
+    window.initResultList(filteredBase);
+
     window.drawWheel();
     window.enableSpinButton(window.places.length);
 };
@@ -372,13 +395,29 @@ window.drawWheel = function() {
     });
 };
 
+// [MODIFIED] 修改: 新增表頭排序功能與箭頭顯示
 window.initResultList = function(list) {
     const tbody = document.querySelector('#resultsTable tbody');
     const thead = document.querySelector('#resultsTable thead tr');
     if(!tbody) return;
     
+    // 輔助函式：產生排序箭頭
+    const getArrow = (key) => {
+        if (window.storeSortState.key === key) {
+            return window.storeSortState.asc ? '▲' : '▼';
+        }
+        return '<span style="color:#ddd; font-size:0.8em;">▼</span>'; // 預設灰色
+    };
+
     if(thead) {
-        thead.innerHTML = `<th>店名</th><th>星評</th><th>直線/粗估</th><th>菜單</th><th>次數</th>`;
+        // 為每個 TH 加入 onclick 事件
+        thead.innerHTML = `
+            <th onclick="window.sortStores('name')" style="cursor:pointer;">店名 ${getArrow('name')}</th>
+            <th onclick="window.sortStores('rating')" style="cursor:pointer;">星評 ${getArrow('rating')}</th>
+            <th onclick="window.sortStores('distance')" style="cursor:pointer;">直線/粗估 ${getArrow('distance')}</th>
+            <th>菜單</th>
+            <th onclick="window.sortStores('count')" style="cursor:pointer;">次數 ${getArrow('count')}</th>
+        `;
     }
 
     tbody.innerHTML = ''; 
@@ -386,20 +425,18 @@ window.initResultList = function(list) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">無資料</td></tr>';
         return;
     }
-    const filterDislikeEl = document.getElementById('filterDislike');
-    const filterDislike = filterDislikeEl ? filterDislikeEl.checked : false;
 
     let allMenus = {};
     try { allMenus = JSON.parse(localStorage.getItem('food_wheel_menus')) || {}; } catch(e) {}
 
     list.forEach(p => {
         const isEliminated = window.eliminatedIds.has(p.place_id);
-        const isDislike = window.userRatings[p.place_id] === 'dislike';
-        const isFiltered = filterDislike && isDislike;
-
+        // 注意：這裡的 list 已經是被 refreshWheelData 過濾過的，所以不需要再判斷 filterDislike
+        // 但如果傳入的是原始 list (例如首次搜尋)，則可能需要樣式處理，不過為了簡化，我們假設外部已處理
+        
         const tr = document.createElement('tr');
         tr.id = `row-${p.place_id}`; 
-        if (isEliminated || isFiltered) tr.classList.add('eliminated'); 
+        if (isEliminated) tr.classList.add('eliminated'); 
 
         const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}&query_place_id=${p.place_id}`;
         
@@ -407,7 +444,7 @@ window.initResultList = function(list) {
         if (window.userRatings[p.place_id]) {
             if (window.userRatings[p.place_id] === 'like') {
                 nameHtml = `<span class="personal-tag like">👍</span> ` + nameHtml;
-            } else if (isDislike) {
+            } else if (window.userRatings[p.place_id] === 'dislike') {
                 nameHtml = `<span class="personal-tag dislike">💣</span> ` + nameHtml;
             }
         }
@@ -424,9 +461,7 @@ window.initResultList = function(list) {
         }
 
         const ratingText = p.rating ? `${p.rating} <span style="font-size:0.8em; color:#666;">(${p.user_ratings_total || 0})</span>` : "無評價";
-        
         const distanceText = `${p.displayDistanceText} / ${p.displayDurationText}`;
-
         const menuData = allMenus[p.place_id];
         let menuHtml = `<span style="color:#ccc">-</span>`;
         if(menuData && menuData.length > 0) {
@@ -436,8 +471,44 @@ window.initResultList = function(list) {
         tr.innerHTML = `<td>${nameHtml}<br>${statusHtml}</td><td>⭐ ${ratingText}</td><td>${distanceText}</td><td>${menuHtml}</td><td class="hit-count">${window.hitCounts[p.place_id] || 0}</td>`;
         tbody.appendChild(tr);
     });
-    
-    // [MODIFIED] 已移除自動插入 disclaimer-row 的邏輯，因為現在直接寫在 HTML 中
+};
+
+// [MODIFIED] 新增：商家列表排序邏輯
+window.sortStores = function(key) {
+    if (window.storeSortState.key === key) {
+        window.storeSortState.asc = !window.storeSortState.asc;
+    } else {
+        window.storeSortState.key = key;
+        window.storeSortState.asc = true;
+    }
+
+    const parseDist = (str) => {
+        if(!str) return 999999;
+        let s = str.toLowerCase().trim();
+        let val = parseFloat(s);
+        if (s.includes('km')) val *= 1000;
+        return val;
+    };
+
+    window.allSearchResults.sort((a, b) => {
+        let valA, valB;
+        if (key === 'rating') {
+            valA = a.rating || 0; valB = b.rating || 0;
+        } else if (key === 'name') {
+            valA = a.name || ''; valB = b.name || '';
+            return window.storeSortState.asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        } else if (key === 'distance') {
+            valA = parseDist(a.displayDistanceText);
+            valB = parseDist(b.displayDistanceText);
+        } else if (key === 'count') {
+            valA = window.hitCounts[a.place_id] || 0;
+            valB = window.hitCounts[b.place_id] || 0;
+        }
+        
+        return window.storeSortState.asc ? (valA - valB) : (valB - valA);
+    });
+
+    window.refreshWheelData(); // 重新整理列表與轉盤
 };
 
 window.openMenuFromList = function(placeId) {
