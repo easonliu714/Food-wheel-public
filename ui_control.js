@@ -1,5 +1,5 @@
 // ================== ui_control.js : 介面控制與 API 驗證 ==================
-// Version: 2025-12-28-v11-TableMenuLink
+// Version: 2025-12-28-v12-LayoutFix
 
 // 1. 基礎設定與教學
 window.showGuide = function(platform) {
@@ -377,7 +377,6 @@ window.initResultList = function(list) {
     const thead = document.querySelector('#resultsTable thead tr');
     if(!tbody) return;
     
-    // [MODIFIED] 更新表頭以包含「菜單」欄位
     if(thead) {
         thead.innerHTML = `<th>店名</th><th>星評</th><th>直線/粗估</th><th>菜單</th><th>次數</th>`;
     }
@@ -390,7 +389,6 @@ window.initResultList = function(list) {
     const filterDislikeEl = document.getElementById('filterDislike');
     const filterDislike = filterDislikeEl ? filterDislikeEl.checked : false;
 
-    // 檢查是否有儲存的菜單資料
     let allMenus = {};
     try { allMenus = JSON.parse(localStorage.getItem('food_wheel_menus')) || {}; } catch(e) {}
 
@@ -429,7 +427,6 @@ window.initResultList = function(list) {
         
         const distanceText = `${p.displayDistanceText} / ${p.displayDurationText}`;
 
-        // [MODIFIED] 菜單欄位邏輯
         const menuData = allMenus[p.place_id];
         let menuHtml = `<span style="color:#ccc">-</span>`;
         if(menuData && menuData.length > 0) {
@@ -439,15 +436,15 @@ window.initResultList = function(list) {
         tr.innerHTML = `<td>${nameHtml}<br>${statusHtml}</td><td>⭐ ${ratingText}</td><td>${distanceText}</td><td>${menuHtml}</td><td class="hit-count">${window.hitCounts[p.place_id] || 0}</td>`;
         tbody.appendChild(tr);
     });
+    
+    // [MODIFIED] 已移除自動插入 disclaimer-row 的邏輯，因為現在直接寫在 HTML 中
 };
 
-// [MODIFIED] 新增從列表開啟菜單的函式
 window.openMenuFromList = function(placeId) {
     const place = window.allSearchResults.find(p => p.place_id === placeId);
     if(place) {
         window.currentStoreForMenu = place;
         window.openAiMenuSelector();
-        // 滾動到最上方以顯示菜單畫面
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 };
