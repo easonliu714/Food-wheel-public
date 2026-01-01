@@ -1,5 +1,5 @@
 // ================== script.js : 入口點與核心互動邏輯 ==================
-// Version: 2025-12-28-v11-SpinBtnFix
+// Version: 2025-12-28-v13-EventBinding
 
 window.onload = () => {
     try {
@@ -40,6 +40,7 @@ window.onload = () => {
             if (typeof window.showGuide === 'function') window.showGuide('desktop');
         }
 
+        // [MODIFIED] 綁定所有過濾器的變更事件
         const filterCheckbox = document.getElementById('filterDislike');
         if (filterCheckbox) {
             filterCheckbox.addEventListener('change', () => { 
@@ -49,6 +50,13 @@ window.onload = () => {
         const boostLikeCheckbox = document.getElementById('boostLike');
         if (boostLikeCheckbox) {
             boostLikeCheckbox.addEventListener('change', () => { 
+                if (typeof window.refreshWheelData === 'function') window.refreshWheelData(); 
+            });
+        }
+        // 新增的營業中過濾器
+        const filterOpenCheckbox = document.getElementById('filterOpen');
+        if (filterOpenCheckbox) {
+            filterOpenCheckbox.addEventListener('change', () => { 
                 if (typeof window.refreshWheelData === 'function') window.refreshWheelData(); 
             });
         }
@@ -69,7 +77,6 @@ if(spinBtn) {
             const spinModeEl = document.getElementById('spinMode'); 
             if (spinModeEl) spinMode = spinModeEl.value;
             
-            // [MODIFIED] 確保按鈕被禁用，避免誤觸
             spinBtn.disabled = true; 
             
             const spinAngle = Math.floor(Math.random() * 1800) + 1800; 
@@ -101,7 +108,6 @@ if(spinBtn) {
                     const winner = window.places[winningIndex];
                     if(!winner) throw new Error("Winner undefined");
 
-                    // 呼叫更新 UI，這裡會觸發 Distance Matrix API
                     updateResultUI(winner);
 
                     if (spinMode === 'eliminate') {
@@ -112,12 +118,9 @@ if(spinBtn) {
                             window.canvas.style.transform = `rotate(0deg)`;
                             if (typeof window.refreshWheelData === 'function') {
                                 window.refreshWheelData(); 
-                                // refreshWheelData 內部會呼叫 enableSpinButton，確保狀態更新後才開啟
                             }
                         }, 2000); 
                     } else {
-                        // [MODIFIED] 只有在 repeat 模式下且動畫結束後才手動開啟
-                        // eliminate 模式交由 refreshWheelData 控制
                         spinBtn.disabled = false;
                         if (typeof window.refreshWheelData === 'function') window.refreshWheelData(); 
                     }
@@ -134,7 +137,7 @@ if(spinBtn) {
     };
 }
 
-// 輔助函式 (Manual Check 邏輯保持不變)
+// 輔助函式 
 function checkOpenStatusManual(periods) {
     if (!periods || periods.length === 0) return null; 
     if (periods.length === 1 && periods[0].open && !periods[0].close) return true;
@@ -156,17 +159,14 @@ function checkOpenStatusManual(periods) {
     return isOpen;
 }
 
-// 方案 B 修改重點：中獎後才計算真實距離
 function updateResultUI(p) {
     document.getElementById('storeName').innerText = p.name;
     document.getElementById('storeRating').innerText = p.rating ? `⭐ ${p.rating} (${p.user_ratings_total})` : "無評價";
     document.getElementById('storeAddress').innerText = p.vicinity || p.formatted_address;
     
-    // 先顯示保守估計數據 (這是 processResults 算出來的)
     const conservativeInfo = `${p.displayDistanceText} / ${p.displayDurationText}`;
     document.getElementById('storeDistance').innerHTML = `📏 保守估計：${conservativeInfo}<br>🚀 正在計算精確路徑...`;
 
-    // 呼叫 Google Distance Matrix API 取得真實數據
     const transportMode = document.getElementById('transportMode').value;
     if (window.userCoordinates && typeof window.getDistances === 'function') {
         window.getDistances(window.userCoordinates, [p], transportMode)
@@ -257,7 +257,6 @@ function updateResultUI(p) {
     document.getElementById('btnDislike').onclick = () => ratePlace(p.place_id, 'dislike');
 }
 
-// 輔助函式 (Calculate Next Status Time 保持不變)
 function calculateNextStatusTime(openingHours) {
     if (!openingHours || !openingHours.periods) return null;
     const now = new Date();
@@ -307,7 +306,6 @@ function calculateNextStatusTime(openingHours) {
     return null;
 }
 
-// 輔助函式 (Rating UI 保持不變)
 function ratePlace(placeId, type) {
     if (window.userRatings[placeId] === type) {
         delete window.userRatings[placeId]; 
