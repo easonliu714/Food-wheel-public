@@ -1,5 +1,8 @@
 // ================== ai_menu.js ==================
 
+// 狀態變數：菜單排序狀態
+window.menuSortState = { key: null, asc: true };
+
 // Modal 控制函式
 window.openImageModal = function(src) {
     const modal = document.getElementById('imageModal');
@@ -41,6 +44,9 @@ window.openAiMenuSelector = function() {
     document.getElementById('menuStoreTitle').innerText = `菜單：${window.currentStoreForMenu.name}`;
     document.getElementById('maps-photo-grid').innerHTML = '';
     window.selectedPhotoDataList = [];
+    
+    // 重置排序狀態
+    window.menuSortState = { key: null, asc: true };
 
     if (savedData && savedData.length > 0) {
         window.initAiMenuSystem(savedData);
@@ -246,7 +252,6 @@ window.spinMenu = function() {
         if (winningIndex < 0) winningIndex += numOptions;
         const winner = window.currentMenuData[winningIndex];
         
-        // [MODIFIED] 中獎顯示格式：[類別] 菜名
         const category = winner.category || '主餐';
         document.getElementById('dishName').innerText = `[${category}] ${winner.name}`;
         document.getElementById('dishPrice').innerText = `$${winner.price}`;
@@ -293,10 +298,8 @@ window.checkout = function() {
     alert(msg);
 };
 
-// [MODIFIED] 增加編輯類別的邏輯
 window.editMenuItem = function(index, field) {
     const item = window.fullMenuData[index];
-    // 若為類別，預設值為 '主餐'
     const oldValue = item[field] || (field==='category'?'主餐':'');
     const fieldName = field === 'name' ? '菜名' : (field === 'price' ? '價格' : '類別');
     
@@ -315,12 +318,56 @@ window.editMenuItem = function(index, field) {
     }
 };
 
+// [MODIFIED] 修改: 新增菜單排序邏輯與表頭
+window.sortMenu = function(key) {
+    if (window.menuSortState.key === key) {
+        window.menuSortState.asc = !window.menuSortState.asc;
+    } else {
+        window.menuSortState.key = key;
+        window.menuSortState.asc = true;
+    }
+    
+    window.fullMenuData.sort((a, b) => {
+        let valA, valB;
+        if (key === 'category') {
+            valA = a.category || '主餐'; valB = b.category || '主餐';
+            return window.menuSortState.asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        } else if (key === 'name') {
+            valA = a.name; valB = b.name;
+            return window.menuSortState.asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        } else if (key === 'price') {
+            valA = a.price || 0; valB = b.price || 0;
+            return window.menuSortState.asc ? (valA - valB) : (valB - valA);
+        }
+    });
+    window.renderFullMenuTable();
+    window.updateMenuWheel(); // 同步更新轉盤順序 (雖然轉盤沒順序，但保持數據一致)
+};
+
 window.renderFullMenuTable = function() {
     const container = document.getElementById('fullMenuContainer');
     if (!container) return;
-    let html = `<p style="font-size:0.8rem; color:#666; text-align:center;">(點擊類別、菜名或價格可修改)</p><table class="menu-table"><thead><tr><th>類別</th><th>名稱</th><th>價格</th><th>操作</th></tr></thead><tbody>`;
+    
+    const getArrow = (key) => {
+        if (window.menuSortState.key === key) {
+            return window.menuSortState.asc ? '▲' : '▼';
+        }
+        return '<span style="color:#ddd; font-size:0.8em;">▼</span>';
+    };
+
+    let html = `<p style="font-size:0.8rem; color:#666; text-align:center;">(點擊類別、菜名或價格可修改 / 點擊表頭排序)</p>
+    <table class="menu-table">
+        <thead>
+            <tr>
+                <th onclick="window.sortMenu('category')" style="cursor:pointer;">類別 ${getArrow('category')}</th>
+                <th onclick="window.sortMenu('name')" style="cursor:pointer;">名稱 ${getArrow('name')}</th>
+                <th onclick="window.sortMenu('price')" style="cursor:pointer;">價格 ${getArrow('price')}</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>`;
+        
     window.fullMenuData.forEach((item, idx) => {
-        // [MODIFIED] 第一欄增加 onclick 事件以編輯類別
         html += `<tr>
             <td onclick="editMenuItem(${idx}, 'category')">${item.category || '主餐'}</td>
             <td onclick="editMenuItem(${idx}, 'name')" style="cursor:pointer; text-decoration:underline dashed; text-underline-offset:4px;">${item.name}</td>
