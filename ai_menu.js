@@ -22,8 +22,6 @@ window.onclick = function(event) {
     }
 }
 
-// ... saveMenuData, openAiMenuSelector, showUploadStep 等保持不變 (可參考上一版) ...
-
 window.saveMenuData = function(placeId, menuItems) {
     if (!placeId || !menuItems) return;
     let allMenus = {};
@@ -80,7 +78,6 @@ window.handleFileUpload = function(input) {
                 });
                 const div = document.createElement('div');
                 div.className = 'photo-item selected';
-                // 改為呼叫 openImageModal
                 div.innerHTML = `<img src="${e.target.result}" title="點擊放大" onclick="window.openImageModal('${e.target.result}')">`;
                 grid.appendChild(div);
 
@@ -145,7 +142,6 @@ window.initAiMenuSystem = function(menuData) {
     const catSelect = document.getElementById('menuCategorySelect');
     catSelect.innerHTML = "";
     
-    // [NEW] 加入全選選項
     const allOpt = document.createElement('option');
     allOpt.value = 'all';
     allOpt.innerText = '♾️ 全部 (All)';
@@ -165,7 +161,6 @@ window.initAiMenuSystem = function(menuData) {
     const spinBtn = document.getElementById('spinMenuBtn');
     if(spinBtn) spinBtn.onclick = window.spinMenu;
     
-    // 顯示上傳的預覽圖
     const previewContainer = document.getElementById('menuImagesPreview');
     if (previewContainer) {
         previewContainer.innerHTML = '';
@@ -173,7 +168,6 @@ window.initAiMenuSystem = function(menuData) {
             window.selectedPhotoDataList.forEach(photo => {
                 const img = document.createElement('img');
                 img.src = photo.data;
-                // [NEW] 使用 Modal 開啟
                 img.onclick = () => window.openImageModal(photo.data);
                 previewContainer.appendChild(img);
             });
@@ -190,7 +184,6 @@ window.initAiMenuSystem = function(menuData) {
 
 window.updateMenuWheel = function() {
     const cat = document.getElementById('menuCategorySelect').value;
-    // [NEW] 處理 all 選項
     if (cat === 'all') {
         window.currentMenuData = [...window.fullMenuData];
     } else {
@@ -199,7 +192,6 @@ window.updateMenuWheel = function() {
     window.drawMenuWheel();
 };
 
-// ... drawMenuWheel, spinMenu 等保持不變 ...
 window.drawMenuWheel = function() {
     const numOptions = window.currentMenuData.length;
     if(window.menuCtx) window.menuCtx.clearRect(0, 0, 400, 400);
@@ -253,8 +245,12 @@ window.spinMenu = function() {
         let winningIndex = Math.floor((360 - actualRotation) / arcSize) % numOptions;
         if (winningIndex < 0) winningIndex += numOptions;
         const winner = window.currentMenuData[winningIndex];
-        document.getElementById('dishName').innerText = winner.name;
+        
+        // [MODIFIED] 中獎顯示格式：[類別] 菜名
+        const category = winner.category || '主餐';
+        document.getElementById('dishName').innerText = `[${category}] ${winner.name}`;
         document.getElementById('dishPrice').innerText = `$${winner.price}`;
+        
         const addBtn = document.getElementById('addToOrderBtn');
         addBtn.style.display = 'inline-block';
         addBtn.onclick = () => window.addDishToCart(winner);
@@ -297,16 +293,22 @@ window.checkout = function() {
     alert(msg);
 };
 
+// [MODIFIED] 增加編輯類別的邏輯
 window.editMenuItem = function(index, field) {
     const item = window.fullMenuData[index];
-    const oldValue = item[field];
-    const newValue = prompt(`修改 ${field === 'name' ? '菜名' : '價格'}：`, oldValue);
+    // 若為類別，預設值為 '主餐'
+    const oldValue = item[field] || (field==='category'?'主餐':'');
+    const fieldName = field === 'name' ? '菜名' : (field === 'price' ? '價格' : '類別');
+    
+    const newValue = prompt(`修改 ${fieldName}：`, oldValue);
     if (newValue !== null && newValue !== oldValue) {
         if (field === 'price') {
             const price = parseInt(newValue);
             if (!isNaN(price)) item.price = price;
             else return alert("價格必須是數字");
-        } else { item.name = newValue; }
+        } else { 
+            item[field] = newValue; 
+        }
         window.saveMenuData(window.currentStoreForMenu.place_id, window.fullMenuData);
         window.renderFullMenuTable();
         window.updateMenuWheel();
@@ -316,10 +318,11 @@ window.editMenuItem = function(index, field) {
 window.renderFullMenuTable = function() {
     const container = document.getElementById('fullMenuContainer');
     if (!container) return;
-    let html = `<p style="font-size:0.8rem; color:#666; text-align:center;">(點擊菜名或價格可修改)</p><table class="menu-table"><thead><tr><th>類別</th><th>名稱</th><th>價格</th><th>操作</th></tr></thead><tbody>`;
+    let html = `<p style="font-size:0.8rem; color:#666; text-align:center;">(點擊類別、菜名或價格可修改)</p><table class="menu-table"><thead><tr><th>類別</th><th>名稱</th><th>價格</th><th>操作</th></tr></thead><tbody>`;
     window.fullMenuData.forEach((item, idx) => {
+        // [MODIFIED] 第一欄增加 onclick 事件以編輯類別
         html += `<tr>
-            <td>${item.category || '主餐'}</td>
+            <td onclick="editMenuItem(${idx}, 'category')">${item.category || '主餐'}</td>
             <td onclick="editMenuItem(${idx}, 'name')" style="cursor:pointer; text-decoration:underline dashed; text-underline-offset:4px;">${item.name}</td>
             <td onclick="editMenuItem(${idx}, 'price')" style="cursor:pointer;">$${item.price}</td>
             <td><button class="small-btn" onclick='window.addDishToCart(window.fullMenuData[${idx}])'>➕</button></td>
