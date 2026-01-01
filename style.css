@@ -1,6 +1,6 @@
 /* =========================================
    Food Wheel Style Sheet
-   Version: 2025-12-28-v9 (Force Side-by-Side Layout)
+   Version: 2025-12-28-v9-Modified
    ========================================= */
 
 body {
@@ -89,27 +89,27 @@ h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
 
 .wheel-section-centered { order: 1; display: flex; flex-direction: column; align-items: center; width: 100%; }
 
-/* [MODIFIED] Filter Box: 強制並排設定 */
+/* Filter Box: 強制並排設定 */
 .filter-box {
     display: flex;
-    flex-direction: row; /* 明確指定為橫向 */
+    flex-direction: row; 
     justify-content: center;
-    flex-wrap: wrap; /* 如果螢幕極小，允許換行，避免破版 */
-    gap: 15px; /* 設定適當間距 */
+    flex-wrap: wrap; 
+    gap: 15px; 
     margin-bottom: 15px;
     width: 100%;
 }
 .filter-item {
     display: flex;
     align-items: center;
-    font-size: 0.9rem; /* 微調字體大小以適應並排 */
+    font-size: 0.9rem; 
     color: #555;
     cursor: pointer;
     background: #f8f9fa;
     padding: 6px 12px;
     border-radius: 20px;
     border: 1px solid #eee;
-    white-space: nowrap; /* 防止文字折行 */
+    white-space: nowrap; 
 }
 .filter-item input { margin-right: 6px; cursor: pointer; }
 .filter-item label { cursor: pointer; user-select: none; }
@@ -164,7 +164,8 @@ canvas { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 5px 15px r
 .table-wrapper { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
-th { background: #f8f9fa; color: #666; font-weight: 600; }
+/* [MODIFIED] 增加 white-space: nowrap 讓標題不換行 */
+th { background: #f8f9fa; color: #666; font-weight: 600; white-space: nowrap; }
 tr.eliminated { opacity: 0.4; text-decoration: line-through; background: #f0f0f0; }
 .store-link { color: #2980b9; text-decoration: none; font-weight: 500; }
 
@@ -172,6 +173,8 @@ tr.eliminated { opacity: 0.4; text-decoration: line-through; background: #f0f0f0
 .action-area { margin-bottom: 20px; width: 100%; text-align: center; }
 #spinBtn { padding: 15px 40px; font-size: 1.2rem; background: #e74c3c; color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 0 #c0392b; transition: transform 0.1s; }
 #spinBtn:active { transform: translateY(4px); box-shadow: none; }
+/* [MODIFIED] 當按鈕被禁用時的樣式更明確 */
+#spinBtn:disabled { background: #95a5a6; box-shadow: none; transform: none; cursor: not-allowed; opacity: 0.5; }
 
 /* 結果區詳細資訊 */
 #storeName { margin: 0; color: #2c3e50; font-size: 1.5rem; }
@@ -198,8 +201,9 @@ tr.eliminated { opacity: 0.4; text-decoration: line-through; background: #f0f0f0
 
 /* 菜單表格可編輯提示 */
 .menu-table td { position: relative; padding: 10px 8px; }
-.menu-table td:nth-child(2):hover, .menu-table td:nth-child(3):hover { background-color: #fef9e7; cursor: pointer; }
-.menu-table td:nth-child(2):hover::after, .menu-table td:nth-child(3):hover::after { content: "✏️"; position: absolute; right: 2px; top: 50%; transform: translateY(-50%); font-size: 0.7rem; opacity: 0.6; }
+/* [MODIFIED] 增加第 1 欄 (類別) 的編輯提示 */
+.menu-table td:nth-child(1):hover, .menu-table td:nth-child(2):hover, .menu-table td:nth-child(3):hover { background-color: #fef9e7; cursor: pointer; }
+.menu-table td:nth-child(1):hover::after, .menu-table td:nth-child(2):hover::after, .menu-table td:nth-child(3):hover::after { content: "✏️"; position: absolute; right: 2px; top: 50%; transform: translateY(-50%); font-size: 0.7rem; opacity: 0.6; }
 
 /* 按鈕群組 */
 .nav-btn, .rate-btn { display: none; padding: 10px 20px; margin: 5px; text-decoration: none; color: white; border-radius: 4px; font-size: 0.9rem; border: none; cursor: pointer; }
@@ -238,6 +242,5 @@ tr.eliminated { opacity: 0.4; text-decoration: line-through; background: #f0f0f0
     .container { width: 100%; box-shadow: none; }
     .pref-grid, .keyword-settings-grid { grid-template-columns: 1fr; }
     .pref-item.full-width { grid-column: span 1; }
-    /* [MODIFIED] 移除 .filter-box { flex-direction: column; } 的設定，改為縮小間距 */
     .filter-box { gap: 10px; } 
 }
