@@ -439,13 +439,6 @@ window.initResultList = function(list) {
         tr.innerHTML = `<td>${nameHtml}<br>${statusHtml}</td><td>⭐ ${ratingText}</td><td>${distanceText}</td><td>${menuHtml}</td><td class="hit-count">${window.hitCounts[p.place_id] || 0}</td>`;
         tbody.appendChild(tr);
     });
-    
-    if (!document.getElementById('disclaimer-row')) {
-        const footerRow = document.createElement('tr');
-        footerRow.id = 'disclaimer-row';
-        footerRow.innerHTML = `<td colspan="5" style="font-size:0.75rem; color:#999; text-align:center; padding:5px;">* 距離與時間為直線粗估 (步2.5km/h, 車25km/h)，實際路況請見轉盤結果。</td>`;
-        tbody.appendChild(footerRow);
-    }
 };
 
 // [MODIFIED] 新增從列表開啟菜單的函式
