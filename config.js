@@ -24,17 +24,18 @@ window.fullMenuData = [];
 window.shoppingCart = [];
 window.selectedPhotoData = null;
 
-// 預設關鍵字字典
+// 預設關鍵字字典 (優化版：節省 API 呼叫成本)
+// 策略：使用「場所類別」取代「食物名稱」，將每個分類的關鍵字縮減至 2 組
 window.defaultKeywordDict = {
-    breakfast: "早餐 早午餐 豆漿",
-    lunch: "餐廳 小吃 午餐 異國料理 吃到飽",
-    afternoon_tea: "飲料 甜點 咖啡",
-    dinner: "餐廳 晚餐 小吃 火鍋 夜市",
-    late_night: "宵夜 鹽酥雞 清粥 滷味 炸物 夜市",
-    noodles_rice: "麵 飯 水餃 壽司 快炒 合菜 異國料理 中式", 
-    western_steak: "牛排 義大利麵 漢堡 披薩 西式",
-    dessert: "冰品 豆花 甜點 蛋糕",
-    all: "美食 餐廳 小吃 夜市 料理 吃到飽" 
+    breakfast: "早餐店 早午餐",      // 涵蓋傳統早餐(豆漿/吐司)與西式早午餐
+    lunch: "餐廳 小吃",             // 泛指所有正餐與平價小吃
+    afternoon_tea: "咖啡廳 甜點",    // 涵蓋飲料、蛋糕、下午茶店
+    dinner: "餐廳 火鍋",            // 晚餐通常找正式餐廳或台灣人最愛的火鍋
+    late_night: "宵夜 居酒屋",       // 宵夜通常包含炸物/鹽酥雞/清粥，居酒屋涵蓋夜間聚餐
+    noodles_rice: "麵店 飯館",       // 使用場所名稱，Google 會自動關聯牛肉麵、炒飯等
+    western_steak: "西式餐廳 牛排",  // 西式涵蓋義大利麵/披薩/漢堡
+    dessert: "冰店 甜品",            // 冰店(剉冰/豆花)、甜品(蛋糕/湯圓)
+    all: "餐廳 美食"                // 最廣泛的搜尋
 };
 
 window.activeKeywordDict = { ...window.defaultKeywordDict };
