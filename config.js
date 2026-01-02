@@ -24,18 +24,18 @@ window.fullMenuData = [];
 window.shoppingCart = [];
 window.selectedPhotoData = null;
 
-// 預設關鍵字字典 (優化版：節省 API 呼叫成本)
-// 策略：使用「場所類別」取代「食物名稱」，將每個分類的關鍵字縮減至 2 組
+// 預設關鍵字字典 (優化版 v2：每組 3 個關鍵字，精準覆蓋台灣飲食習慣)
+// 策略：修正「飲料」與「炸物」缺漏，同時控制 API 成本 (每次搜尋約呼叫 4 次 API)
 window.defaultKeywordDict = {
-    breakfast: "早餐店 早午餐",      // 涵蓋傳統早餐(豆漿/吐司)與西式早午餐
-    lunch: "餐廳 小吃",             // 泛指所有正餐與平價小吃
-    afternoon_tea: "咖啡廳 甜點 飲料",    // 涵蓋飲料、蛋糕、下午茶店
-    dinner: "餐廳 火鍋",            // 晚餐通常找正式餐廳或台灣人最愛的火鍋
-    late_night: "宵夜 居酒屋 炸物",       // 宵夜通常包含炸物/鹽酥雞/清粥，居酒屋涵蓋夜間聚餐
-    noodles_rice: "麵店 飯館",       // 使用場所名稱，Google 會自動關聯牛肉麵、炒飯等
-    western_steak: "西式餐廳 牛排",  // 西式涵蓋義大利麵/披薩/漢堡
-    dessert: "冰店 甜品",            // 冰店(剉冰/豆花)、甜品(蛋糕/湯圓)
-    all: "餐廳 美食"                // 最廣泛的搜尋
+    breakfast: "早餐店 早午餐 豆漿",      // 涵蓋：一般早餐、西式Brunch、永和豆漿類
+    lunch: "便當 麵店 餐廳",             // 涵蓋：上班族便當、麵攤、一般午餐
+    afternoon_tea: "咖啡廳 甜點 飲料",    // 涵蓋：星巴克類、蛋糕店、手搖飲(關鍵!)
+    dinner: "火鍋 燒肉 餐廳",            // 涵蓋：晚餐聚會熱門的火鍋與燒肉
+    late_night: "鹽酥雞 宵夜 居酒屋",     // 涵蓋：炸物攤(關鍵!)、清粥小菜、喝酒處
+    noodles_rice: "麵店 飯館 小吃",       // 涵蓋：牛肉麵、炒飯、傳統小吃店
+    western_steak: "牛排 義式料理 漢堡",  // 涵蓋：排餐、義大利麵、美式漢堡
+    dessert: "冰品 豆花 蛋糕",            // 涵蓋：剉冰、傳統豆花、西式甜點
+    all: "美食 餐廳 小吃"                // 廣泛搜尋
 };
 
 window.activeKeywordDict = { ...window.defaultKeywordDict };
