@@ -1,7 +1,7 @@
 // ================== ai_menu.js ==================
+// Version: 2025-12-28-v14-Reupload
 
-// 狀態變數：菜單排序狀態
-window.menuSortState = { key: null, asc: true };
+window.menuSort = { column: null, direction: 'asc' };
 
 // Modal 控制函式
 window.openImageModal = function(src) {
@@ -17,7 +17,6 @@ window.closeImageModal = function() {
     document.getElementById('imageModal').style.display = "none";
 }
 
-// 點擊 Modal 外部也可關閉
 window.onclick = function(event) {
     const modal = document.getElementById('imageModal');
     if (event.target == modal) {
@@ -42,11 +41,17 @@ window.openAiMenuSelector = function() {
     document.getElementById('main-view').style.display = 'none';
     document.getElementById('menu-screen').style.display = 'block';
     document.getElementById('menuStoreTitle').innerText = `菜單：${window.currentStoreForMenu.name}`;
+    
+    // 初始化清空圖片網格
     document.getElementById('maps-photo-grid').innerHTML = '';
     window.selectedPhotoDataList = [];
-    
+
     // 重置排序狀態
-    window.menuSortState = { key: null, asc: true };
+    window.menuSort = { column: null, direction: 'asc' };
+
+    // [MODIFIED] 隱藏重傳選項與取消按鈕 (因為是全新開啟)
+    document.getElementById('reuploadOptions').style.display = 'none';
+    document.getElementById('btnCancelUpload').style.display = 'none';
 
     if (savedData && savedData.length > 0) {
         window.initAiMenuSystem(savedData);
@@ -63,6 +68,31 @@ window.showUploadStep = function() {
     document.getElementById('btnAnalyzeMenu').style.opacity = '0.5';
 };
 
+// [MODIFIED] 新增：觸發補傳/重傳模式
+window.triggerReupload = function() {
+    window.showUploadStep();
+    
+    // 顯示選項與取消按鈕
+    document.getElementById('reuploadOptions').style.display = 'block';
+    document.getElementById('btnCancelUpload').style.display = 'inline-block';
+    
+    // 清空上次選擇的圖片 (但保留 fullMenuData 供合併用)
+    document.getElementById('maps-photo-grid').innerHTML = '';
+    window.selectedPhotoDataList = [];
+    document.getElementById('menuFileUpload').value = '';
+};
+
+// [MODIFIED] 新增：取消重傳，返回 Step 2
+window.cancelReupload = function() {
+    if(window.fullMenuData && window.fullMenuData.length > 0) {
+        document.getElementById('ai-step-1').style.display = 'none';
+        document.getElementById('ai-step-2').style.display = 'block';
+    } else {
+        // 如果原本就沒資料，則關閉整個菜單視窗
+        window.closeMenuSystem();
+    }
+};
+
 window.closeMenuSystem = function() {
     document.getElementById('menu-screen').style.display = 'none';
     document.getElementById('main-view').style.display = 'block';
@@ -70,9 +100,11 @@ window.closeMenuSystem = function() {
 
 window.handleFileUpload = function(input) {
     if (input.files && input.files.length > 0) {
-        window.selectedPhotoDataList = [];
+        // [MODIFIED] 注意：這裡改成 push 而不是直接清空，允許使用者分批選檔
+        if(!window.selectedPhotoDataList) window.selectedPhotoDataList = [];
+        
         const grid = document.getElementById('maps-photo-grid');
-        grid.innerHTML = ''; 
+        // 若是剛開始選檔且清單為空，可以清一下 grid 確保乾淨，但為了 UX 這裡不清空會更好
         
         let loadedCount = 0;
         Array.from(input.files).forEach(file => {
@@ -92,7 +124,7 @@ window.handleFileUpload = function(input) {
                     const btn = document.getElementById('btnAnalyzeMenu');
                     btn.disabled = false;
                     btn.style.opacity = '1';
-                    btn.innerText = `🤖 圖片已就緒 (${loadedCount}張)，開始 AI 解析`;
+                    btn.innerText = `🤖 圖片已就緒 (共${window.selectedPhotoDataList.length}張)，開始 AI 解析`;
                 }
             };
             reader.readAsDataURL(file);
@@ -126,10 +158,26 @@ window.analyzeSelectedPhotos = async function() {
             let text = data.candidates[0].content.parts[0].text;
             text = text.replace(/```json/g, '').replace(/```/g, '').trim();
             try {
-                const menuJson = JSON.parse(text);
-                if (Array.isArray(menuJson) && menuJson.length > 0) {
-                    window.saveMenuData(window.currentStoreForMenu.place_id, menuJson);
-                    window.initAiMenuSystem(menuJson);
+                let newMenuJson = JSON.parse(text);
+                if (Array.isArray(newMenuJson) && newMenuJson.length > 0) {
+                    
+                    // [MODIFIED] 處理資料合併邏輯
+                    let finalMenuData = newMenuJson;
+                    const reuploadDiv = document.getElementById('reuploadOptions');
+                    
+                    // 只有當重傳選項顯示，且目前已有舊資料時，才考慮 Append
+                    if (reuploadDiv.style.display !== 'none' && window.fullMenuData && window.fullMenuData.length > 0) {
+                        const mode = document.querySelector('input[name="uploadMode"]:checked').value;
+                        if (mode === 'append') {
+                            finalMenuData = window.fullMenuData.concat(newMenuJson);
+                            alert(`✅ 已成功新增 ${newMenuJson.length} 筆資料至現有菜單！`);
+                        } else {
+                            alert(`✅ 已覆蓋舊資料，共取得 ${newMenuJson.length} 筆資料！`);
+                        }
+                    }
+
+                    window.saveMenuData(window.currentStoreForMenu.place_id, finalMenuData);
+                    window.initAiMenuSystem(finalMenuData);
                 } else { throw new Error("解析結果為空"); }
             } catch (jsonErr) { throw new Error("AI 回傳格式無法讀取"); }
         } else { throw new Error("AI 回應格式錯誤"); }
@@ -167,6 +215,8 @@ window.initAiMenuSystem = function(menuData) {
     const spinBtn = document.getElementById('spinMenuBtn');
     if(spinBtn) spinBtn.onclick = window.spinMenu;
     
+    // [MODIFIED] 更新圖片預覽：顯示「全部累積」的圖片有點困難，因為沒有存圖片到 LocalStorage
+    // 這裡只顯示「本次工作階段」有選擇的圖片。
     const previewContainer = document.getElementById('menuImagesPreview');
     if (previewContainer) {
         previewContainer.innerHTML = '';
@@ -318,55 +368,52 @@ window.editMenuItem = function(index, field) {
     }
 };
 
-// [MODIFIED] 修改: 新增菜單排序邏輯與表頭
-window.sortMenu = function(key) {
-    if (window.menuSortState.key === key) {
-        window.menuSortState.asc = !window.menuSortState.asc;
+window.sortMenu = function(column) {
+    const sortState = window.menuSort;
+    if (sortState.column === column) {
+        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
     } else {
-        window.menuSortState.key = key;
-        window.menuSortState.asc = true;
+        sortState.column = column;
+        sortState.direction = 'asc';
     }
+    
+    const dir = sortState.direction === 'asc' ? 1 : -1;
     
     window.fullMenuData.sort((a, b) => {
         let valA, valB;
-        if (key === 'category') {
-            valA = a.category || '主餐'; valB = b.category || '主餐';
-            return window.menuSortState.asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-        } else if (key === 'name') {
-            valA = a.name; valB = b.name;
-            return window.menuSortState.asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-        } else if (key === 'price') {
+        if (column === 'category') {
+            valA = a.category || ''; valB = b.category || '';
+            return valA.localeCompare(valB, 'zh-Hant') * dir;
+        } else if (column === 'name') {
+            valA = a.name || ''; valB = b.name || '';
+            return valA.localeCompare(valB, 'zh-Hant') * dir;
+        } else if (column === 'price') {
             valA = a.price || 0; valB = b.price || 0;
-            return window.menuSortState.asc ? (valA - valB) : (valB - valA);
+            return (valA - valB) * dir;
         }
+        return 0;
     });
+
     window.renderFullMenuTable();
-    window.updateMenuWheel(); // 同步更新轉盤順序 (雖然轉盤沒順序，但保持數據一致)
+};
+
+window.getMenuSortIndicator = function(column) {
+    if (window.menuSort.column !== column) return '';
+    return window.menuSort.direction === 'asc' ? ' ▲' : ' ▼';
 };
 
 window.renderFullMenuTable = function() {
     const container = document.getElementById('fullMenuContainer');
     if (!container) return;
     
-    const getArrow = (key) => {
-        if (window.menuSortState.key === key) {
-            return window.menuSortState.asc ? '▲' : '▼';
-        }
-        return '<span style="color:#ddd; font-size:0.8em;">▼</span>';
-    };
-
-    let html = `<p style="font-size:0.8rem; color:#666; text-align:center;">(點擊類別、菜名或價格可修改 / 點擊表頭排序)</p>
-    <table class="menu-table">
-        <thead>
-            <tr>
-                <th onclick="window.sortMenu('category')" style="cursor:pointer;">類別 ${getArrow('category')}</th>
-                <th onclick="window.sortMenu('name')" style="cursor:pointer;">名稱 ${getArrow('name')}</th>
-                <th onclick="window.sortMenu('price')" style="cursor:pointer;">價格 ${getArrow('price')}</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>`;
-        
+    let html = `<p style="font-size:0.8rem; color:#666; text-align:center;">(點擊類別、菜名或價格可修改)</p>
+    <table class="menu-table"><thead><tr>
+        <th onclick="window.sortMenu('category')" style="cursor:pointer; user-select:none;">類別${window.getMenuSortIndicator('category')}</th>
+        <th onclick="window.sortMenu('name')" style="cursor:pointer; user-select:none;">名稱${window.getMenuSortIndicator('name')}</th>
+        <th onclick="window.sortMenu('price')" style="cursor:pointer; user-select:none;">價格${window.getMenuSortIndicator('price')}</th>
+        <th>操作</th>
+    </tr></thead><tbody>`;
+    
     window.fullMenuData.forEach((item, idx) => {
         html += `<tr>
             <td onclick="editMenuItem(${idx}, 'category')">${item.category || '主餐'}</td>
