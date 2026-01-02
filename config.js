@@ -29,7 +29,7 @@ window.selectedPhotoData = null;
 window.defaultKeywordDict = {
     breakfast: "早餐店 早午餐",      // 涵蓋傳統早餐(豆漿/吐司)與西式早午餐
     lunch: "餐廳 小吃",             // 泛指所有正餐與平價小吃
-    afternoon_tea: "咖啡廳 甜點",    // 涵蓋飲料、蛋糕、下午茶店
+    afternoon_tea: "咖啡廳 甜點 飲料",    // 涵蓋飲料、蛋糕、下午茶店
     dinner: "餐廳 火鍋",            // 晚餐通常找正式餐廳或台灣人最愛的火鍋
     late_night: "宵夜 居酒屋",       // 宵夜通常包含炸物/鹽酥雞/清粥，居酒屋涵蓋夜間聚餐
     noodles_rice: "麵店 飯館",       // 使用場所名稱，Google 會自動關聯牛肉麵、炒飯等
