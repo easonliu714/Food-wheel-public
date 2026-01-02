@@ -1,5 +1,5 @@
 // ================== ai_menu.js ==================
-// Version: 2025-12-28-v14-Reupload
+// Version: 2025-12-28-v15-ImageSave
 
 window.menuSort = { column: null, direction: 'asc' };
 
@@ -32,6 +32,36 @@ window.saveMenuData = function(placeId, menuItems) {
     localStorage.setItem('food_wheel_menus', JSON.stringify(allMenus));
 };
 
+// [MODIFIED] 新增：儲存菜單圖片的函式
+window.saveMenuImages = function(placeId, newImages, mode) {
+    let allImages = {};
+    try { allImages = JSON.parse(localStorage.getItem('food_wheel_menu_images')) || {}; } catch(e) {}
+    
+    // 只儲存圖片的 Base64 數據字串，不存整個結構，節省空間
+    const newImageStrings = newImages.map(imgObj => imgObj.data);
+    
+    let currentList = allImages[placeId] || [];
+
+    if (mode === 'overwrite') {
+        currentList = newImageStrings;
+    } else { // append
+        // 簡單去重：如果完全一樣的 base64 就不重複加
+        newImageStrings.forEach(imgStr => {
+            if(!currentList.includes(imgStr)) {
+                currentList.push(imgStr);
+            }
+        });
+    }
+    allImages[placeId] = currentList;
+    
+    try {
+        localStorage.setItem('food_wheel_menu_images', JSON.stringify(allImages));
+    } catch(e) {
+        console.error(e);
+        alert("⚠️ 儲存圖片失敗：可能是瀏覽器儲存空間不足。");
+    }
+};
+
 window.openAiMenuSelector = function() {
     if (!window.currentStoreForMenu) return;
     let allMenus = {};
@@ -42,14 +72,11 @@ window.openAiMenuSelector = function() {
     document.getElementById('menu-screen').style.display = 'block';
     document.getElementById('menuStoreTitle').innerText = `菜單：${window.currentStoreForMenu.name}`;
     
-    // 初始化清空圖片網格
     document.getElementById('maps-photo-grid').innerHTML = '';
     window.selectedPhotoDataList = [];
 
-    // 重置排序狀態
     window.menuSort = { column: null, direction: 'asc' };
 
-    // [MODIFIED] 隱藏重傳選項與取消按鈕 (因為是全新開啟)
     document.getElementById('reuploadOptions').style.display = 'none';
     document.getElementById('btnCancelUpload').style.display = 'none';
 
@@ -68,27 +95,20 @@ window.showUploadStep = function() {
     document.getElementById('btnAnalyzeMenu').style.opacity = '0.5';
 };
 
-// [MODIFIED] 新增：觸發補傳/重傳模式
 window.triggerReupload = function() {
     window.showUploadStep();
-    
-    // 顯示選項與取消按鈕
     document.getElementById('reuploadOptions').style.display = 'block';
     document.getElementById('btnCancelUpload').style.display = 'inline-block';
-    
-    // 清空上次選擇的圖片 (但保留 fullMenuData 供合併用)
     document.getElementById('maps-photo-grid').innerHTML = '';
     window.selectedPhotoDataList = [];
     document.getElementById('menuFileUpload').value = '';
 };
 
-// [MODIFIED] 新增：取消重傳，返回 Step 2
 window.cancelReupload = function() {
     if(window.fullMenuData && window.fullMenuData.length > 0) {
         document.getElementById('ai-step-1').style.display = 'none';
         document.getElementById('ai-step-2').style.display = 'block';
     } else {
-        // 如果原本就沒資料，則關閉整個菜單視窗
         window.closeMenuSystem();
     }
 };
@@ -100,11 +120,9 @@ window.closeMenuSystem = function() {
 
 window.handleFileUpload = function(input) {
     if (input.files && input.files.length > 0) {
-        // [MODIFIED] 注意：這裡改成 push 而不是直接清空，允許使用者分批選檔
         if(!window.selectedPhotoDataList) window.selectedPhotoDataList = [];
         
         const grid = document.getElementById('maps-photo-grid');
-        // 若是剛開始選檔且清單為空，可以清一下 grid 確保乾淨，但為了 UX 這裡不清空會更好
         
         let loadedCount = 0;
         Array.from(input.files).forEach(file => {
@@ -161,13 +179,14 @@ window.analyzeSelectedPhotos = async function() {
                 let newMenuJson = JSON.parse(text);
                 if (Array.isArray(newMenuJson) && newMenuJson.length > 0) {
                     
-                    // [MODIFIED] 處理資料合併邏輯
                     let finalMenuData = newMenuJson;
                     const reuploadDiv = document.getElementById('reuploadOptions');
                     
-                    // 只有當重傳選項顯示，且目前已有舊資料時，才考慮 Append
+                    // 預設模式為覆蓋 (First time or Explicit Overwrite)
+                    let mode = 'overwrite';
+
                     if (reuploadDiv.style.display !== 'none' && window.fullMenuData && window.fullMenuData.length > 0) {
-                        const mode = document.querySelector('input[name="uploadMode"]:checked').value;
+                        mode = document.querySelector('input[name="uploadMode"]:checked').value;
                         if (mode === 'append') {
                             finalMenuData = window.fullMenuData.concat(newMenuJson);
                             alert(`✅ 已成功新增 ${newMenuJson.length} 筆資料至現有菜單！`);
@@ -176,6 +195,9 @@ window.analyzeSelectedPhotos = async function() {
                         }
                     }
 
+                    // [MODIFIED] 同步儲存圖片
+                    window.saveMenuImages(window.currentStoreForMenu.place_id, window.selectedPhotoDataList, mode);
+                    
                     window.saveMenuData(window.currentStoreForMenu.place_id, finalMenuData);
                     window.initAiMenuSystem(finalMenuData);
                 } else { throw new Error("解析結果為空"); }
@@ -191,7 +213,6 @@ window.initAiMenuSystem = function(menuData) {
     window.fullMenuData = menuData;
     window.shoppingCart = [];
     
-    // 建立類別清單，最前面加入 "all"
     const categories = [...new Set(menuData.map(item => item.category || '主餐'))];
     const catSelect = document.getElementById('menuCategorySelect');
     catSelect.innerHTML = "";
@@ -215,16 +236,22 @@ window.initAiMenuSystem = function(menuData) {
     const spinBtn = document.getElementById('spinMenuBtn');
     if(spinBtn) spinBtn.onclick = window.spinMenu;
     
-    // [MODIFIED] 更新圖片預覽：顯示「全部累積」的圖片有點困難，因為沒有存圖片到 LocalStorage
-    // 這裡只顯示「本次工作階段」有選擇的圖片。
+    // [MODIFIED] 讀取並顯示已儲存的圖片
     const previewContainer = document.getElementById('menuImagesPreview');
     if (previewContainer) {
         previewContainer.innerHTML = '';
-        if (window.selectedPhotoDataList && window.selectedPhotoDataList.length > 0) {
-            window.selectedPhotoDataList.forEach(photo => {
+        
+        let savedImages = [];
+        try {
+            const allImages = JSON.parse(localStorage.getItem('food_wheel_menu_images')) || {};
+            savedImages = allImages[window.currentStoreForMenu.place_id] || [];
+        } catch(e) {}
+
+        if (savedImages.length > 0) {
+            savedImages.forEach(base64Str => {
                 const img = document.createElement('img');
-                img.src = photo.data;
-                img.onclick = () => window.openImageModal(photo.data);
+                img.src = base64Str;
+                img.onclick = () => window.openImageModal(base64Str);
                 previewContainer.appendChild(img);
             });
             previewContainer.style.display = 'flex';
