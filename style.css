@@ -1,6 +1,6 @@
 /* =========================================
    Food Wheel Style Sheet
-   Version: 2025-12-28-v9-Modified
+   Version: 2025-12-28-v15-ImageSave
    ========================================= */
 
 body {
@@ -27,6 +27,7 @@ h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
 .badge { background: #e74c3c; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; vertical-align: middle; margin-left: 5px; }
 .intro-text { text-align: center; color: #7f8c8d; font-size: 0.95rem; margin-bottom: 25px; }
 
+/* [MODIFIED] Header Bar 強制單行顯示 */
 .header-bar {
     background: #fff;
     padding: 15px 20px;
@@ -37,10 +38,36 @@ h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
     position: sticky;
     top: 0;
     z-index: 100;
+    flex-wrap: nowrap; /* 強制不換行 */
+    gap: 10px;
 }
-.header-bar h1 { margin: 0; font-size: 1.2rem; }
-.header-actions { display: flex; gap: 8px; }
-.header-btn { padding: 6px 12px; border: 1px solid #ddd; border-radius: 20px; background: #f9f9f9; font-size: 0.85rem; cursor: pointer; }
+
+/* [MODIFIED] Header 標題樣式，避免過長撐開 */
+.header-bar h1 { 
+    margin: 0; 
+    font-size: 1.2rem; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    flex-grow: 1; /* 佔據剩餘空間 */
+    text-align: left; /* 靠左對齊 */
+}
+
+/* [MODIFIED] Header 按鈕群組 */
+.header-actions { 
+    display: flex; 
+    gap: 8px; 
+    flex-shrink: 0; /* 防止按鈕被壓縮 */
+}
+.header-btn { 
+    padding: 6px 12px; 
+    border: 1px solid #ddd; 
+    border-radius: 20px; 
+    background: #f9f9f9; 
+    font-size: 0.85rem; 
+    cursor: pointer; 
+    white-space: nowrap; /* 按鈕文字不換行 */
+}
 
 /* Tabs */
 .platform-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
@@ -164,7 +191,6 @@ canvas { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 5px 15px r
 .table-wrapper { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
-/* [MODIFIED] 增加 white-space: nowrap 讓標題不換行 */
 th { background: #f8f9fa; color: #666; font-weight: 600; white-space: nowrap; }
 tr.eliminated { opacity: 0.4; text-decoration: line-through; background: #f0f0f0; }
 .store-link { color: #2980b9; text-decoration: none; font-weight: 500; }
@@ -173,7 +199,6 @@ tr.eliminated { opacity: 0.4; text-decoration: line-through; background: #f0f0f0
 .action-area { margin-bottom: 20px; width: 100%; text-align: center; }
 #spinBtn { padding: 15px 40px; font-size: 1.2rem; background: #e74c3c; color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 0 #c0392b; transition: transform 0.1s; }
 #spinBtn:active { transform: translateY(4px); box-shadow: none; }
-/* [MODIFIED] 當按鈕被禁用時的樣式更明確 */
 #spinBtn:disabled { background: #95a5a6; box-shadow: none; transform: none; cursor: not-allowed; opacity: 0.5; }
 
 /* 結果區詳細資訊 */
@@ -201,7 +226,6 @@ tr.eliminated { opacity: 0.4; text-decoration: line-through; background: #f0f0f0
 
 /* 菜單表格可編輯提示 */
 .menu-table td { position: relative; padding: 10px 8px; }
-/* [MODIFIED] 增加第 1 欄 (類別) 的編輯提示 */
 .menu-table td:nth-child(1):hover, .menu-table td:nth-child(2):hover, .menu-table td:nth-child(3):hover { background-color: #fef9e7; cursor: pointer; }
 .menu-table td:nth-child(1):hover::after, .menu-table td:nth-child(2):hover::after, .menu-table td:nth-child(3):hover::after { content: "✏️"; position: absolute; right: 2px; top: 50%; transform: translateY(-50%); font-size: 0.7rem; opacity: 0.6; }
 
@@ -237,10 +261,29 @@ tr.eliminated { opacity: 0.4; text-decoration: line-through; background: #f0f0f0
 .loader { border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px auto; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+/* [MODIFIED] 重傳選項單行樣式 */
+.reupload-options-row {
+    display: flex;
+    flex-direction: row; 
+    flex-wrap: nowrap; /* 不換行 */
+    gap: 15px; 
+    align-items: center;
+    white-space: nowrap; /* 文字不換行 */
+    margin-top: 5px;
+}
+.radio-label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
 /* Responsive Adjustments for Small Screens */
 @media (max-width: 450px) {
     .container { width: 100%; box-shadow: none; }
     .pref-grid, .keyword-settings-grid { grid-template-columns: 1fr; }
     .pref-item.full-width { grid-column: span 1; }
     .filter-box { gap: 10px; } 
+    /* 讓 Radio 在極小螢幕仍保持一行但可水平捲動 (如果真的太寬) */
+    .reupload-options-row { overflow-x: auto; }
 }
