@@ -213,7 +213,7 @@
         <div id="menu-screen" style="display: none;">
             <div class="header-bar">
                 <button onclick="closeMenuSystem()" class="header-btn">⬅️ 返回店家</button>
-                <h1 id="menuStoreTitle" style="font-size: 1.2rem;">📝 AI 智能菜單</h1>
+                <h1 id="menuStoreTitle">📝 AI 智能菜單</h1>
             </div>
             
             <div id="ai-step-1" class="menu-layout">
@@ -221,9 +221,9 @@
                 
                 <div id="reuploadOptions" style="display:none; margin-bottom:15px; padding:15px; background:#fef9e7; border:1px solid #f1c40f; border-radius:6px;">
                     <strong style="display:block; margin-bottom:10px; color:#d35400;">⚠️ 偵測到現有菜單資料：</strong>
-                    <div style="display:flex; gap:15px; align-items:center;">
-                        <label style="cursor:pointer;"><input type="radio" name="uploadMode" value="overwrite" checked> 覆蓋舊資料 (重建)</label>
-                        <label style="cursor:pointer;"><input type="radio" name="uploadMode" value="append"> 新增現有資料 (補頁)</label>
+                    <div class="reupload-options-row">
+                        <label class="radio-label"><input type="radio" name="uploadMode" value="overwrite" checked> 覆蓋舊資料 (重新建立)</label>
+                        <label class="radio-label"><input type="radio" name="uploadMode" value="append"> 新增至現有資料 (補頁)</label>
                     </div>
                 </div>
 
