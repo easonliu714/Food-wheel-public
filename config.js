@@ -50,20 +50,19 @@ const COST_CONTROL_STEP = {
         為避免產生意外費用，請<strong>務必</strong>完成以下設定：<br><br>
         
         <strong>1. 確認免費方案：</strong><br>
-        目前的 Google Maps Essentials 方案通常提供每月約 <strong>10,000 次</strong> 免費請求 (換算約每日 300 次)。<br><br>
+        目前的 Google Maps Essentials 方案通常提供每月約 <strong>10,000 次</strong> 免費請求 (換算約每日加總 300 次)。<br><br>
 
         <strong>2. 設定預算通知 (Budget Alert)：</strong><br>
         前往 <a href='https://console.cloud.google.com/billing/budgets' target='_blank' style='color:#d35400; font-weight:bold;'>Google Cloud 預算頁面</a>，建立新預算，將金額上限設為 <strong>$1 美元</strong>，並開啟 Email 通知，以便在產生費用時立即收到警告。<br><br>
 
         <strong>3. 設定配額上限 (Daily Quotas)：</strong><br>
-        前往 <a href='https://console.cloud.google.com/iam-admin/quotas' target='_blank' style='color:#d35400; font-weight:bold;'>IAM 配額管理</a>，搜尋 'Places API'、'Geocoding API' 等，建議將 <strong>Requests per day</strong> 設定為 <strong>300</strong> 次 (或其他您認為安全的數值)，作為最後一道防線。<br><br>
+        前往 <a href='https://console.cloud.google.com/iam-admin/quotas' target='_blank' style='color:#d35400; font-weight:bold;'>IAM 配額管理</a>，搜尋 'Places API'、'Geocoding API' 等，建議將 <strong>Requests per day</strong> 設定為總和 <strong>300</strong> 次 (或其他您認為安全的數值)，作為最後一道防線。<br><br>
 
         <strong>4. 限制 API 金鑰 (Key Restrictions)：</strong><br>
         前往 <a href='https://console.cloud.google.com/apis/credentials' target='_blank' style='color:#d35400; font-weight:bold;'>憑證管理頁面</a>，編輯您的 API Key：<br>
         • 應用程式限制：選擇 <strong>HTTP 參照位址 (網站)</strong><br>
         • 網站限制：新增以下網址 (按 Enter 新增)<br>
         &nbsp;&nbsp;<code>*easonliu714.github.io/Food-wheel-public*</code> (本工具網址)<br>
-        &nbsp;&nbsp;<code>http://localhost:*</code> (若您會在本地測試)<br>
     `,
     img: "" // 此步驟純文字說明，不需圖片
 };
