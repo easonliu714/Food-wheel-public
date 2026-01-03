@@ -28,7 +28,7 @@ window.selectedPhotoData = null;
 // 策略：修正「飲料」與「炸物」缺漏，同時控制 API 成本 (每次搜尋約呼叫 4 次 API)
 window.defaultKeywordDict = {
     breakfast: "早餐店 早午餐 豆漿",      // 涵蓋：一般早餐、西式Brunch、永和豆漿類
-    lunch: "便當 麵店 餐廳",             // 涵蓋：上班族便當、麵攤、一般午餐
+    lunch: "飯 麵 餐廳 小吃",             // 涵蓋：上班族便當、麵攤、一般午餐
     afternoon_tea: "咖啡廳 甜點 飲料",    // 涵蓋：星巴克類、蛋糕店、手搖飲(關鍵!)
     dinner: "火鍋 燒肉 餐廳",            // 涵蓋：晚餐聚會熱門的火鍋與燒肉
     late_night: "鹽酥雞 宵夜 居酒屋",     // 涵蓋：炸物攤(關鍵!)、清粥小菜、喝酒處
